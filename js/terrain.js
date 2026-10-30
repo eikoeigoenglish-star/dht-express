@@ -29,6 +29,19 @@ const UNDERWATER_Y = -0.12; // これより深い縁にはスカートを付け�
 
 const M2Y = VERTICAL_EXAGGERATION / 1000;
 
+/* ---------------------------------------------------------------------- */
+/* 市街地の色付け（cities.js から登録。遠景で「ここに都市がある」と分かるように）   */
+/* ---------------------------------------------------------------------- */
+let urbanField = null;
+/**
+ * 市街地密度フィールドを登録する。(x, z) → 0..1。
+ * タイルの頂点色を計算する時に参照されるので、terrain.init() より前に呼ぶこと。
+ * @param {((x:number, z:number) => number) | null} fn
+ */
+export function setUrbanField(fn) {
+  urbanField = fn;
+}
+
 export class TerrainSystem {
   /**
    * @param {{ dir: string, manifestUrl: string }} opts
@@ -66,6 +79,7 @@ export class TerrainSystem {
     this.hiN = this.hiSamples - 3; // 64 セル
     this.hiStep = m.hi.stepKm;
     this.hiSet = new Set(m.hi.chunks.map(([cx, cz]) => `${cx}_${cz}`));
+    this.childByKey = new Map(); // key -> 粗タイルの子チャンク情報（requestChunkData 用）
 
     const buf = await (await fetch(this.dir + m.coarse.file)).arrayBuffer();
     this.coarse = new Int16Array(buf);
@@ -158,7 +172,9 @@ export class TerrainSystem {
             const key = `${cx}_${cz}`;
             const hi = this.hiSet.has(key);
             hasHi ||= hi;
-            children.push({ cx, cz, key, hi });
+            const child = { cx, cz, key, hi };
+            children.push(child);
+            this.childByKey.set(key, child);
           }
         // 全面が深い海のタイルは作らない（海底面メッシュで代用）
         if (maxH <= this.seaFloorM + 15 && !hasHi) continue;
@@ -309,6 +325,30 @@ export class TerrainSystem {
     }
     this.stats.coarseVisible = coarseVisible;
     this.stats.hiVisible = hiVisible;
+  }
+
+  /** 64km チャンク (cx, cz) の詳細標高データ。未読込なら null */
+  hasChunkData(cx, cz) {
+    return this.hiData.has(`${cx}_${cz}`);
+  }
+
+  /**
+   * 64km チャンク (cx, cz) の詳細標高データを読み込む（都市・ランドマーク配置用）。
+   * 詳細データを持たないチャンクでは即座に解決する。
+   * @returns {Promise<boolean>} 詳細データが使えるなら true
+   */
+  requestChunkData(cx, cz, priority = 0) {
+    const key = `${cx}_${cz}`;
+    if (this.hiData.has(key)) return Promise.resolve(true);
+    const c = this.childByKey.get(key);
+    if (!c || !c.hi) return Promise.resolve(false);
+    this._requestHi(c, priority);
+    return (this.hiPending.get(key) ?? Promise.resolve()).then(() => this.hiData.has(key));
+  }
+
+  /** ワールド座標 → 64km チャンク番号 */
+  chunkOf(x, z) {
+    return { cx: Math.floor((x - this.x0) / this.chunk), cz: Math.floor((z - this.z0) / this.chunk) };
   }
 
   /** 読み込み済みでない近傍チャンクをまとめて先読みする（プリセット移動の直前など） */
@@ -477,6 +517,8 @@ const C = {
   forest: [0.2, 0.38, 0.18],
   highForest: [0.24, 0.33, 0.2],
   scrub: [0.45, 0.43, 0.32],
+  urban: [0.6, 0.59, 0.56],
+  urbanCore: [0.7, 0.69, 0.67],
   rock: [0.55, 0.52, 0.48],
   snow: [0.93, 0.94, 0.96],
   tropic: [0.3, 0.6, 0.3],
@@ -515,6 +557,16 @@ function terrainColor(h, ny, lat, x, z, out) {
     mix(_a, C.snow, smooth(2850, 3300, h), _a);
     // 南国は明るい緑に
     mix(_a, C.tropic, tropical * smooth(30, 120, h) * (1 - smooth(300, 700, h)) * 0.6, out);
+  }
+
+  // 市街地：灰色寄りに（急斜面には広げない）
+  if (urbanField && h > 0) {
+    const u = urbanField(x, z);
+    if (u > 0.02) {
+      const flat = smooth(0.8, 0.95, ny);
+      mix(C.urban, C.urbanCore, smooth(0.45, 0.9, u), _b);
+      mix(out, _b, Math.min(0.85, u * 1.15) * flat * smooth(0, 4, h), out);
+    }
   }
 
   // 北限より北：彩度・明度を落として「範囲外」とわかるように

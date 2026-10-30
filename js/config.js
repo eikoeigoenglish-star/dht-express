@@ -15,6 +15,9 @@ export const ASSETS = {
   terrainManifest: asset('data/terrain/manifest.json'),
   terrainDir: asset('data/terrain/'),
   places: asset('data/places.json'),
+  cities: asset('data/cities.json'), // 人口10万人以上の都市（都市メッシュ・市街地色・ラベル）
+  stations: asset('data/stations.json'), // 東京〜鹿児島中央の新幹線駅（全46駅）
+  landmarks: asset('data/landmarks.json'), // ランドマーク（モデルは js/landmarks.js）
 
   // ---- 将来追加予定（今回は読み込まない）----
   // models: {
@@ -42,6 +45,14 @@ export const CAMERA_PRESETS = [
   { id: 'kagoshima', label: '鹿児島', lat: 31.6, lon: 130.62, dist: 110, polar: 60, azimuth: 200 },
   { id: 'amami', label: '鹿児島〜奄美', lat: 29.75, lon: 129.95, dist: 720, polar: 48, azimuth: 205 },
   { id: 'okinawa', label: '沖縄', lat: 26.5, lon: 127.95, dist: 170, polar: 58, azimuth: 200 },
+  // ---- 都市・駅・ランドマークを近くで見るためのプリセット ----
+  { id: 'tokyo-center', label: '東京都心', lat: 35.685, lon: 139.765, dist: 26, polar: 62, azimuth: 200 },
+  { id: 'nagoya', label: '名古屋', lat: 35.172, lon: 136.892, dist: 22, polar: 60, azimuth: 190 },
+  { id: 'kyoto-osaka', label: '京都・大阪', lat: 34.83, lon: 135.58, dist: 75, polar: 58, azimuth: 215 },
+  { id: 'setouchi', label: '岡山・瀬戸大橋', lat: 34.52, lon: 133.84, dist: 55, polar: 58, azimuth: 185 },
+  { id: 'hiroshima', label: '広島・宮島', lat: 34.36, lon: 132.40, dist: 45, polar: 58, azimuth: 160 },
+  { id: 'kanmon', label: '関門海峡・福岡', lat: 33.75, lon: 130.66, dist: 95, polar: 56, azimuth: 200 },
+  { id: 'kumamoto', label: '熊本', lat: 32.80, lon: 130.70, dist: 22, polar: 60, azimuth: 200 },
 ];
 
 export const WORLD_BOUNDS = { minX: -1100, maxX: 1000, minZ: -900, maxZ: 900 };

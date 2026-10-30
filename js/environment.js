@@ -7,6 +7,7 @@
  * 深い海（地形タイルを持たない領域）は海底プレーンで受ける。
  *
  * draw call: 空1 + 海1 + 海底1
+ * 海面は同心円分割の円板（約2千三角形）。カメラ近くの深度精度のため。
  */
 import * as THREE from 'three';
 import { metersToY } from './geo.js';
@@ -83,8 +84,9 @@ export class Environment {
       normalScale: new THREE.Vector2(0.35, 0.35),
       depthWrite: false,
     });
-    const waterGeo = new THREE.PlaneGeometry(WATER_SIZE, WATER_SIZE, 1, 1);
-    waterGeo.rotateX(-Math.PI / 2);
+    // 2 枚の巨大な三角形だと、カメラ近くで深度の補間精度が足りず海面が陸地の上に描かれることがあるため、
+    // カメラ中心の同心円状に分割した板にする（見た目・UV は従来の 1 枚板と同じ）
+    const waterGeo = makeRadialPlane(WATER_SIZE);
     this.water = new THREE.Mesh(waterGeo, waterMat);
     this.water.name = 'sea-surface';
     this.water.renderOrder = 2;
@@ -118,6 +120,44 @@ export class Environment {
     this.scene.fog.far = far;
     this.scene.fog.near = far * 0.18;
   }
+}
+
+/**
+ * 原点中心・半径 size/2 の水平な円板（中心付近ほど細かい同心円分割）。
+ * UV は PlaneGeometry(size, size) を X 軸回転したものと同じ対応（u = x/size + 0.5, v = 0.5 - z/size）。
+ */
+function makeRadialPlane(size) {
+  const R = size / 2;
+  const SEG = 48;
+  const radii = [0];
+  for (let r = 0.25; r < R; r *= 1.45) radii.push(r);
+  radii.push(R);
+  const pos = [];
+  const uv = [];
+  for (const r of radii)
+    for (let k = 0; k < SEG; k++) {
+      const a = (k / SEG) * Math.PI * 2;
+      const x = Math.cos(a) * r;
+      const z = Math.sin(a) * r;
+      pos.push(x, 0, z);
+      uv.push(x / size + 0.5, 0.5 - z / size);
+    }
+  const idx = [];
+  for (let i = 0; i < radii.length - 1; i++)
+    for (let k = 0; k < SEG; k++) {
+      const a = i * SEG + k;
+      const b = i * SEG + ((k + 1) % SEG);
+      const c = a + SEG;
+      const d = b + SEG;
+      idx.push(a, b, c, b, d, c);
+    }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(pos.length / 3).fill([0, 1, 0]).flat(), 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeBoundingSphere();
+  return g;
 }
 
 /** 小さな波の法線マップ（タイル可能）を手続き生成。テクスチャはこれ1枚のみ */

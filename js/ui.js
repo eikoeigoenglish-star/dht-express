@@ -73,6 +73,9 @@ export class UI {
         case 'KeyL':
           opts.onToggleLabels();
           break;
+        case 'KeyB':
+          opts.onToggleCity?.();
+          break;
       }
     });
   }
@@ -107,7 +110,7 @@ export class UI {
   }
 
   /** 情報表示（4Hz 程度で十分） */
-  tick(dt, { renderer, camera, terrain, speed }) {
+  tick(dt, { renderer, camera, terrain, speed, cities }) {
     this.fpsFrames++;
     this.fpsTime += dt;
     if (this.fpsTime < 0.25) return;
@@ -124,6 +127,10 @@ export class UI {
     this.$('r-tris').textContent = (info.triangles / 1000).toFixed(0) + 'k';
     const s = terrain.stats;
     this.$('r-tiles').textContent = `${s.coarseVisible}+${s.hiVisible}`;
+    if (cities) {
+      const c = cities.stats;
+      this.$('r-city').textContent = cities.visible ? `${(c.instancesDrawn / 1000).toFixed(1)}k / ${c.chunksVisible}` : 'OFF';
+    }
     this.$('r-pos').textContent = formatLatLon(ll.lat, ll.lon);
     // 対地高度（ワールド単位 = km。地形の標高誇張とは独立した“カメラの高さ”）
     const agl = p.y - ground;

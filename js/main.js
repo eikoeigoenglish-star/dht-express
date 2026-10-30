@@ -9,6 +9,10 @@
  *   camera.js      カメラ生成・プリセット変換・滑らか移動
  *   controls.js    MAP VIEW / EXPLORE VIEW の操作
  *   labels.js      地名ラベル（HTML）
+ *   cities.js      都市メッシュ（InstancedMesh・距離LOD）と市街地の色付け
+ *   stations.js    新幹線駅（東京〜鹿児島中央 46駅）のマーカーとデータ
+ *   landmarks.js   ランドマーク（基本形状で作った簡略モデル）
+ *   meshkit.js     部品の結合・乱数などの小道具
  *   ui.js          HUD
  *   route.js       （将来用）km → ルート上の位置
  *
@@ -16,12 +20,18 @@
  *   scene
  *    ├─ environment (sky, sea-surface, seabed, lights)
  *    ├─ terrain     (coarse_*, hi_* タイル)
+ *    ├─ cities      (city_* … 64km チャンクごとの InstancedMesh)
+ *    ├─ stations    (station-platforms, station-pins … InstancedMesh 2つ)
+ *    ├─ landmarks   (landmark_* … 1件 = 1 Mesh)
  *    ├─ actors      ← 将来：列車・9体のキャラクター GLB をここへ
  *    └─ fx          ← 将来：演出・パーティクル
  */
 import * as THREE from 'three';
 import { ASSETS, CAMERA_PRESETS } from './config.js';
-import { TerrainSystem } from './terrain.js';
+import { TerrainSystem, setUrbanField } from './terrain.js';
+import { CitySystem } from './cities.js';
+import { StationSystem } from './stations.js';
+import { LandmarkSystem } from './landmarks.js';
 import { Environment } from './environment.js';
 import { createCamera, CameraRig, presetToView, presetToExploreView } from './camera.js';
 import { MapController, ExploreController } from './controls.js';
@@ -48,6 +58,12 @@ const env = new Environment(scene);
 const terrain = new TerrainSystem({ dir: ASSETS.terrainDir, manifestUrl: ASSETS.terrainManifest });
 scene.add(terrain.group);
 
+// 都市・駅・ランドマーク（地形とは別グループ：将来の Raycaster で対象を選びやすい）
+const cities = new CitySystem(terrain);
+const stations = new StationSystem(terrain);
+const landmarks = new LandmarkSystem(terrain);
+scene.add(cities.group, stations.group, landmarks.group);
+
 const actors = new THREE.Group();
 actors.name = 'actors';
 const fx = new THREE.Group();
@@ -68,6 +84,10 @@ const ui = new UI({
   onToggleLabels: () => {
     labels.setVisible(!labels.visible);
     return labels.visible;
+  },
+  onToggleCity: () => {
+    cities.setVisible(!cities.visible);
+    return cities.visible;
   },
 });
 exploreCtl.onLockChange = (l) => ui.setLocked(l);
@@ -168,13 +188,39 @@ function goPreset(p) {
 }
 
 /* ---------------------------------------------------------------------- */
+/* 都市・駅・ランドマーク                                                    */
+/* ---------------------------------------------------------------------- */
+
+async function setupOverlays() {
+  const [st, lm] = await Promise.allSettled([stations.load(ASSETS.stations), landmarks.load(ASSETS.landmarks)]);
+  if (st.status === 'rejected') console.warn('stations', st.reason);
+  if (lm.status === 'rejected') console.warn('landmarks', lm.reason);
+  // 駅・ランドマークの周りには建物を建てない
+  if (st.status === 'fulfilled') cities.addExclusions(stations.exclusions());
+  if (lm.status === 'fulfilled') cities.addExclusions(landmarks.exclusions());
+  if (cities.cities.length) {
+    cities.prepareChunks();
+    // places.json に同じ都市のラベルがあれば重複させない
+    labels.addItems(cities.labelItems().filter((c) => !labels.findNear(c.x, c.z, 9)));
+  }
+  if (st.status === 'fulfilled') labels.addItems(stations.labelItems());
+  if (lm.status === 'fulfilled') labels.addItems(landmarks.labelItems());
+}
+
+/* ---------------------------------------------------------------------- */
 /* 起動                                                                     */
 /* ---------------------------------------------------------------------- */
 
 async function start() {
   try {
+    // 都市データは地形タイルの色付け（市街地色）に使うので地形より先に読む
+    await cities
+      .load(ASSETS.cities)
+      .then(() => setUrbanField((x, z) => cities.densityAt(x, z)))
+      .catch((e) => console.warn('cities', e));
     await terrain.init();
     await labels.load(ASSETS.places).catch((e) => console.warn('labels', e));
+    await setupOverlays();
   } catch (e) {
     console.error(e);
     ui.error(
@@ -207,11 +253,14 @@ async function start() {
       else exploreCtl.update(dt);
     }
     terrain.update(camera);
+    cities.update(camera);
+    stations.update();
+    landmarks.update(camera);
     const p = camera.position;
     env.update(camera, dt, p.y - terrain.getSurfaceY(p.x, p.z));
     renderer.render(scene, camera);
     labels.update(camera, innerWidth, innerHeight);
-    ui.tick(dt, { renderer, camera, terrain, speed: mode === 'explore' ? exploreCtl.lastSpeed : null });
+    ui.tick(dt, { renderer, camera, terrain, speed: mode === 'explore' ? exploreCtl.lastSpeed : null, cities });
   });
 }
 
@@ -222,7 +271,7 @@ addEventListener('resize', () => {
 });
 
 // 将来の拡張・デバッグ用ハンドル（コンソールから window.DHT で触れる）
-export const app = { renderer, scene, camera, terrain, env, rig, mapCtl, exploreCtl, labels, layers: { actors, fx }, geo, presets: CAMERA_PRESETS, setMode, goPreset };
+export const app = { renderer, scene, camera, terrain, env, rig, mapCtl, exploreCtl, labels, cities, stations, landmarks, layers: { actors, fx }, geo, presets: CAMERA_PRESETS, setMode, goPreset };
 window.DHT = app;
 
 start();
