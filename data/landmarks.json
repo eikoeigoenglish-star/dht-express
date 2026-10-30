@@ -1,0 +1,50 @@
+{
+ "_comment": "旅の目印となるランドマーク。モデルはすべて js/landmarks.js で Three.js の基本形状を組み合わせて作ったオリジナルの簡略モデル（外部3Dモデル不使用）。",
+ "coordinates": "lat/lon は各施設の概略中心（小数4桁 ≒ 10m）。橋は path に両岸〜中間の島の概略位置を並べたもの。",
+ "fields": "id, name, type='landmark', kind（モデル種別）, lat, lon, heading（モデル長軸の向き, 北=0°・時計回り）, region, tier（1=大型・遠くからラベル表示 / 2=標準）, path?（橋: [[lat, lon, 区間種別]]）, connects?（橋が結ぶ陸地）",
+ "landmarks": [
+  { "id": "tokyo-skytree", "name": "東京スカイツリー", "kind": "skytree", "lat": 35.7101, "lon": 139.8107, "region": "東京", "tier": 1 },
+  { "id": "tokyo-tower", "name": "東京タワー", "kind": "tokyoTower", "lat": 35.6586, "lon": 139.7454, "region": "東京", "tier": 1 },
+  { "id": "sensoji", "name": "浅草寺", "kind": "temple", "lat": 35.7148, "lon": 139.7967, "heading": 0, "region": "東京", "tier": 2 },
+
+  { "id": "nagoya-castle", "name": "名古屋城", "kind": "castleNagoya", "lat": 35.1856, "lon": 136.8990, "heading": 0, "region": "名古屋", "tier": 2 },
+  { "id": "jr-central-towers", "name": "JRセントラルタワーズ", "kind": "twinTowers", "lat": 35.1706, "lon": 136.8828, "heading": 0, "region": "名古屋", "tier": 1 },
+
+  { "id": "kyoto-tower", "name": "京都タワー", "kind": "kyotoTower", "lat": 34.9875, "lon": 135.7593, "region": "京都", "tier": 1 },
+  { "id": "kinkakuji", "name": "金閣寺", "kind": "kinkaku", "lat": 35.0394, "lon": 135.7292, "heading": 0, "region": "京都", "tier": 2 },
+
+  { "id": "tempozan-wheel", "name": "天保山大観覧車", "kind": "ferrisWheel", "lat": 34.6566, "lon": 135.4314, "heading": 300, "region": "大阪", "tier": 2 },
+  { "id": "daisen-kofun", "name": "大仙陵古墳", "kind": "kofun", "lat": 34.5640, "lon": 135.4877, "heading": 200, "region": "堺", "tier": 1 },
+
+  { "id": "akashi-kaikyo-bridge", "name": "明石海峡大橋", "kind": "bridge", "lat": 34.6167, "lon": 135.0227, "region": "兵庫", "tier": 1,
+    "connects": ["本州（神戸市垂水区）", "淡路島（淡路市）"],
+    "path": [[34.6335, 135.0352, "land"], [34.6290, 135.0318, "anchor"], [34.6052, 135.0140, "anchor"], [34.6008, 135.0105, "land"]],
+    "spans": [{ "type": "suspension", "from": 1, "to": 2, "towers": [0.247, 0.753], "towerM": 298, "deckM": 65 }] },
+  { "id": "himeji-castle", "name": "姫路城", "kind": "castleHimeji", "lat": 34.8394, "lon": 134.6939, "heading": 0, "region": "兵庫", "tier": 1 },
+
+  { "id": "kibitsu-jinja", "name": "吉備津神社", "kind": "kibitsu", "lat": 34.6713, "lon": 133.8508, "heading": 0, "region": "岡山", "tier": 2 },
+  { "id": "seto-ohashi", "name": "瀬戸大橋", "kind": "bridge", "lat": 34.3950, "lon": 133.8190, "region": "岡山・香川", "tier": 1,
+    "connects": ["本州（倉敷市児島）", "四国（坂出市）"],
+    "path": [[34.4585, 133.8040, "land"], [34.4545, 133.8062, "anchor"], [34.4440, 133.8105, "island"], [34.4300, 133.8120, "island"], [34.4170, 133.8135, "island"], [34.4000, 133.8170, "island"], [34.3780, 133.8200, "island"], [34.3540, 133.8245, "anchor"], [34.3420, 133.8270, "land"], [34.3300, 133.8300, "land"]],
+    "spans": [
+     { "type": "suspension", "from": 1, "to": 2, "towers": [0.25, 0.75], "towerM": 149, "deckM": 50 },
+     { "type": "stayed", "from": 2, "to": 3, "towers": [0.3, 0.7], "towerM": 152, "deckM": 50 },
+     { "type": "stayed", "from": 3, "to": 4, "towers": [0.3, 0.7], "towerM": 148, "deckM": 50 },
+     { "type": "truss", "from": 4, "to": 5, "deckM": 45 },
+     { "type": "suspension", "from": 5, "to": 6, "towers": [0.22, 0.78], "towerM": 184, "deckM": 50 },
+     { "type": "suspension", "from": 6, "to": 7, "towers": [0.22, 0.78], "towerM": 184, "deckM": 50 },
+     { "type": "truss", "from": 7, "to": 8, "deckM": 35 }
+    ] },
+
+  { "id": "itsukushima-jinja", "name": "厳島神社", "kind": "itsukushima", "lat": 34.2965, "lon": 132.3192, "heading": 330, "region": "広島", "tier": 1 },
+
+  { "id": "kanmon-bridge", "name": "関門橋", "kind": "bridge", "lat": 33.9614, "lon": 130.9593, "region": "関門海峡", "tier": 1,
+    "connects": ["本州（下関市）", "九州（北九州市門司区）"],
+    "path": [[33.9672, 130.9552, "land"], [33.9652, 130.9566, "anchor"], [33.9576, 130.9618, "anchor"], [33.9558, 130.9631, "land"]],
+    "spans": [{ "type": "suspension", "from": 1, "to": 2, "towers": [0.17, 0.83], "towerM": 141, "deckM": 61 }] },
+
+  { "id": "fukuoka-tower", "name": "福岡タワー", "kind": "fukuokaTower", "lat": 33.5933, "lon": 130.3515, "heading": 20, "region": "福岡", "tier": 1 },
+
+  { "id": "kumamoto-castle", "name": "熊本城", "kind": "castleKumamoto", "lat": 32.8063, "lon": 130.7059, "heading": 0, "region": "熊本", "tier": 1 }
+ ]
+}

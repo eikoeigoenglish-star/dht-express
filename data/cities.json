@@ -1,0 +1,2620 @@
+{
+ "_comment": "人口10万人以上の市（北緯37°40′23″以南）。都市メッシュ（cities.js）・都市ラベル・市街地の色付けに使用。",
+ "criteria": "2020年国勢調査（総務省統計局）の人口がおおむね10万人以上の市。境界付近（9.9〜10.1万人程度）は旅ステージとして含める側に倒した。東京23区は1つの都市『東京』として扱う。",
+ "population": "pop は 2020年国勢調査ベースの概数（千人単位で丸め）。表示規模の決定にのみ使用し、統計値として使わないこと。",
+ "coordinates": "lat/lon は市の中心市街地（主要駅・市役所付近）の概略位置。Geolonia 住所データ（CC BY 4.0）の町丁目代表点と照合し、全都市で市域内（最寄り町丁目代表点から1km以内）であることを確認済み。座標データ自体は本リポジトリで作成。",
+ "rank": "metro=大都市圏 / major=地方中枢・主要都市 / city=その他",
+ "fields": "id, name, pref, type, rank, lat, lon, pop, cores?[[lat,lon,weight]]（副都心など高層の核）, heightScale?（高さ規制の強い都市の高さ倍率）",
+ "cities": [
+  {
+   "id": "koriyama",
+   "name": "郡山",
+   "pref": "福島県",
+   "type": "city",
+   "rank": "city",
+   "lat": 37.398,
+   "lon": 140.388,
+   "pop": 327000
+  },
+  {
+   "id": "iwaki",
+   "name": "いわき",
+   "pref": "福島県",
+   "type": "city",
+   "rank": "city",
+   "lat": 37.051,
+   "lon": 140.887,
+   "pop": 333000
+  },
+  {
+   "id": "aizuwakamatsu",
+   "name": "会津若松",
+   "pref": "福島県",
+   "type": "city",
+   "rank": "city",
+   "lat": 37.495,
+   "lon": 139.93,
+   "pop": 118000
+  },
+  {
+   "id": "nagaoka",
+   "name": "長岡",
+   "pref": "新潟県",
+   "type": "city",
+   "rank": "city",
+   "lat": 37.447,
+   "lon": 138.851,
+   "pop": 266000
+  },
+  {
+   "id": "joetsu",
+   "name": "上越",
+   "pref": "新潟県",
+   "type": "city",
+   "rank": "city",
+   "lat": 37.148,
+   "lon": 138.236,
+   "pop": 189000
+  },
+  {
+   "id": "mito",
+   "name": "水戸",
+   "pref": "茨城県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.371,
+   "lon": 140.476,
+   "pop": 270000
+  },
+  {
+   "id": "tsukuba",
+   "name": "つくば",
+   "pref": "茨城県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.083,
+   "lon": 140.112,
+   "pop": 241000
+  },
+  {
+   "id": "hitachi",
+   "name": "日立",
+   "pref": "茨城県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.591,
+   "lon": 140.652,
+   "pop": 175000
+  },
+  {
+   "id": "hitachinaka",
+   "name": "ひたちなか",
+   "pref": "茨城県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.397,
+   "lon": 140.535,
+   "pop": 156000
+  },
+  {
+   "id": "koga",
+   "name": "古河",
+   "pref": "茨城県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.178,
+   "lon": 139.755,
+   "pop": 140000
+  },
+  {
+   "id": "tsuchiura",
+   "name": "土浦",
+   "pref": "茨城県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.078,
+   "lon": 140.205,
+   "pop": 142000
+  },
+  {
+   "id": "toride",
+   "name": "取手",
+   "pref": "茨城県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.911,
+   "lon": 140.05,
+   "pop": 105000
+  },
+  {
+   "id": "chikusei",
+   "name": "筑西",
+   "pref": "茨城県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.307,
+   "lon": 139.983,
+   "pop": 101000
+  },
+  {
+   "id": "utsunomiya",
+   "name": "宇都宮",
+   "pref": "栃木県",
+   "type": "city",
+   "rank": "major",
+   "lat": 36.559,
+   "lon": 139.898,
+   "pop": 518000
+  },
+  {
+   "id": "oyama",
+   "name": "小山",
+   "pref": "栃木県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.314,
+   "lon": 139.8,
+   "pop": 166000
+  },
+  {
+   "id": "tochigi",
+   "name": "栃木",
+   "pref": "栃木県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.382,
+   "lon": 139.734,
+   "pop": 155000
+  },
+  {
+   "id": "ashikaga",
+   "name": "足利",
+   "pref": "栃木県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.333,
+   "lon": 139.45,
+   "pop": 145000
+  },
+  {
+   "id": "nasushiobara",
+   "name": "那須塩原",
+   "pref": "栃木県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.962,
+   "lon": 140.047,
+   "pop": 115000
+  },
+  {
+   "id": "sano",
+   "name": "佐野",
+   "pref": "栃木県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.314,
+   "lon": 139.578,
+   "pop": 119000
+  },
+  {
+   "id": "takasaki",
+   "name": "高崎",
+   "pref": "群馬県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.322,
+   "lon": 139.013,
+   "pop": 372000
+  },
+  {
+   "id": "maebashi",
+   "name": "前橋",
+   "pref": "群馬県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.389,
+   "lon": 139.063,
+   "pop": 332000
+  },
+  {
+   "id": "ota",
+   "name": "太田",
+   "pref": "群馬県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.291,
+   "lon": 139.376,
+   "pop": 223000
+  },
+  {
+   "id": "isesaki",
+   "name": "伊勢崎",
+   "pref": "群馬県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.311,
+   "lon": 139.197,
+   "pop": 211000
+  },
+  {
+   "id": "kiryu",
+   "name": "桐生",
+   "pref": "群馬県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.405,
+   "lon": 139.331,
+   "pop": 106000
+  },
+  {
+   "id": "saitama",
+   "name": "さいたま",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "major",
+   "lat": 35.88,
+   "lon": 139.63,
+   "pop": 1324000,
+   "cores": [
+    [
+     35.906,
+     139.624,
+     1.0
+    ],
+    [
+     35.859,
+     139.657,
+     0.7
+    ]
+   ]
+  },
+  {
+   "id": "kawaguchi",
+   "name": "川口",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.808,
+   "lon": 139.724,
+   "pop": 594000
+  },
+  {
+   "id": "kawagoe",
+   "name": "川越",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.925,
+   "lon": 139.486,
+   "pop": 354000
+  },
+  {
+   "id": "tokorozawa",
+   "name": "所沢",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.799,
+   "lon": 139.469,
+   "pop": 342000
+  },
+  {
+   "id": "koshigaya",
+   "name": "越谷",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.891,
+   "lon": 139.791,
+   "pop": 341000
+  },
+  {
+   "id": "soka",
+   "name": "草加",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.825,
+   "lon": 139.806,
+   "pop": 250000
+  },
+  {
+   "id": "kasukabe",
+   "name": "春日部",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.975,
+   "lon": 139.752,
+   "pop": 233000
+  },
+  {
+   "id": "ageo",
+   "name": "上尾",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.977,
+   "lon": 139.593,
+   "pop": 230000
+  },
+  {
+   "id": "kumagaya",
+   "name": "熊谷",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.147,
+   "lon": 139.389,
+   "pop": 194000
+  },
+  {
+   "id": "niiza",
+   "name": "新座",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.794,
+   "lon": 139.565,
+   "pop": 166000
+  },
+  {
+   "id": "kuki",
+   "name": "久喜",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.062,
+   "lon": 139.667,
+   "pop": 150000
+  },
+  {
+   "id": "sayama",
+   "name": "狭山",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.853,
+   "lon": 139.412,
+   "pop": 149000
+  },
+  {
+   "id": "iruma",
+   "name": "入間",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.836,
+   "lon": 139.391,
+   "pop": 145000
+  },
+  {
+   "id": "asaka",
+   "name": "朝霞",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.797,
+   "lon": 139.594,
+   "pop": 141000
+  },
+  {
+   "id": "toda",
+   "name": "戸田",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.818,
+   "lon": 139.678,
+   "pop": 140000
+  },
+  {
+   "id": "misato",
+   "name": "三郷",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.83,
+   "lon": 139.872,
+   "pop": 141000
+  },
+  {
+   "id": "fukaya",
+   "name": "深谷",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.197,
+   "lon": 139.282,
+   "pop": 143000
+  },
+  {
+   "id": "konosu",
+   "name": "鴻巣",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.066,
+   "lon": 139.522,
+   "pop": 117000
+  },
+  {
+   "id": "fujimino",
+   "name": "ふじみ野",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.88,
+   "lon": 139.52,
+   "pop": 114000
+  },
+  {
+   "id": "fujimi",
+   "name": "富士見",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.857,
+   "lon": 139.549,
+   "pop": 111000
+  },
+  {
+   "id": "sakado",
+   "name": "坂戸",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.957,
+   "lon": 139.403,
+   "pop": 100000
+  },
+  {
+   "id": "kazo",
+   "name": "加須",
+   "pref": "埼玉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.131,
+   "lon": 139.602,
+   "pop": 112000
+  },
+  {
+   "id": "chiba",
+   "name": "千葉",
+   "pref": "千葉県",
+   "type": "city",
+   "rank": "major",
+   "lat": 35.613,
+   "lon": 140.113,
+   "pop": 975000,
+   "cores": [
+    [
+     35.613,
+     140.113,
+     1.0
+    ],
+    [
+     35.648,
+     140.041,
+     0.6
+    ]
+   ]
+  },
+  {
+   "id": "funabashi",
+   "name": "船橋",
+   "pref": "千葉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.702,
+   "lon": 139.985,
+   "pop": 642000
+  },
+  {
+   "id": "matsudo",
+   "name": "松戸",
+   "pref": "千葉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.784,
+   "lon": 139.901,
+   "pop": 497000
+  },
+  {
+   "id": "ichikawa",
+   "name": "市川",
+   "pref": "千葉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.722,
+   "lon": 139.931,
+   "pop": 496000
+  },
+  {
+   "id": "kashiwa",
+   "name": "柏",
+   "pref": "千葉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.862,
+   "lon": 139.971,
+   "pop": 426000
+  },
+  {
+   "id": "ichihara",
+   "name": "市原",
+   "pref": "千葉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.498,
+   "lon": 140.115,
+   "pop": 270000
+  },
+  {
+   "id": "yachiyo",
+   "name": "八千代",
+   "pref": "千葉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.722,
+   "lon": 140.1,
+   "pop": 200000
+  },
+  {
+   "id": "nagareyama",
+   "name": "流山",
+   "pref": "千葉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.856,
+   "lon": 139.903,
+   "pop": 200000
+  },
+  {
+   "id": "narashino",
+   "name": "習志野",
+   "pref": "千葉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.681,
+   "lon": 140.027,
+   "pop": 175000
+  },
+  {
+   "id": "sakura",
+   "name": "佐倉",
+   "pref": "千葉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.724,
+   "lon": 140.224,
+   "pop": 168000
+  },
+  {
+   "id": "urayasu",
+   "name": "浦安",
+   "pref": "千葉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.653,
+   "lon": 139.902,
+   "pop": 169000
+  },
+  {
+   "id": "noda",
+   "name": "野田",
+   "pref": "千葉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.955,
+   "lon": 139.875,
+   "pop": 151000
+  },
+  {
+   "id": "kisarazu",
+   "name": "木更津",
+   "pref": "千葉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.376,
+   "lon": 139.917,
+   "pop": 136000
+  },
+  {
+   "id": "abiko",
+   "name": "我孫子",
+   "pref": "千葉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.864,
+   "lon": 140.028,
+   "pop": 131000
+  },
+  {
+   "id": "narita",
+   "name": "成田",
+   "pref": "千葉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.776,
+   "lon": 140.318,
+   "pop": 130000
+  },
+  {
+   "id": "kamagaya",
+   "name": "鎌ケ谷",
+   "pref": "千葉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.777,
+   "lon": 140.001,
+   "pop": 110000
+  },
+  {
+   "id": "inzai",
+   "name": "印西",
+   "pref": "千葉県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.833,
+   "lon": 140.146,
+   "pop": 102000
+  },
+  {
+   "id": "tokyo",
+   "name": "東京",
+   "pref": "東京都",
+   "type": "city",
+   "rank": "metro",
+   "lat": 35.69,
+   "lon": 139.735,
+   "pop": 9733000,
+   "cores": [
+    [
+     35.681,
+     139.766,
+     1.0
+    ],
+    [
+     35.69,
+     139.7,
+     1.0
+    ],
+    [
+     35.658,
+     139.702,
+     0.75
+    ],
+    [
+     35.729,
+     139.711,
+     0.7
+    ],
+    [
+     35.665,
+     139.74,
+     0.7
+    ],
+    [
+     35.628,
+     139.739,
+     0.55
+    ],
+    [
+     35.655,
+     139.793,
+     0.5
+    ],
+    [
+     35.712,
+     139.777,
+     0.4
+    ]
+   ]
+  },
+  {
+   "id": "hachioji",
+   "name": "八王子",
+   "pref": "東京都",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.656,
+   "lon": 139.339,
+   "pop": 579000
+  },
+  {
+   "id": "machida",
+   "name": "町田",
+   "pref": "東京都",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.542,
+   "lon": 139.446,
+   "pop": 431000
+  },
+  {
+   "id": "fuchu",
+   "name": "府中",
+   "pref": "東京都",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.669,
+   "lon": 139.478,
+   "pop": 260000
+  },
+  {
+   "id": "chofu",
+   "name": "調布",
+   "pref": "東京都",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.652,
+   "lon": 139.541,
+   "pop": 237000
+  },
+  {
+   "id": "nishitokyo",
+   "name": "西東京",
+   "pref": "東京都",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.726,
+   "lon": 139.538,
+   "pop": 205000
+  },
+  {
+   "id": "kodaira",
+   "name": "小平",
+   "pref": "東京都",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.729,
+   "lon": 139.477,
+   "pop": 195000
+  },
+  {
+   "id": "mitaka",
+   "name": "三鷹",
+   "pref": "東京都",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.683,
+   "lon": 139.56,
+   "pop": 195000
+  },
+  {
+   "id": "hino",
+   "name": "日野",
+   "pref": "東京都",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.671,
+   "lon": 139.395,
+   "pop": 186000
+  },
+  {
+   "id": "tachikawa",
+   "name": "立川",
+   "pref": "東京都",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.698,
+   "lon": 139.414,
+   "pop": 184000
+  },
+  {
+   "id": "higashimurayama",
+   "name": "東村山",
+   "pref": "東京都",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.755,
+   "lon": 139.468,
+   "pop": 147000
+  },
+  {
+   "id": "musashino",
+   "name": "武蔵野",
+   "pref": "東京都",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.703,
+   "lon": 139.58,
+   "pop": 150000
+  },
+  {
+   "id": "tama",
+   "name": "多摩",
+   "pref": "東京都",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.637,
+   "lon": 139.446,
+   "pop": 147000
+  },
+  {
+   "id": "ome",
+   "name": "青梅",
+   "pref": "東京都",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.788,
+   "lon": 139.276,
+   "pop": 131000
+  },
+  {
+   "id": "kokubunji",
+   "name": "国分寺",
+   "pref": "東京都",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.7,
+   "lon": 139.48,
+   "pop": 125000
+  },
+  {
+   "id": "koganei",
+   "name": "小金井",
+   "pref": "東京都",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.7,
+   "lon": 139.503,
+   "pop": 126000
+  },
+  {
+   "id": "higashikurume",
+   "name": "東久留米",
+   "pref": "東京都",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.758,
+   "lon": 139.53,
+   "pop": 115000
+  },
+  {
+   "id": "akishima",
+   "name": "昭島",
+   "pref": "東京都",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.706,
+   "lon": 139.354,
+   "pop": 113000
+  },
+  {
+   "id": "yokohama",
+   "name": "横浜",
+   "pref": "神奈川県",
+   "type": "city",
+   "rank": "metro",
+   "lat": 35.455,
+   "lon": 139.62,
+   "pop": 3777000,
+   "cores": [
+    [
+     35.466,
+     139.622,
+     1.0
+    ],
+    [
+     35.457,
+     139.632,
+     1.0
+    ],
+    [
+     35.444,
+     139.636,
+     0.6
+    ],
+    [
+     35.507,
+     139.618,
+     0.5
+    ]
+   ]
+  },
+  {
+   "id": "kawasaki",
+   "name": "川崎",
+   "pref": "神奈川県",
+   "type": "city",
+   "rank": "major",
+   "lat": 35.545,
+   "lon": 139.68,
+   "pop": 1538000,
+   "cores": [
+    [
+     35.531,
+     139.697,
+     1.0
+    ],
+    [
+     35.576,
+     139.659,
+     0.6
+    ]
+   ]
+  },
+  {
+   "id": "sagamihara",
+   "name": "相模原",
+   "pref": "神奈川県",
+   "type": "city",
+   "rank": "major",
+   "lat": 35.571,
+   "lon": 139.373,
+   "pop": 725000,
+   "cores": [
+    [
+     35.595,
+     139.345,
+     0.8
+    ],
+    [
+     35.571,
+     139.373,
+     0.6
+    ]
+   ]
+  },
+  {
+   "id": "fujisawa",
+   "name": "藤沢",
+   "pref": "神奈川県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.339,
+   "lon": 139.49,
+   "pop": 436000
+  },
+  {
+   "id": "yokosuka",
+   "name": "横須賀",
+   "pref": "神奈川県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.281,
+   "lon": 139.672,
+   "pop": 388000
+  },
+  {
+   "id": "hiratsuka",
+   "name": "平塚",
+   "pref": "神奈川県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.328,
+   "lon": 139.35,
+   "pop": 258000
+  },
+  {
+   "id": "chigasaki",
+   "name": "茅ヶ崎",
+   "pref": "神奈川県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.33,
+   "lon": 139.407,
+   "pop": 244000
+  },
+  {
+   "id": "yamato",
+   "name": "大和",
+   "pref": "神奈川県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.487,
+   "lon": 139.458,
+   "pop": 239000
+  },
+  {
+   "id": "atsugi",
+   "name": "厚木",
+   "pref": "神奈川県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.441,
+   "lon": 139.365,
+   "pop": 223000
+  },
+  {
+   "id": "odawara",
+   "name": "小田原",
+   "pref": "神奈川県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.256,
+   "lon": 139.155,
+   "pop": 188000
+  },
+  {
+   "id": "kamakura",
+   "name": "鎌倉",
+   "pref": "神奈川県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.319,
+   "lon": 139.547,
+   "pop": 172000,
+   "heightScale": 0.6
+  },
+  {
+   "id": "hadano",
+   "name": "秦野",
+   "pref": "神奈川県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.374,
+   "lon": 139.22,
+   "pop": 162000
+  },
+  {
+   "id": "ebina",
+   "name": "海老名",
+   "pref": "神奈川県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.447,
+   "lon": 139.391,
+   "pop": 136000
+  },
+  {
+   "id": "zama",
+   "name": "座間",
+   "pref": "神奈川県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.488,
+   "lon": 139.408,
+   "pop": 132000
+  },
+  {
+   "id": "isehara",
+   "name": "伊勢原",
+   "pref": "神奈川県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.396,
+   "lon": 139.314,
+   "pop": 100000
+  },
+  {
+   "id": "kofu",
+   "name": "甲府",
+   "pref": "山梨県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.667,
+   "lon": 138.569,
+   "pop": 187000
+  },
+  {
+   "id": "nagano",
+   "name": "長野",
+   "pref": "長野県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.643,
+   "lon": 138.189,
+   "pop": 372000
+  },
+  {
+   "id": "matsumoto",
+   "name": "松本",
+   "pref": "長野県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.231,
+   "lon": 137.964,
+   "pop": 237000
+  },
+  {
+   "id": "ueda",
+   "name": "上田",
+   "pref": "長野県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.397,
+   "lon": 138.25,
+   "pop": 155000
+  },
+  {
+   "id": "toyama",
+   "name": "富山",
+   "pref": "富山県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.701,
+   "lon": 137.213,
+   "pop": 413000
+  },
+  {
+   "id": "takaoka",
+   "name": "高岡",
+   "pref": "富山県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.754,
+   "lon": 137.026,
+   "pop": 166000
+  },
+  {
+   "id": "kanazawa",
+   "name": "金沢",
+   "pref": "石川県",
+   "type": "city",
+   "rank": "major",
+   "lat": 36.578,
+   "lon": 136.648,
+   "pop": 463000
+  },
+  {
+   "id": "hakusan",
+   "name": "白山",
+   "pref": "石川県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.514,
+   "lon": 136.566,
+   "pop": 113000
+  },
+  {
+   "id": "komatsu",
+   "name": "小松",
+   "pref": "石川県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.408,
+   "lon": 136.445,
+   "pop": 106000
+  },
+  {
+   "id": "fukui",
+   "name": "福井",
+   "pref": "福井県",
+   "type": "city",
+   "rank": "city",
+   "lat": 36.062,
+   "lon": 136.223,
+   "pop": 262000
+  },
+  {
+   "id": "gifu",
+   "name": "岐阜",
+   "pref": "岐阜県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.409,
+   "lon": 136.757,
+   "pop": 403000
+  },
+  {
+   "id": "ogaki",
+   "name": "大垣",
+   "pref": "岐阜県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.367,
+   "lon": 136.618,
+   "pop": 158000
+  },
+  {
+   "id": "kakamigahara",
+   "name": "各務原",
+   "pref": "岐阜県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.399,
+   "lon": 136.848,
+   "pop": 145000
+  },
+  {
+   "id": "tajimi",
+   "name": "多治見",
+   "pref": "岐阜県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.333,
+   "lon": 137.124,
+   "pop": 108000
+  },
+  {
+   "id": "hamamatsu",
+   "name": "浜松",
+   "pref": "静岡県",
+   "type": "city",
+   "rank": "major",
+   "lat": 34.704,
+   "lon": 137.735,
+   "pop": 790000
+  },
+  {
+   "id": "shizuoka",
+   "name": "静岡",
+   "pref": "静岡県",
+   "type": "city",
+   "rank": "major",
+   "lat": 34.972,
+   "lon": 138.389,
+   "pop": 693000
+  },
+  {
+   "id": "fuji",
+   "name": "富士",
+   "pref": "静岡県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.161,
+   "lon": 138.676,
+   "pop": 245000
+  },
+  {
+   "id": "numazu",
+   "name": "沼津",
+   "pref": "静岡県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.102,
+   "lon": 138.86,
+   "pop": 189000
+  },
+  {
+   "id": "iwata",
+   "name": "磐田",
+   "pref": "静岡県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.718,
+   "lon": 137.851,
+   "pop": 168000
+  },
+  {
+   "id": "fujieda",
+   "name": "藤枝",
+   "pref": "静岡県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.867,
+   "lon": 138.257,
+   "pop": 141000
+  },
+  {
+   "id": "fujinomiya",
+   "name": "富士宮",
+   "pref": "静岡県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.222,
+   "lon": 138.621,
+   "pop": 130000
+  },
+  {
+   "id": "yaizu",
+   "name": "焼津",
+   "pref": "静岡県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.867,
+   "lon": 138.324,
+   "pop": 137000
+  },
+  {
+   "id": "kakegawa",
+   "name": "掛川",
+   "pref": "静岡県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.769,
+   "lon": 138.015,
+   "pop": 116000
+  },
+  {
+   "id": "mishima",
+   "name": "三島",
+   "pref": "静岡県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.126,
+   "lon": 138.911,
+   "pop": 108000
+  },
+  {
+   "id": "nagoya",
+   "name": "名古屋",
+   "pref": "愛知県",
+   "type": "city",
+   "rank": "metro",
+   "lat": 35.165,
+   "lon": 136.9,
+   "pop": 2332000,
+   "cores": [
+    [
+     35.171,
+     136.883,
+     1.0
+    ],
+    [
+     35.169,
+     136.908,
+     0.8
+    ]
+   ]
+  },
+  {
+   "id": "toyota",
+   "name": "豊田",
+   "pref": "愛知県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.083,
+   "lon": 137.156,
+   "pop": 422000
+  },
+  {
+   "id": "okazaki",
+   "name": "岡崎",
+   "pref": "愛知県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.955,
+   "lon": 137.174,
+   "pop": 384000
+  },
+  {
+   "id": "ichinomiya",
+   "name": "一宮",
+   "pref": "愛知県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.304,
+   "lon": 136.803,
+   "pop": 380000
+  },
+  {
+   "id": "toyohashi",
+   "name": "豊橋",
+   "pref": "愛知県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.763,
+   "lon": 137.383,
+   "pop": 372000
+  },
+  {
+   "id": "kasugai",
+   "name": "春日井",
+   "pref": "愛知県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.247,
+   "lon": 136.972,
+   "pop": 308000
+  },
+  {
+   "id": "anjo",
+   "name": "安城",
+   "pref": "愛知県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.959,
+   "lon": 137.08,
+   "pop": 187000
+  },
+  {
+   "id": "toyokawa",
+   "name": "豊川",
+   "pref": "愛知県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.827,
+   "lon": 137.376,
+   "pop": 185000
+  },
+  {
+   "id": "nishio",
+   "name": "西尾",
+   "pref": "愛知県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.862,
+   "lon": 137.062,
+   "pop": 169000
+  },
+  {
+   "id": "kariya",
+   "name": "刈谷",
+   "pref": "愛知県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.989,
+   "lon": 137.002,
+   "pop": 152000
+  },
+  {
+   "id": "komaki",
+   "name": "小牧",
+   "pref": "愛知県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.291,
+   "lon": 136.912,
+   "pop": 149000
+  },
+  {
+   "id": "inazawa",
+   "name": "稲沢",
+   "pref": "愛知県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.248,
+   "lon": 136.78,
+   "pop": 134000
+  },
+  {
+   "id": "seto",
+   "name": "瀬戸",
+   "pref": "愛知県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.224,
+   "lon": 137.084,
+   "pop": 127000
+  },
+  {
+   "id": "handa",
+   "name": "半田",
+   "pref": "愛知県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.892,
+   "lon": 136.938,
+   "pop": 118000
+  },
+  {
+   "id": "tokai",
+   "name": "東海",
+   "pref": "愛知県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.023,
+   "lon": 136.902,
+   "pop": 113000
+  },
+  {
+   "id": "konan",
+   "name": "江南",
+   "pref": "愛知県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.332,
+   "lon": 136.871,
+   "pop": 100000
+  },
+  {
+   "id": "yokkaichi",
+   "name": "四日市",
+   "pref": "三重県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.965,
+   "lon": 136.625,
+   "pop": 305000
+  },
+  {
+   "id": "tsu",
+   "name": "津",
+   "pref": "三重県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.718,
+   "lon": 136.506,
+   "pop": 274000
+  },
+  {
+   "id": "suzuka",
+   "name": "鈴鹿",
+   "pref": "三重県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.882,
+   "lon": 136.584,
+   "pop": 196000
+  },
+  {
+   "id": "matsusaka",
+   "name": "松阪",
+   "pref": "三重県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.578,
+   "lon": 136.527,
+   "pop": 159000
+  },
+  {
+   "id": "kuwana",
+   "name": "桑名",
+   "pref": "三重県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.062,
+   "lon": 136.684,
+   "pop": 140000
+  },
+  {
+   "id": "ise",
+   "name": "伊勢",
+   "pref": "三重県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.488,
+   "lon": 136.709,
+   "pop": 123000
+  },
+  {
+   "id": "otsu",
+   "name": "大津",
+   "pref": "滋賀県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.018,
+   "lon": 135.855,
+   "pop": 345000
+  },
+  {
+   "id": "kusatsu",
+   "name": "草津",
+   "pref": "滋賀県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.017,
+   "lon": 135.96,
+   "pop": 137000
+  },
+  {
+   "id": "nagahama",
+   "name": "長浜",
+   "pref": "滋賀県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.381,
+   "lon": 136.27,
+   "pop": 113000
+  },
+  {
+   "id": "higashiomi",
+   "name": "東近江",
+   "pref": "滋賀県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.113,
+   "lon": 136.208,
+   "pop": 112000
+  },
+  {
+   "id": "hikone",
+   "name": "彦根",
+   "pref": "滋賀県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.274,
+   "lon": 136.26,
+   "pop": 111000
+  },
+  {
+   "id": "kyoto",
+   "name": "京都",
+   "pref": "京都府",
+   "type": "city",
+   "rank": "metro",
+   "lat": 35.005,
+   "lon": 135.76,
+   "pop": 1464000,
+   "cores": [
+    [
+     35.004,
+     135.768,
+     0.7
+    ],
+    [
+     34.986,
+     135.759,
+     0.7
+    ]
+   ],
+   "heightScale": 0.5
+  },
+  {
+   "id": "uji",
+   "name": "宇治",
+   "pref": "京都府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.884,
+   "lon": 135.8,
+   "pop": 180000
+  },
+  {
+   "id": "osaka",
+   "name": "大阪",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "metro",
+   "lat": 34.69,
+   "lon": 135.505,
+   "pop": 2752000,
+   "cores": [
+    [
+     34.703,
+     135.496,
+     1.0
+    ],
+    [
+     34.688,
+     135.5,
+     0.8
+    ],
+    [
+     34.666,
+     135.501,
+     0.7
+    ],
+    [
+     34.646,
+     135.514,
+     0.6
+    ]
+   ]
+  },
+  {
+   "id": "sakai",
+   "name": "堺",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "major",
+   "lat": 34.573,
+   "lon": 135.483,
+   "pop": 826000
+  },
+  {
+   "id": "higashiosaka",
+   "name": "東大阪",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.679,
+   "lon": 135.601,
+   "pop": 493000
+  },
+  {
+   "id": "toyonaka",
+   "name": "豊中",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.781,
+   "lon": 135.47,
+   "pop": 401000
+  },
+  {
+   "id": "suita",
+   "name": "吹田",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.759,
+   "lon": 135.517,
+   "pop": 385000
+  },
+  {
+   "id": "hirakata",
+   "name": "枚方",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.814,
+   "lon": 135.651,
+   "pop": 397000
+  },
+  {
+   "id": "takatsuki",
+   "name": "高槻",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.846,
+   "lon": 135.617,
+   "pop": 348000
+  },
+  {
+   "id": "ibaraki",
+   "name": "茨木",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.816,
+   "lon": 135.568,
+   "pop": 285000
+  },
+  {
+   "id": "yao",
+   "name": "八尾",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.627,
+   "lon": 135.601,
+   "pop": 264000
+  },
+  {
+   "id": "neyagawa",
+   "name": "寝屋川",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.766,
+   "lon": 135.628,
+   "pop": 230000
+  },
+  {
+   "id": "kishiwada",
+   "name": "岸和田",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.46,
+   "lon": 135.371,
+   "pop": 190000
+  },
+  {
+   "id": "izumi",
+   "name": "和泉",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.483,
+   "lon": 135.423,
+   "pop": 183000
+  },
+  {
+   "id": "moriguchi",
+   "name": "守口",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.738,
+   "lon": 135.564,
+   "pop": 142000
+  },
+  {
+   "id": "minoh",
+   "name": "箕面",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.827,
+   "lon": 135.47,
+   "pop": 137000
+  },
+  {
+   "id": "kadoma",
+   "name": "門真",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.739,
+   "lon": 135.587,
+   "pop": 119000
+  },
+  {
+   "id": "matsubara",
+   "name": "松原",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.578,
+   "lon": 135.552,
+   "pop": 118000
+  },
+  {
+   "id": "daito",
+   "name": "大東",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.712,
+   "lon": 135.623,
+   "pop": 119000
+  },
+  {
+   "id": "habikino",
+   "name": "羽曳野",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.558,
+   "lon": 135.606,
+   "pop": 110000
+  },
+  {
+   "id": "tondabayashi",
+   "name": "富田林",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.499,
+   "lon": 135.597,
+   "pop": 108000
+  },
+  {
+   "id": "kawachinagano",
+   "name": "河内長野",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.458,
+   "lon": 135.564,
+   "pop": 101000
+  },
+  {
+   "id": "ikeda",
+   "name": "池田",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.822,
+   "lon": 135.429,
+   "pop": 104000
+  },
+  {
+   "id": "izumisano",
+   "name": "泉佐野",
+   "pref": "大阪府",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.407,
+   "lon": 135.326,
+   "pop": 100000
+  },
+  {
+   "id": "kobe",
+   "name": "神戸",
+   "pref": "兵庫県",
+   "type": "city",
+   "rank": "metro",
+   "lat": 34.69,
+   "lon": 135.19,
+   "pop": 1525000,
+   "cores": [
+    [
+     34.694,
+     135.195,
+     1.0
+    ],
+    [
+     34.679,
+     135.183,
+     0.5
+    ]
+   ]
+  },
+  {
+   "id": "himeji",
+   "name": "姫路",
+   "pref": "兵庫県",
+   "type": "city",
+   "rank": "major",
+   "lat": 34.827,
+   "lon": 134.69,
+   "pop": 530000
+  },
+  {
+   "id": "nishinomiya",
+   "name": "西宮",
+   "pref": "兵庫県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.738,
+   "lon": 135.342,
+   "pop": 485000
+  },
+  {
+   "id": "amagasaki",
+   "name": "尼崎",
+   "pref": "兵庫県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.733,
+   "lon": 135.407,
+   "pop": 460000
+  },
+  {
+   "id": "akashi",
+   "name": "明石",
+   "pref": "兵庫県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.649,
+   "lon": 134.993,
+   "pop": 304000
+  },
+  {
+   "id": "kakogawa",
+   "name": "加古川",
+   "pref": "兵庫県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.757,
+   "lon": 134.841,
+   "pop": 260000
+  },
+  {
+   "id": "takarazuka",
+   "name": "宝塚",
+   "pref": "兵庫県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.8,
+   "lon": 135.36,
+   "pop": 226000
+  },
+  {
+   "id": "itami",
+   "name": "伊丹",
+   "pref": "兵庫県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.784,
+   "lon": 135.401,
+   "pop": 198000
+  },
+  {
+   "id": "kawanishi",
+   "name": "川西",
+   "pref": "兵庫県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.83,
+   "lon": 135.417,
+   "pop": 152000
+  },
+  {
+   "id": "sanda",
+   "name": "三田",
+   "pref": "兵庫県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.889,
+   "lon": 135.225,
+   "pop": 109000
+  },
+  {
+   "id": "nara",
+   "name": "奈良",
+   "pref": "奈良県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.685,
+   "lon": 135.805,
+   "pop": 354000,
+   "heightScale": 0.6
+  },
+  {
+   "id": "kashihara",
+   "name": "橿原",
+   "pref": "奈良県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.509,
+   "lon": 135.793,
+   "pop": 120000
+  },
+  {
+   "id": "ikoma",
+   "name": "生駒",
+   "pref": "奈良県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.692,
+   "lon": 135.7,
+   "pop": 116000
+  },
+  {
+   "id": "wakayama",
+   "name": "和歌山",
+   "pref": "和歌山県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.23,
+   "lon": 135.171,
+   "pop": 356000
+  },
+  {
+   "id": "tottori",
+   "name": "鳥取",
+   "pref": "鳥取県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.501,
+   "lon": 134.235,
+   "pop": 189000
+  },
+  {
+   "id": "yonago",
+   "name": "米子",
+   "pref": "鳥取県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.428,
+   "lon": 133.331,
+   "pop": 147000
+  },
+  {
+   "id": "matsue",
+   "name": "松江",
+   "pref": "島根県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.468,
+   "lon": 133.049,
+   "pop": 200000
+  },
+  {
+   "id": "izumo",
+   "name": "出雲",
+   "pref": "島根県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.367,
+   "lon": 132.755,
+   "pop": 172000
+  },
+  {
+   "id": "okayama",
+   "name": "岡山",
+   "pref": "岡山県",
+   "type": "city",
+   "rank": "major",
+   "lat": 34.66,
+   "lon": 133.925,
+   "pop": 725000
+  },
+  {
+   "id": "kurashiki",
+   "name": "倉敷",
+   "pref": "岡山県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.585,
+   "lon": 133.772,
+   "pop": 475000
+  },
+  {
+   "id": "tsuyama",
+   "name": "津山",
+   "pref": "岡山県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.069,
+   "lon": 134.004,
+   "pop": 100000
+  },
+  {
+   "id": "hiroshima",
+   "name": "広島",
+   "pref": "広島県",
+   "type": "city",
+   "rank": "major",
+   "lat": 34.395,
+   "lon": 132.46,
+   "pop": 1201000,
+   "cores": [
+    [
+     34.395,
+     132.459,
+     1.0
+    ],
+    [
+     34.398,
+     132.475,
+     0.7
+    ]
+   ]
+  },
+  {
+   "id": "fukuyama",
+   "name": "福山",
+   "pref": "広島県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.489,
+   "lon": 133.362,
+   "pop": 460000
+  },
+  {
+   "id": "kure",
+   "name": "呉",
+   "pref": "広島県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.249,
+   "lon": 132.566,
+   "pop": 214000
+  },
+  {
+   "id": "higashihiroshima",
+   "name": "東広島",
+   "pref": "広島県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.427,
+   "lon": 132.743,
+   "pop": 196000
+  },
+  {
+   "id": "onomichi",
+   "name": "尾道",
+   "pref": "広島県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.409,
+   "lon": 133.205,
+   "pop": 131000
+  },
+  {
+   "id": "hatsukaichi",
+   "name": "廿日市",
+   "pref": "広島県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.349,
+   "lon": 132.332,
+   "pop": 115000
+  },
+  {
+   "id": "shimonoseki",
+   "name": "下関",
+   "pref": "山口県",
+   "type": "city",
+   "rank": "city",
+   "lat": 33.958,
+   "lon": 130.941,
+   "pop": 255000
+  },
+  {
+   "id": "yamaguchi",
+   "name": "山口",
+   "pref": "山口県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.178,
+   "lon": 131.474,
+   "pop": 193000
+  },
+  {
+   "id": "ube",
+   "name": "宇部",
+   "pref": "山口県",
+   "type": "city",
+   "rank": "city",
+   "lat": 33.952,
+   "lon": 131.247,
+   "pop": 162000
+  },
+  {
+   "id": "shunan",
+   "name": "周南",
+   "pref": "山口県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.055,
+   "lon": 131.806,
+   "pop": 137000
+  },
+  {
+   "id": "iwakuni",
+   "name": "岩国",
+   "pref": "山口県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.166,
+   "lon": 132.219,
+   "pop": 129000
+  },
+  {
+   "id": "hofu",
+   "name": "防府",
+   "pref": "山口県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.052,
+   "lon": 131.563,
+   "pop": 113000
+  },
+  {
+   "id": "tokushima",
+   "name": "徳島",
+   "pref": "徳島県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.07,
+   "lon": 134.555,
+   "pop": 252000
+  },
+  {
+   "id": "takamatsu",
+   "name": "高松",
+   "pref": "香川県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.34,
+   "lon": 134.047,
+   "pop": 417000
+  },
+  {
+   "id": "marugame",
+   "name": "丸亀",
+   "pref": "香川県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.29,
+   "lon": 133.798,
+   "pop": 110000
+  },
+  {
+   "id": "matsuyama",
+   "name": "松山",
+   "pref": "愛媛県",
+   "type": "city",
+   "rank": "major",
+   "lat": 33.839,
+   "lon": 132.766,
+   "pop": 511000
+  },
+  {
+   "id": "imabari",
+   "name": "今治",
+   "pref": "愛媛県",
+   "type": "city",
+   "rank": "city",
+   "lat": 34.066,
+   "lon": 133.006,
+   "pop": 151000
+  },
+  {
+   "id": "niihama",
+   "name": "新居浜",
+   "pref": "愛媛県",
+   "type": "city",
+   "rank": "city",
+   "lat": 33.96,
+   "lon": 133.283,
+   "pop": 115000
+  },
+  {
+   "id": "saijo",
+   "name": "西条",
+   "pref": "愛媛県",
+   "type": "city",
+   "rank": "city",
+   "lat": 33.919,
+   "lon": 133.181,
+   "pop": 104000
+  },
+  {
+   "id": "kochi",
+   "name": "高知",
+   "pref": "高知県",
+   "type": "city",
+   "rank": "city",
+   "lat": 33.559,
+   "lon": 133.531,
+   "pop": 326000
+  },
+  {
+   "id": "fukuoka",
+   "name": "福岡",
+   "pref": "福岡県",
+   "type": "city",
+   "rank": "metro",
+   "lat": 33.59,
+   "lon": 130.405,
+   "pop": 1612000,
+   "cores": [
+    [
+     33.591,
+     130.399,
+     1.0
+    ],
+    [
+     33.59,
+     130.421,
+     0.9
+    ]
+   ],
+   "heightScale": 0.75
+  },
+  {
+   "id": "kitakyushu",
+   "name": "北九州",
+   "pref": "福岡県",
+   "type": "city",
+   "rank": "major",
+   "lat": 33.88,
+   "lon": 130.86,
+   "pop": 939000,
+   "cores": [
+    [
+     33.886,
+     130.882,
+     1.0
+    ],
+    [
+     33.866,
+     130.807,
+     0.5
+    ]
+   ]
+  },
+  {
+   "id": "kurume",
+   "name": "久留米",
+   "pref": "福岡県",
+   "type": "city",
+   "rank": "city",
+   "lat": 33.319,
+   "lon": 130.508,
+   "pop": 303000
+  },
+  {
+   "id": "iizuka",
+   "name": "飯塚",
+   "pref": "福岡県",
+   "type": "city",
+   "rank": "city",
+   "lat": 33.646,
+   "lon": 130.691,
+   "pop": 126000
+  },
+  {
+   "id": "omuta",
+   "name": "大牟田",
+   "pref": "福岡県",
+   "type": "city",
+   "rank": "city",
+   "lat": 33.03,
+   "lon": 130.446,
+   "pop": 111000
+  },
+  {
+   "id": "kasuga",
+   "name": "春日",
+   "pref": "福岡県",
+   "type": "city",
+   "rank": "city",
+   "lat": 33.533,
+   "lon": 130.47,
+   "pop": 113000
+  },
+  {
+   "id": "itoshima",
+   "name": "糸島",
+   "pref": "福岡県",
+   "type": "city",
+   "rank": "city",
+   "lat": 33.557,
+   "lon": 130.195,
+   "pop": 103000
+  },
+  {
+   "id": "chikushino",
+   "name": "筑紫野",
+   "pref": "福岡県",
+   "type": "city",
+   "rank": "city",
+   "lat": 33.487,
+   "lon": 130.516,
+   "pop": 105000
+  },
+  {
+   "id": "onojo",
+   "name": "大野城",
+   "pref": "福岡県",
+   "type": "city",
+   "rank": "city",
+   "lat": 33.536,
+   "lon": 130.479,
+   "pop": 102000
+  },
+  {
+   "id": "saga",
+   "name": "佐賀",
+   "pref": "佐賀県",
+   "type": "city",
+   "rank": "city",
+   "lat": 33.249,
+   "lon": 130.299,
+   "pop": 233000
+  },
+  {
+   "id": "karatsu",
+   "name": "唐津",
+   "pref": "佐賀県",
+   "type": "city",
+   "rank": "city",
+   "lat": 33.45,
+   "lon": 129.968,
+   "pop": 117000
+  },
+  {
+   "id": "nagasaki",
+   "name": "長崎",
+   "pref": "長崎県",
+   "type": "city",
+   "rank": "major",
+   "lat": 32.75,
+   "lon": 129.878,
+   "pop": 409000
+  },
+  {
+   "id": "sasebo",
+   "name": "佐世保",
+   "pref": "長崎県",
+   "type": "city",
+   "rank": "city",
+   "lat": 33.18,
+   "lon": 129.715,
+   "pop": 243000
+  },
+  {
+   "id": "isahaya",
+   "name": "諫早",
+   "pref": "長崎県",
+   "type": "city",
+   "rank": "city",
+   "lat": 32.844,
+   "lon": 130.053,
+   "pop": 134000
+  },
+  {
+   "id": "kumamoto",
+   "name": "熊本",
+   "pref": "熊本県",
+   "type": "city",
+   "rank": "major",
+   "lat": 32.8,
+   "lon": 130.705,
+   "pop": 739000
+  },
+  {
+   "id": "yatsushiro",
+   "name": "八代",
+   "pref": "熊本県",
+   "type": "city",
+   "rank": "city",
+   "lat": 32.507,
+   "lon": 130.602,
+   "pop": 123000
+  },
+  {
+   "id": "oita",
+   "name": "大分",
+   "pref": "大分県",
+   "type": "city",
+   "rank": "major",
+   "lat": 33.239,
+   "lon": 131.613,
+   "pop": 475000
+  },
+  {
+   "id": "beppu",
+   "name": "別府",
+   "pref": "大分県",
+   "type": "city",
+   "rank": "city",
+   "lat": 33.285,
+   "lon": 131.491,
+   "pop": 115000
+  },
+  {
+   "id": "miyazaki",
+   "name": "宮崎",
+   "pref": "宮崎県",
+   "type": "city",
+   "rank": "city",
+   "lat": 31.911,
+   "lon": 131.424,
+   "pop": 401000
+  },
+  {
+   "id": "miyakonojo",
+   "name": "都城",
+   "pref": "宮崎県",
+   "type": "city",
+   "rank": "city",
+   "lat": 31.72,
+   "lon": 131.062,
+   "pop": 160000
+  },
+  {
+   "id": "nobeoka",
+   "name": "延岡",
+   "pref": "宮崎県",
+   "type": "city",
+   "rank": "city",
+   "lat": 32.582,
+   "lon": 131.665,
+   "pop": 118000
+  },
+  {
+   "id": "kagoshima",
+   "name": "鹿児島",
+   "pref": "鹿児島県",
+   "type": "city",
+   "rank": "major",
+   "lat": 31.59,
+   "lon": 130.555,
+   "pop": 593000
+  },
+  {
+   "id": "kirishima",
+   "name": "霧島",
+   "pref": "鹿児島県",
+   "type": "city",
+   "rank": "city",
+   "lat": 31.741,
+   "lon": 130.763,
+   "pop": 123000
+  },
+  {
+   "id": "kanoya",
+   "name": "鹿屋",
+   "pref": "鹿児島県",
+   "type": "city",
+   "rank": "city",
+   "lat": 31.378,
+   "lon": 130.852,
+   "pop": 101000
+  },
+  {
+   "id": "naha",
+   "name": "那覇",
+   "pref": "沖縄県",
+   "type": "city",
+   "rank": "major",
+   "lat": 26.212,
+   "lon": 127.679,
+   "pop": 317000
+  },
+  {
+   "id": "okinawa",
+   "name": "沖縄",
+   "pref": "沖縄県",
+   "type": "city",
+   "rank": "city",
+   "lat": 26.334,
+   "lon": 127.805,
+   "pop": 142000
+  },
+  {
+   "id": "uruma",
+   "name": "うるま",
+   "pref": "沖縄県",
+   "type": "city",
+   "rank": "city",
+   "lat": 26.379,
+   "lon": 127.857,
+   "pop": 125000
+  },
+  {
+   "id": "urasoe",
+   "name": "浦添",
+   "pref": "沖縄県",
+   "type": "city",
+   "rank": "city",
+   "lat": 26.246,
+   "lon": 127.722,
+   "pop": 115000
+  }
+ ]
+}

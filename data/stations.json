@@ -1,0 +1,638 @@
+{
+ "_comment": "東京〜鹿児島中央間の新幹線駅（東海道・山陽・九州新幹線の全46駅）。seq は東京=0 から鹿児島中央=45 までの並び順。将来 route.js の GeoPolyline と組み合わせて駅到着イベントに使う。",
+ "coordinates": "駅の概略位置（駅舎中心付近, 小数4桁 ≒ 10m）。在来線併設駅は公開駅データとの照合で 0.2km 以内であることを確認。新幹線単独駅（岐阜羽島・新尾道・東広島・新岩国・新大牟田・新玉名・新富士）は地図上の位置から作成。",
+ "fields": "id, name, type='station', lat, lon, lines[], major（主要駅＝重要ノード）, seq（東京からの順番）",
+ "lines": [
+  {
+   "id": "tokaido",
+   "name": "東海道新幹線",
+   "operator": "JR東海",
+   "from": "tokyo",
+   "to": "shin-osaka",
+   "stations": [
+    "tokyo",
+    "shinagawa",
+    "shin-yokohama",
+    "odawara",
+    "atami",
+    "mishima",
+    "shin-fuji",
+    "shizuoka",
+    "kakegawa",
+    "hamamatsu",
+    "toyohashi",
+    "mikawa-anjo",
+    "nagoya",
+    "gifu-hashima",
+    "maibara",
+    "kyoto",
+    "shin-osaka"
+   ]
+  },
+  {
+   "id": "sanyo",
+   "name": "山陽新幹線",
+   "operator": "JR西日本",
+   "from": "shin-osaka",
+   "to": "hakata",
+   "stations": [
+    "shin-osaka",
+    "shin-kobe",
+    "nishi-akashi",
+    "himeji",
+    "aioi",
+    "okayama",
+    "shin-kurashiki",
+    "fukuyama",
+    "shin-onomichi",
+    "mihara",
+    "higashi-hiroshima",
+    "hiroshima",
+    "shin-iwakuni",
+    "tokuyama",
+    "shin-yamaguchi",
+    "asa",
+    "shin-shimonoseki",
+    "kokura",
+    "hakata"
+   ]
+  },
+  {
+   "id": "kyushu",
+   "name": "九州新幹線（鹿児島ルート）",
+   "operator": "JR九州",
+   "from": "hakata",
+   "to": "kagoshima-chuo",
+   "stations": [
+    "hakata",
+    "shin-tosu",
+    "kurume",
+    "chikugo-funagoya",
+    "shin-omuta",
+    "shin-tamana",
+    "kumamoto",
+    "shin-yatsushiro",
+    "shin-minamata",
+    "izumi",
+    "sendai",
+    "kagoshima-chuo"
+   ]
+  }
+ ],
+ "stations": [
+  {
+   "id": "tokyo",
+   "name": "東京",
+   "type": "station",
+   "lat": 35.6812,
+   "lon": 139.7668,
+   "lines": [
+    "tokaido"
+   ],
+   "major": true,
+   "seq": 0
+  },
+  {
+   "id": "shinagawa",
+   "name": "品川",
+   "type": "station",
+   "lat": 35.6285,
+   "lon": 139.7387,
+   "lines": [
+    "tokaido"
+   ],
+   "major": false,
+   "seq": 1
+  },
+  {
+   "id": "shin-yokohama",
+   "name": "新横浜",
+   "type": "station",
+   "lat": 35.5075,
+   "lon": 139.6176,
+   "lines": [
+    "tokaido"
+   ],
+   "major": true,
+   "seq": 2
+  },
+  {
+   "id": "odawara",
+   "name": "小田原",
+   "type": "station",
+   "lat": 35.2564,
+   "lon": 139.1551,
+   "lines": [
+    "tokaido"
+   ],
+   "major": false,
+   "seq": 3
+  },
+  {
+   "id": "atami",
+   "name": "熱海",
+   "type": "station",
+   "lat": 35.1036,
+   "lon": 139.0779,
+   "lines": [
+    "tokaido"
+   ],
+   "major": false,
+   "seq": 4
+  },
+  {
+   "id": "mishima",
+   "name": "三島",
+   "type": "station",
+   "lat": 35.1263,
+   "lon": 138.911,
+   "lines": [
+    "tokaido"
+   ],
+   "major": false,
+   "seq": 5
+  },
+  {
+   "id": "shin-fuji",
+   "name": "新富士",
+   "type": "station",
+   "lat": 35.1424,
+   "lon": 138.6634,
+   "lines": [
+    "tokaido"
+   ],
+   "major": false,
+   "seq": 6
+  },
+  {
+   "id": "shizuoka",
+   "name": "静岡",
+   "type": "station",
+   "lat": 34.9719,
+   "lon": 138.3889,
+   "lines": [
+    "tokaido"
+   ],
+   "major": false,
+   "seq": 7
+  },
+  {
+   "id": "kakegawa",
+   "name": "掛川",
+   "type": "station",
+   "lat": 34.7692,
+   "lon": 138.0145,
+   "lines": [
+    "tokaido"
+   ],
+   "major": false,
+   "seq": 8
+  },
+  {
+   "id": "hamamatsu",
+   "name": "浜松",
+   "type": "station",
+   "lat": 34.7038,
+   "lon": 137.735,
+   "lines": [
+    "tokaido"
+   ],
+   "major": false,
+   "seq": 9
+  },
+  {
+   "id": "toyohashi",
+   "name": "豊橋",
+   "type": "station",
+   "lat": 34.7629,
+   "lon": 137.382,
+   "lines": [
+    "tokaido"
+   ],
+   "major": false,
+   "seq": 10
+  },
+  {
+   "id": "mikawa-anjo",
+   "name": "三河安城",
+   "type": "station",
+   "lat": 34.9697,
+   "lon": 137.0609,
+   "lines": [
+    "tokaido"
+   ],
+   "major": false,
+   "seq": 11
+  },
+  {
+   "id": "nagoya",
+   "name": "名古屋",
+   "type": "station",
+   "lat": 35.1709,
+   "lon": 136.8815,
+   "lines": [
+    "tokaido"
+   ],
+   "major": true,
+   "seq": 12
+  },
+  {
+   "id": "gifu-hashima",
+   "name": "岐阜羽島",
+   "type": "station",
+   "lat": 35.3159,
+   "lon": 136.6856,
+   "lines": [
+    "tokaido"
+   ],
+   "major": false,
+   "seq": 13
+  },
+  {
+   "id": "maibara",
+   "name": "米原",
+   "type": "station",
+   "lat": 35.3143,
+   "lon": 136.2903,
+   "lines": [
+    "tokaido"
+   ],
+   "major": false,
+   "seq": 14
+  },
+  {
+   "id": "kyoto",
+   "name": "京都",
+   "type": "station",
+   "lat": 34.9855,
+   "lon": 135.7581,
+   "lines": [
+    "tokaido"
+   ],
+   "major": true,
+   "seq": 15
+  },
+  {
+   "id": "shin-osaka",
+   "name": "新大阪",
+   "type": "station",
+   "lat": 34.7332,
+   "lon": 135.4999,
+   "lines": [
+    "tokaido",
+    "sanyo"
+   ],
+   "major": true,
+   "seq": 16
+  },
+  {
+   "id": "shin-kobe",
+   "name": "新神戸",
+   "type": "station",
+   "lat": 34.7066,
+   "lon": 135.1955,
+   "lines": [
+    "sanyo"
+   ],
+   "major": false,
+   "seq": 17
+  },
+  {
+   "id": "nishi-akashi",
+   "name": "西明石",
+   "type": "station",
+   "lat": 34.6656,
+   "lon": 134.9599,
+   "lines": [
+    "sanyo"
+   ],
+   "major": false,
+   "seq": 18
+  },
+  {
+   "id": "himeji",
+   "name": "姫路",
+   "type": "station",
+   "lat": 34.8268,
+   "lon": 134.6907,
+   "lines": [
+    "sanyo"
+   ],
+   "major": false,
+   "seq": 19
+  },
+  {
+   "id": "aioi",
+   "name": "相生",
+   "type": "station",
+   "lat": 34.8181,
+   "lon": 134.4734,
+   "lines": [
+    "sanyo"
+   ],
+   "major": false,
+   "seq": 20
+  },
+  {
+   "id": "okayama",
+   "name": "岡山",
+   "type": "station",
+   "lat": 34.6664,
+   "lon": 133.9183,
+   "lines": [
+    "sanyo"
+   ],
+   "major": true,
+   "seq": 21
+  },
+  {
+   "id": "shin-kurashiki",
+   "name": "新倉敷",
+   "type": "station",
+   "lat": 34.5651,
+   "lon": 133.6783,
+   "lines": [
+    "sanyo"
+   ],
+   "major": false,
+   "seq": 22
+  },
+  {
+   "id": "fukuyama",
+   "name": "福山",
+   "type": "station",
+   "lat": 34.4894,
+   "lon": 133.3624,
+   "lines": [
+    "sanyo"
+   ],
+   "major": false,
+   "seq": 23
+  },
+  {
+   "id": "shin-onomichi",
+   "name": "新尾道",
+   "type": "station",
+   "lat": 34.4369,
+   "lon": 133.1916,
+   "lines": [
+    "sanyo"
+   ],
+   "major": false,
+   "seq": 24
+  },
+  {
+   "id": "mihara",
+   "name": "三原",
+   "type": "station",
+   "lat": 34.4005,
+   "lon": 133.083,
+   "lines": [
+    "sanyo"
+   ],
+   "major": false,
+   "seq": 25
+  },
+  {
+   "id": "higashi-hiroshima",
+   "name": "東広島",
+   "type": "station",
+   "lat": 34.3958,
+   "lon": 132.7569,
+   "lines": [
+    "sanyo"
+   ],
+   "major": false,
+   "seq": 26
+  },
+  {
+   "id": "hiroshima",
+   "name": "広島",
+   "type": "station",
+   "lat": 34.3978,
+   "lon": 132.4753,
+   "lines": [
+    "sanyo"
+   ],
+   "major": true,
+   "seq": 27
+  },
+  {
+   "id": "shin-iwakuni",
+   "name": "新岩国",
+   "type": "station",
+   "lat": 34.1703,
+   "lon": 132.1489,
+   "lines": [
+    "sanyo"
+   ],
+   "major": false,
+   "seq": 28
+  },
+  {
+   "id": "tokuyama",
+   "name": "徳山",
+   "type": "station",
+   "lat": 34.0519,
+   "lon": 131.8034,
+   "lines": [
+    "sanyo"
+   ],
+   "major": false,
+   "seq": 29
+  },
+  {
+   "id": "shin-yamaguchi",
+   "name": "新山口",
+   "type": "station",
+   "lat": 34.0938,
+   "lon": 131.3963,
+   "lines": [
+    "sanyo"
+   ],
+   "major": false,
+   "seq": 30
+  },
+  {
+   "id": "asa",
+   "name": "厚狭",
+   "type": "station",
+   "lat": 34.0533,
+   "lon": 131.1597,
+   "lines": [
+    "sanyo"
+   ],
+   "major": false,
+   "seq": 31
+  },
+  {
+   "id": "shin-shimonoseki",
+   "name": "新下関",
+   "type": "station",
+   "lat": 34.0057,
+   "lon": 130.948,
+   "lines": [
+    "sanyo"
+   ],
+   "major": false,
+   "seq": 32
+  },
+  {
+   "id": "kokura",
+   "name": "小倉",
+   "type": "station",
+   "lat": 33.8869,
+   "lon": 130.8826,
+   "lines": [
+    "sanyo"
+   ],
+   "major": false,
+   "seq": 33
+  },
+  {
+   "id": "hakata",
+   "name": "博多",
+   "type": "station",
+   "lat": 33.5897,
+   "lon": 130.4207,
+   "lines": [
+    "sanyo",
+    "kyushu"
+   ],
+   "major": true,
+   "seq": 34
+  },
+  {
+   "id": "shin-tosu",
+   "name": "新鳥栖",
+   "type": "station",
+   "lat": 33.3703,
+   "lon": 130.4911,
+   "lines": [
+    "kyushu"
+   ],
+   "major": false,
+   "seq": 35
+  },
+  {
+   "id": "kurume",
+   "name": "久留米",
+   "type": "station",
+   "lat": 33.3198,
+   "lon": 130.5014,
+   "lines": [
+    "kyushu"
+   ],
+   "major": false,
+   "seq": 36
+  },
+  {
+   "id": "chikugo-funagoya",
+   "name": "筑後船小屋",
+   "type": "station",
+   "lat": 33.178,
+   "lon": 130.4916,
+   "lines": [
+    "kyushu"
+   ],
+   "major": false,
+   "seq": 37
+  },
+  {
+   "id": "shin-omuta",
+   "name": "新大牟田",
+   "type": "station",
+   "lat": 33.0626,
+   "lon": 130.4836,
+   "lines": [
+    "kyushu"
+   ],
+   "major": false,
+   "seq": 38
+  },
+  {
+   "id": "shin-tamana",
+   "name": "新玉名",
+   "type": "station",
+   "lat": 32.9386,
+   "lon": 130.5591,
+   "lines": [
+    "kyushu"
+   ],
+   "major": false,
+   "seq": 39
+  },
+  {
+   "id": "kumamoto",
+   "name": "熊本",
+   "type": "station",
+   "lat": 32.7901,
+   "lon": 130.6886,
+   "lines": [
+    "kyushu"
+   ],
+   "major": true,
+   "seq": 40
+  },
+  {
+   "id": "shin-yatsushiro",
+   "name": "新八代",
+   "type": "station",
+   "lat": 32.5179,
+   "lon": 130.6349,
+   "lines": [
+    "kyushu"
+   ],
+   "major": false,
+   "seq": 41
+  },
+  {
+   "id": "shin-minamata",
+   "name": "新水俣",
+   "type": "station",
+   "lat": 32.2108,
+   "lon": 130.4289,
+   "lines": [
+    "kyushu"
+   ],
+   "major": false,
+   "seq": 42
+  },
+  {
+   "id": "izumi",
+   "name": "出水",
+   "type": "station",
+   "lat": 32.0893,
+   "lon": 130.3578,
+   "lines": [
+    "kyushu"
+   ],
+   "major": false,
+   "seq": 43
+  },
+  {
+   "id": "sendai",
+   "name": "川内",
+   "type": "station",
+   "lat": 31.8131,
+   "lon": 130.3121,
+   "lines": [
+    "kyushu"
+   ],
+   "major": false,
+   "seq": 44
+  },
+  {
+   "id": "kagoshima-chuo",
+   "name": "鹿児島中央",
+   "type": "station",
+   "lat": 31.584,
+   "lon": 130.5414,
+   "lines": [
+    "kyushu"
+   ],
+   "major": true,
+   "seq": 45
+  }
+ ]
+}
