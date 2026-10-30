@@ -9,6 +9,11 @@
  *   ・nearDist / prioNear … 近距離（nearDist 以内）での優先度。駅・ランドマークを近くで優先するため
  *   ・getY(ground) … ラベルの高さ（ランドマークの頂部など）。省略時は 地表 + 0.4 + yOffset
  *   ・sub      … 2 行目の小さな補足（橋が結ぶ陸地など）
+ *   ・minDist  … これより近いと表示しない [km]（v3：富士五湖のまとめラベルなど広域専用のもの）
+ *
+ * v3：湖沼（type 'lake'）・河川（type 'river'）も同じ仕組みで追加（js/water.js の labelItems）。
+ *   優先度の目安：ランドマーク・主要駅(3.7〜6.5) > 都市(2.1〜4.6) > 湖沼(1.3〜1.75) > 河川(0.8)
+ *   表示距離：主要湖 420km・その他の湖 75〜170km・河川 55km（広域では主要湖だけ、近距離で河川名）
  */
 import * as THREE from 'three';
 import { latLonToWorld } from './geo.js';
@@ -107,7 +112,7 @@ export class PlaceLabels {
       if (refreshY || it.y == null) it.y = this._itemY(it);
       _v.set(it.x, it.y, it.z);
       it.dist = cp.distanceTo(_v);
-      let ok = it.dist < it.maxDist && it.dist > (it.type === 'sea' ? 250 : 2);
+      let ok = it.dist < it.maxDist && it.dist > (it.type === 'sea' ? 250 : (it.minDist ?? 2));
       if (ok) {
         _v.project(camera);
         ok = _v.z < 1 && _v.z > -1 && Math.abs(_v.x) < 1.1 && Math.abs(_v.y) < 1.1;

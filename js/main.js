@@ -12,6 +12,7 @@
  *   cities.js      都市メッシュ（InstancedMesh・距離LOD）と市街地の色付け
  *   stations.js    新幹線駅（東京〜鹿児島中央 46駅）のマーカーとデータ
  *   landmarks.js   ランドマーク（基本形状で作った簡略モデル）
+ *   water.js       湖沼・河川（v3。水面メッシュ 2 つ・水域マスク・ラベル）
  *   meshkit.js     部品の結合・乱数などの小道具
  *   ui.js          HUD
  *   route.js       （将来用）km → ルート上の位置
@@ -23,6 +24,7 @@
  *    ├─ cities      (city_* … 64km チャンクごとの InstancedMesh)
  *    ├─ stations    (station-platforms, station-pins … InstancedMesh 2つ)
  *    ├─ landmarks   (landmark_* … 1件 = 1 Mesh)
+ *    ├─ water       (lakes, rivers … 全湖・全河川で Mesh 2 つ)   ← v3
  *    ├─ actors      ← 将来：列車・9体のキャラクター GLB をここへ
  *    └─ fx          ← 将来：演出・パーティクル
  */
@@ -32,6 +34,7 @@ import { TerrainSystem, setUrbanField } from './terrain.js';
 import { CitySystem } from './cities.js';
 import { StationSystem } from './stations.js';
 import { LandmarkSystem } from './landmarks.js';
+import { WaterSystem } from './water.js';
 import { Environment } from './environment.js';
 import { createCamera, CameraRig, presetToView, presetToExploreView } from './camera.js';
 import { MapController, ExploreController } from './controls.js';
@@ -62,7 +65,8 @@ scene.add(terrain.group);
 const cities = new CitySystem(terrain);
 const stations = new StationSystem(terrain);
 const landmarks = new LandmarkSystem(terrain);
-scene.add(cities.group, stations.group, landmarks.group);
+const water = new WaterSystem(terrain);
+scene.add(cities.group, stations.group, landmarks.group, water.group);
 
 const actors = new THREE.Group();
 actors.name = 'actors';
@@ -191,6 +195,17 @@ function goPreset(p) {
 /* 都市・駅・ランドマーク                                                    */
 /* ---------------------------------------------------------------------- */
 
+/** v3: 湖沼・河川。都市の建物生成（prepareChunks）より前に水域マスクを登録する */
+async function setupWater() {
+  try {
+    await water.load(ASSETS.water);
+    water.build();
+    cities.setWaterMask((x, z, m) => water.isWater(x, z, m));
+  } catch (e) {
+    console.warn('water', e);
+  }
+}
+
 async function setupOverlays() {
   const [st, lm] = await Promise.allSettled([stations.load(ASSETS.stations), landmarks.load(ASSETS.landmarks)]);
   if (st.status === 'rejected') console.warn('stations', st.reason);
@@ -205,6 +220,7 @@ async function setupOverlays() {
   }
   if (st.status === 'fulfilled') labels.addItems(stations.labelItems());
   if (lm.status === 'fulfilled') labels.addItems(landmarks.labelItems());
+  if (water.lakes.length) labels.addItems(water.labelItems());
 }
 
 /* ---------------------------------------------------------------------- */
@@ -220,6 +236,7 @@ async function start() {
       .catch((e) => console.warn('cities', e));
     await terrain.init();
     await labels.load(ASSETS.places).catch((e) => console.warn('labels', e));
+    await setupWater();
     await setupOverlays();
   } catch (e) {
     console.error(e);
@@ -247,15 +264,18 @@ async function start() {
   timer.connect(document);
   renderer.setAnimationLoop(() => {
     timer.update();
-    const dt = Math.min(0.1, timer.getDelta());
+    const rawDt = timer.getDelta();
+    const dt = Math.min(0.1, rawDt);
     if (!rig.update(dt)) {
       if (mode === 'map') mapCtl.update(dt);
-      else exploreCtl.update(dt);
+      // 飛空艇は速度を km/h で固定しているので、低 FPS（〜4fps）でも実時間どおりに進める
+      else exploreCtl.update(Math.min(0.25, rawDt));
     }
     terrain.update(camera);
     cities.update(camera);
     stations.update();
     landmarks.update(camera);
+    water.update();
     const p = camera.position;
     env.update(camera, dt, p.y - terrain.getSurfaceY(p.x, p.z));
     renderer.render(scene, camera);
@@ -271,7 +291,7 @@ addEventListener('resize', () => {
 });
 
 // 将来の拡張・デバッグ用ハンドル（コンソールから window.DHT で触れる）
-export const app = { renderer, scene, camera, terrain, env, rig, mapCtl, exploreCtl, labels, cities, stations, landmarks, layers: { actors, fx }, geo, presets: CAMERA_PRESETS, setMode, goPreset };
+export const app = { renderer, scene, camera, terrain, env, rig, mapCtl, exploreCtl, labels, cities, stations, landmarks, water, layers: { actors, fx }, geo, presets: CAMERA_PRESETS, setMode, goPreset };
 window.DHT = app;
 
 start();

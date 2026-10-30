@@ -122,7 +122,14 @@ export class TerrainSystem {
       const d = hd[(j + 1) * S + i + 1];
       return (a * (1 - tx) + b * tx) * (1 - tz) + (c * (1 - tx) + d * tx) * tz;
     }
+    return this.getCoarseHeightMeters(x, z);
+  }
+
+  /** 標高[m]（粗データ 4km 間隔のみ。粗タイルの表面と一致する。河川の遠景表示用） */
+  getCoarseHeightMeters(x, z) {
     if (!this.coarse) return this.seaFloorM ?? -250;
+    const lx = x - this.x0;
+    const lz = z - this.z0;
     const fx = lx / this.cstep;
     const fz = lz / this.cstep;
     const i = Math.floor(fx);

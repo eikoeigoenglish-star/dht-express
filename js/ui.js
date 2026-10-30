@@ -135,6 +135,7 @@ export class UI {
     // 対地高度（ワールド単位 = km。地形の標高誇張とは独立した“カメラの高さ”）
     const agl = p.y - ground;
     this.$('r-alt').textContent = agl < 1 ? `${(agl * 1000).toFixed(0)} m` : `${agl.toFixed(agl < 100 ? 1 : 0)} km`;
-    if (speed != null) this.$('r-spd').textContent = `${(speed * 3600).toFixed(0)} km/h`;
+    // v3: 飛空艇の水平速度（通常 30,000 / Shift 90,000 km/h、停止中 0）
+    if (speed != null) this.$('r-spd').textContent = `${Math.round(speed * 3600).toLocaleString('en-US')} km/h`;
   }
 }

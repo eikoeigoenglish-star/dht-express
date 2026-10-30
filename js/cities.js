@@ -22,6 +22,7 @@
  *   ・海（標高 ≦ 0.5m）・海岸線際・急斜面には建てない。底面は斜面の低い側に合わせ、
  *     地中へ基礎を伸ばして浮きを防ぐ。
  *   ・ランドマークと駅の周囲は建てない（exclusions）。
+ *   ・v3: 湖面・川面と岸の近く（WATER_MARGIN）には建てない（setWaterMask ← js/water.js）。
  *
  * 将来の参照
  *   ・this.cities[i] … {id, name, rank, lat, lon, x, z, r, pop, ...}
@@ -37,6 +38,7 @@ const CELL = 0.37; // km  建物格子
 const TILE = 32; // km  表示タイル（地形チャンク 64km を 2×2 に分割して距離 LOD を細かくする）
 const BUCKET = 32; // km  都市検索用バケット
 const FOUNDATION = 0.12; // world units 地中へ伸ばす基礎
+const WATER_MARGIN = 0.22; // km  v3: 水際からこの距離以内のセルには建てない
 
 // 距離 LOD [km]（カメラからチャンク境界箱までの 3D 距離）
 const LOD_FULL = 14; // これより近いと全建物
@@ -74,6 +76,7 @@ export class CitySystem {
     this.chunks = []; // 生成単位 {cx, cz, key, minX..., cities[], state}
     this.tiles = []; // 表示単位 {key, minX..., mesh, total, maxY}
     this.exclusions = [];
+    this.waterMask = null; // v3: (x, z, margin) => boolean（js/water.js の isWater）
     this.genQueue = [];
     this.gen = null;
     this.visible = true;
@@ -210,6 +213,11 @@ export class CitySystem {
     return smooth(0.1, 0.75, best);
   }
 
+  /** v3: 湖面・川面・河岸のごく近傍には建てない（海岸・急斜面の判定と同じ考え方） */
+  setWaterMask(fn) {
+    this.waterMask = fn;
+  }
+
   /** ランドマーク・駅の周囲には建てない。{x, z, r} の配列 */
   addExclusions(list) {
     this.exclusions.push(...list);
@@ -329,6 +337,7 @@ export class CitySystem {
         }
       : (x, z) => t.getHeightMeters(x, z);
 
+    const waterMask = this.waterMask;
     const excl = this.exclusions.filter(
       (e) => e.x + e.r > ch.minX && e.x - e.r < ch.maxX && e.z + e.r > ch.minZ && e.z - e.r < ch.maxZ,
     );
@@ -395,6 +404,8 @@ export class CitySystem {
             }
           }
           if (skip) continue;
+          // 水域（湖・河川）とその岸 0.22km 以内には建てない（セル半幅 0.185km を含む）
+          if (waterMask && waterMask(cx, cz, WATER_MARGIN)) continue;
 
           // 核に近いほど 1 セルに複数棟・高層
           const core = f.core;
