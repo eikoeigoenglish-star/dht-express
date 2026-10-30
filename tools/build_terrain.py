@@ -267,6 +267,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", default="../src_data")
     ap.add_argument("--out", default="data/terrain")
+    # v3: 湖沼・河川（tools/water.py）。--no-water で v2 と同じ地形を出力
+    here = os.path.dirname(os.path.abspath(__file__))
+    ap.add_argument("--water-defs", default=os.path.join(here, "water_defs.json"))
+    ap.add_argument("--water-out", default=os.path.join(here, "..", "data", "water.json"))
+    ap.add_argument("--no-water", action="store_true")
     a = ap.parse_args()
 
     WX = NCX * CHUNK
@@ -379,6 +384,19 @@ def main():
     Hm = np.clip(Hm, SEA_FLOOR, 4000).astype(np.int16)
     print("height range", Hm.min(), Hm.max())
 
+    # ---- v3: 湖沼・河川で地形を加工し、水域データを書き出す ----
+    water = None
+    if not a.no_water and os.path.exists(a.water_defs):
+        import sys
+        sys.path.insert(0, here)
+        from water import WaterBuilder
+        water = WaterBuilder(a.water_defs, a.src, ll2w, w2ll, X0, Z0, HI_STEP)
+        print("water: lakes")
+        water.carve_lakes(Hm)
+        print("water: rivers")
+        water.carve_rivers(Hm)
+        Hm = np.clip(Hm, SEA_FLOOR, 4000).astype(np.int16)
+
     os.makedirs(os.path.join(a.out, "hi"), exist_ok=True)
     # 既存チャンク削除
     for f in os.listdir(os.path.join(a.out, "hi")):
@@ -388,6 +406,9 @@ def main():
     st = int(COARSE_STEP / HI_STEP)
     coarse = Hm[1:-1:st, 1:-1:st]
     coarse = np.ascontiguousarray(coarse).astype("<i2")
+    if water is not None:
+        coarse = water.carve_lakes_coarse(coarse, COARSE_STEP)
+        water.export(a.water_out)
     coarse.tofile(os.path.join(a.out, "coarse.bin"))
     print("coarse", coarse.shape, coarse.nbytes)
 
@@ -433,6 +454,7 @@ def main():
     g = np.clip(prev / 3000, 0, 1)
     img[land_m] = (np.stack([60 + 180 * g, 140 + 60 * g, 60 + 150 * g], -1)[land_m]).astype(np.uint8)
     Image.fromarray(img).save(os.path.join(a.src, "preview.png"))
+    np.save(os.path.join(a.src, "hm_full.npy"), Hm)  # 確認用（配信には不要）
 
 
 if __name__ == "__main__":
