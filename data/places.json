@@ -1,0 +1,257 @@
+{
+ "_comment": "方位確認用の地名ラベル（表示のみ）。type: city | island | peak | sea。maxDist はラベルを表示するカメラ距離上限[km]。将来の駅・到達イベント地点の緯度経度定義もこの形式で追加できる。",
+ "places": [
+  {
+   "name": "東京",
+   "lat": 35.681,
+   "lon": 139.767,
+   "type": "city",
+   "maxDist": 3400
+  },
+  {
+   "name": "横浜",
+   "lat": 35.466,
+   "lon": 139.622,
+   "type": "city",
+   "maxDist": 300
+  },
+  {
+   "name": "静岡",
+   "lat": 34.972,
+   "lon": 138.389,
+   "type": "city",
+   "maxDist": 450
+  },
+  {
+   "name": "浜松",
+   "lat": 34.704,
+   "lon": 137.735,
+   "type": "city",
+   "maxDist": 350
+  },
+  {
+   "name": "名古屋",
+   "lat": 35.171,
+   "lon": 136.882,
+   "type": "city",
+   "maxDist": 3400
+  },
+  {
+   "name": "京都",
+   "lat": 34.985,
+   "lon": 135.759,
+   "type": "city",
+   "maxDist": 600
+  },
+  {
+   "name": "大阪",
+   "lat": 34.733,
+   "lon": 135.5,
+   "type": "city",
+   "maxDist": 3400
+  },
+  {
+   "name": "神戸",
+   "lat": 34.69,
+   "lon": 135.196,
+   "type": "city",
+   "maxDist": 400
+  },
+  {
+   "name": "岡山",
+   "lat": 34.666,
+   "lon": 133.918,
+   "type": "city",
+   "maxDist": 600
+  },
+  {
+   "name": "広島",
+   "lat": 34.397,
+   "lon": 132.475,
+   "type": "city",
+   "maxDist": 3400
+  },
+  {
+   "name": "山口",
+   "lat": 34.178,
+   "lon": 131.474,
+   "type": "city",
+   "maxDist": 400
+  },
+  {
+   "name": "博多",
+   "lat": 33.59,
+   "lon": 130.421,
+   "type": "city",
+   "maxDist": 3400
+  },
+  {
+   "name": "熊本",
+   "lat": 32.79,
+   "lon": 130.689,
+   "type": "city",
+   "maxDist": 600
+  },
+  {
+   "name": "鹿児島中央",
+   "lat": 31.584,
+   "lon": 130.541,
+   "type": "city",
+   "maxDist": 3400
+  },
+  {
+   "name": "那覇",
+   "lat": 26.212,
+   "lon": 127.679,
+   "type": "city",
+   "maxDist": 3400
+  },
+  {
+   "name": "高松",
+   "lat": 34.34,
+   "lon": 134.047,
+   "type": "city",
+   "maxDist": 450
+  },
+  {
+   "name": "松山",
+   "lat": 33.839,
+   "lon": 132.766,
+   "type": "city",
+   "maxDist": 450
+  },
+  {
+   "name": "高知",
+   "lat": 33.559,
+   "lon": 133.531,
+   "type": "city",
+   "maxDist": 450
+  },
+  {
+   "name": "宮崎",
+   "lat": 31.911,
+   "lon": 131.424,
+   "type": "city",
+   "maxDist": 450
+  },
+  {
+   "name": "金沢",
+   "lat": 36.578,
+   "lon": 136.648,
+   "type": "city",
+   "maxDist": 450
+  },
+  {
+   "name": "富士山",
+   "lat": 35.361,
+   "lon": 138.727,
+   "type": "peak",
+   "maxDist": 500
+  },
+  {
+   "name": "阿蘇山",
+   "lat": 32.884,
+   "lon": 131.104,
+   "type": "peak",
+   "maxDist": 300
+  },
+  {
+   "name": "桜島",
+   "lat": 31.585,
+   "lon": 130.657,
+   "type": "peak",
+   "maxDist": 200
+  },
+  {
+   "name": "種子島",
+   "lat": 30.6,
+   "lon": 130.98,
+   "type": "island",
+   "maxDist": 1200
+  },
+  {
+   "name": "屋久島",
+   "lat": 30.34,
+   "lon": 130.52,
+   "type": "island",
+   "maxDist": 3000
+  },
+  {
+   "name": "奄美大島",
+   "lat": 28.3,
+   "lon": 129.43,
+   "type": "island",
+   "maxDist": 3000
+  },
+  {
+   "name": "徳之島",
+   "lat": 27.78,
+   "lon": 128.95,
+   "type": "island",
+   "maxDist": 1200
+  },
+  {
+   "name": "沖永良部島",
+   "lat": 27.37,
+   "lon": 128.58,
+   "type": "island",
+   "maxDist": 1200
+  },
+  {
+   "name": "与論島",
+   "lat": 27.04,
+   "lon": 128.42,
+   "type": "island",
+   "maxDist": 1200
+  },
+  {
+   "name": "沖縄本島",
+   "lat": 26.6,
+   "lon": 128.0,
+   "type": "island",
+   "maxDist": 3000
+  },
+  {
+   "name": "宮古島",
+   "lat": 24.78,
+   "lon": 125.3,
+   "type": "island",
+   "maxDist": 1400
+  },
+  {
+   "name": "石垣島",
+   "lat": 24.42,
+   "lon": 124.17,
+   "type": "island",
+   "maxDist": 1400
+  },
+  {
+   "name": "瀬戸内海",
+   "lat": 34.2,
+   "lon": 133.2,
+   "type": "sea",
+   "maxDist": 1800
+  },
+  {
+   "name": "日本海",
+   "lat": 36.8,
+   "lon": 133.5,
+   "type": "sea",
+   "maxDist": 3500
+  },
+  {
+   "name": "太平洋",
+   "lat": 31.8,
+   "lon": 136.5,
+   "type": "sea",
+   "maxDist": 3500
+  },
+  {
+   "name": "東シナ海",
+   "lat": 29.8,
+   "lon": 127.2,
+   "type": "sea",
+   "maxDist": 3500
+  }
+ ]
+}
