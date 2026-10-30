@@ -18,6 +18,7 @@ export const ASSETS = {
   cities: asset('data/cities.json'), // 人口10万人以上の都市（都市メッシュ・市街地色・ラベル）
   stations: asset('data/stations.json'), // 東京〜鹿児島中央の新幹線駅（全46駅）
   landmarks: asset('data/landmarks.json'), // ランドマーク（モデルは js/landmarks.js）
+  water: asset('data/water.json'), // v3: 湖沼・河川（地形の加工と同時に tools/water.py が生成）
 
   // ---- 将来追加予定（今回は読み込まない）----
   // models: {

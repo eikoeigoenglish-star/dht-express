@@ -1,0 +1,320 @@
+{
+ "url": "http://127.0.0.1:8002/",
+ "results": [
+  {
+   "name": "MAP VIEW: wheel still zooms",
+   "ok": true,
+   "detail": {
+    "distBefore": 260,
+    "distAfter": 159.2
+   }
+  },
+  {
+   "name": "Key 2 → EXPLORE VIEW",
+   "ok": true,
+   "detail": {
+    "aglKm": 3.2
+   }
+  },
+  {
+   "name": "Altitude ≥ 1km after entering",
+   "ok": true,
+   "detail": {
+    "aglKm": 3.2
+   }
+  },
+  {
+   "name": "Help shows airship controls (no wheel/base speed)",
+   "ok": true,
+   "detail": {
+    "help": "W / ↑ 前進　S / ↓ 後退 /  / A / ← 左旋回　D / → 右旋回 /  / Q 下降　E 上昇　Shift 高速飛行 /  / クリック マウス視点ON　Esc 解除"
+   }
+  },
+  {
+   "name": "Click → mouse look ON (pointer lock)",
+   "ok": true,
+   "detail": {
+    "pointerLocked": true,
+    "dragFallback": false
+   }
+  },
+  {
+   "name": "Mouse → right ⇒ look LEFT",
+   "ok": true,
+   "detail": {
+    "dYawDeg": 15.1,
+    "expectedDeg": 15.1
+   }
+  },
+  {
+   "name": "Mouse → left ⇒ look RIGHT",
+   "ok": true,
+   "detail": {
+    "dYawDeg": -30.3
+   }
+  },
+  {
+   "name": "Mouse → down ⇒ look UP",
+   "ok": true,
+   "detail": {
+    "pitchDeg": [
+     0,
+     12.6
+    ]
+   }
+  },
+  {
+   "name": "Mouse → up ⇒ look DOWN",
+   "ok": true,
+   "detail": {
+    "pitchDeg": [
+     12.6,
+     -12.6
+    ]
+   }
+  },
+  {
+   "name": "Mouse → right-down ⇒ look up-left",
+   "ok": true,
+   "detail": {
+    "dYawDeg": 12.6,
+    "dPitchDeg": 12.6
+   }
+  },
+  {
+   "name": "Pitch upper limit (no flip)",
+   "ok": true,
+   "detail": {
+    "pitchDeg": 85.9
+   }
+  },
+  {
+   "name": "Pitch lower limit (no flip)",
+   "ok": true,
+   "detail": {
+    "pitchDeg": -85.9
+   }
+  },
+  {
+   "name": "Esc → mouse look OFF",
+   "ok": true,
+   "detail": {
+    "pointerLocked": false
+   }
+  },
+  {
+   "name": "After Esc mouse no longer turns view",
+   "ok": true,
+   "detail": {
+    "dYaw": 0
+   }
+  },
+  {
+   "name": "W → forward along heading",
+   "ok": true,
+   "detail": {
+    "km": 20.52
+   }
+  },
+  {
+   "name": "W speed = 30,000 km/h (game time Σd/Σdt)",
+   "ok": true,
+   "detail": {
+    "kmh": 30000,
+    "frames": 17
+   }
+  },
+  {
+   "name": "W speed ≈ 30,000 km/h (wall clock)",
+   "ok": true,
+   "detail": {
+    "kmh": 30012,
+    "fps": 6.9
+   }
+  },
+  {
+   "name": "W looking down → no dive (altitude kept)",
+   "ok": true,
+   "detail": {
+    "dyKm": 0,
+    "pitchDeg": -72
+   }
+  },
+  {
+   "name": "HUD SPD 30,000 km/h while W",
+   "ok": true,
+   "detail": {
+    "hud": "30,000 km/h"
+   }
+  },
+  {
+   "name": "HUD SPD 0 km/h after release",
+   "ok": true,
+   "detail": {
+    "hud": "0 km/h"
+   }
+  },
+  {
+   "name": "No inertia: stops immediately on release",
+   "ok": true,
+   "detail": {
+    "driftKm": 0
+   }
+  },
+  {
+   "name": "↑ → forward",
+   "ok": true,
+   "detail": {
+    "km": 10.05,
+    "kmh": 30000
+   }
+  },
+  {
+   "name": "Shift+W speed = 90,000 km/h (game time)",
+   "ok": true,
+   "detail": {
+    "kmh": 90000
+   }
+  },
+  {
+   "name": "Shift+W speed ≈ 90,000 km/h (wall clock)",
+   "ok": true,
+   "detail": {
+    "kmh": 88130,
+    "fps": 6.3
+   }
+  },
+  {
+   "name": "HUD SPD 90,000 km/h with Shift",
+   "ok": true,
+   "detail": {
+    "hud": "90,000 km/h"
+   }
+  },
+  {
+   "name": "S → backward",
+   "ok": true,
+   "detail": {
+    "km": 10.34,
+    "kmh": 30000
+   }
+  },
+  {
+   "name": "↓ → backward",
+   "ok": true,
+   "detail": {
+    "km": 10.09
+   }
+  },
+  {
+   "name": "A → left yaw, no strafe",
+   "ok": true,
+   "detail": {
+    "yawDeg": 128.5,
+    "degPerSecGame": 71.7,
+    "movedKm": 0
+   }
+  },
+  {
+   "name": "← → left yaw, no strafe",
+   "ok": true,
+   "detail": {
+    "yawDeg": 112.2,
+    "degPerSecGame": 71.7,
+    "movedKm": 0
+   }
+  },
+  {
+   "name": "D → right yaw, no strafe",
+   "ok": true,
+   "detail": {
+    "yawDeg": -106.9,
+    "degPerSecGame": -71.6,
+    "movedKm": 0
+   }
+  },
+  {
+   "name": "→ → right yaw, no strafe",
+   "ok": true,
+   "detail": {
+    "yawDeg": -151.9,
+    "degPerSecGame": -71.7,
+    "movedKm": 0
+   }
+  },
+  {
+   "name": "Shift does not change yaw rate (≈72°/s)",
+   "ok": true,
+   "detail": {
+    "degPerSecGame": 71.4
+   }
+  },
+  {
+   "name": "W + A → curving flight",
+   "ok": true,
+   "detail": {
+    "yawDeg": 98,
+    "km": 11.4
+   }
+  },
+  {
+   "name": "E → up 10,000 km/h (game time)",
+   "ok": true,
+   "detail": {
+    "kmh": 10000,
+    "wallKmh": 8385
+   }
+  },
+  {
+   "name": "Shift+E → up 30,000 km/h (game time)",
+   "ok": true,
+   "detail": {
+    "kmh": 30000,
+    "wallKmh": 25929
+   }
+  },
+  {
+   "name": "Q → down 10,000 km/h (game time)",
+   "ok": true,
+   "detail": {
+    "kmh": 10000,
+    "wallKmh": 8584
+   }
+  },
+  {
+   "name": "Shift+Q → down 30,000 km/h (game time)",
+   "ok": true,
+   "detail": {
+    "kmh": 30000
+   }
+  },
+  {
+   "name": "Cannot descend below 1,000 m",
+   "ok": true,
+   "detail": {
+    "aglKm": 1,
+    "hudAlt": "1.0 km"
+   }
+  },
+  {
+   "name": "Wheel does not change EXPLORE speed",
+   "ok": true,
+   "detail": {
+    "kmh": 30000,
+    "hud": "30,000 km/h"
+   }
+  },
+  {
+   "name": "Fuji fly-over: never below 1 km / never inside the mountain (every frame)",
+   "ok": true,
+   "detail": {
+    "minAboveFloorKm": 0.006,
+    "minAglKm": 1.329,
+    "summitY": 11.14,
+    "maxCamY": 12.17
+   }
+  }
+ ],
+ "errors": [],
+ "pointerLock": true
+}
