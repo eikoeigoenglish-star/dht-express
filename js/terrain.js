@@ -1,0 +1,535 @@
+/**
+ * terrain.js — チャンク分割＋2段LODの地形システム
+ * ---------------------------------------------------------------------------
+ * データ (data/terrain/)
+ *   manifest.json  … グリッド定義・チャンク一覧
+ *   coarse.bin     … 全域 4km 間隔の標高 (Int16, m)。起動時に一括読込（約400KB）
+ *   hi/h_X_Z.bin   … 64km 四方 1km 間隔の標高 (Int16, 67×67, 縁1サンプル付き)
+ *                    カメラが近づいたチャンクだけ遅延読込（各 約9KB）
+ *
+ * LOD 構成
+ *   粗タイル  : 128km 四方 / 4km 間隔 (32×32 セル)  … 遠景・全体俯瞰
+ *   詳細タイル: 64km  四方 / 1km 間隔 (64×64 セル)  … 粗タイル 1 枚を 4 枚に分割
+ *   距離に応じて粗タイル単位で分割／統合（ヒステリシス付き）。
+ *   LOD 境界の隙間は「スカート」（縁から下へ垂らした帯）で隠す。
+ *
+ * 描画コスト
+ *   すべてのタイルで 1 つのマテリアル（頂点カラー）を共有。
+ *   タイルごとに boundingSphere があるので frustum culling が自然に効く。
+ */
+import * as THREE from 'three';
+import { NORTH_LIMIT_LAT, VERTICAL_EXAGGERATION, worldToLatLon } from './geo.js';
+
+const SPLIT_DIST = 170; // km : これより近い粗タイルは詳細化
+const MERGE_DIST = 215; // km : これより遠ければ粗に戻す
+const MAX_CONCURRENT_FETCH = 6;
+const MAX_CACHED_HI_MESHES = 160;
+const SKIRT_DEPTH = 4; // world units
+const UNDERWATER_Y = -0.12; // これより深い縁にはスカートを付けない
+
+const M2Y = VERTICAL_EXAGGERATION / 1000;
+
+export class TerrainSystem {
+  /**
+   * @param {{ dir: string, manifestUrl: string }} opts
+   */
+  constructor(opts) {
+    this.dir = opts.dir;
+    this.manifestUrl = opts.manifestUrl;
+    this.group = new THREE.Group();
+    this.group.name = 'terrain';
+
+    this.material = new THREE.MeshLambertMaterial({ vertexColors: true });
+    this.material.name = 'terrain-shared';
+
+    this.coarseTiles = []; // {tx,tz, mesh, children:[4], split:bool, hasHi:bool, minX..}
+    this.hiData = new Map(); // key -> Int16Array (読み込み済み)
+    this.hiPending = new Map(); // key -> Promise
+    this.fetchQueue = [];
+    this.activeFetches = 0;
+    this.hiMeshCache = new Map(); // key -> {mesh, lastUsed}
+    this.frame = 0;
+    this.stats = { coarseVisible: 0, hiVisible: 0, hiLoaded: 0 };
+  }
+
+  async init() {
+    const m = await (await fetch(this.manifestUrl)).json();
+    this.manifest = m;
+    const g = m.grid;
+    this.x0 = g.x0;
+    this.z0 = g.z0;
+    this.chunk = g.chunkKm;
+    this.ncx = g.ncx;
+    this.ncz = g.ncz;
+    this.seaFloorM = m.seaFloorM;
+    this.hiSamples = m.hi.samples; // 67
+    this.hiN = this.hiSamples - 3; // 64 セル
+    this.hiStep = m.hi.stepKm;
+    this.hiSet = new Set(m.hi.chunks.map(([cx, cz]) => `${cx}_${cz}`));
+
+    const buf = await (await fetch(this.dir + m.coarse.file)).arrayBuffer();
+    this.coarse = new Int16Array(buf);
+    this.cnx = m.coarse.nx;
+    this.cnz = m.coarse.nz;
+    this.cstep = m.coarse.stepKm;
+
+    this._buildCoarseTiles();
+    return this;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 標高サンプリング                                                      */
+  /* ------------------------------------------------------------------ */
+
+  _coarseAt(i, j) {
+    i = i < 0 ? 0 : i >= this.cnx ? this.cnx - 1 : i;
+    j = j < 0 ? 0 : j >= this.cnz ? this.cnz - 1 : j;
+    return this.coarse[j * this.cnx + i];
+  }
+
+  /** 標高[m]（読み込み済みの最良データで双線形補間） */
+  getHeightMeters(x, z) {
+    const lx = x - this.x0;
+    const lz = z - this.z0;
+    const cx = Math.floor(lx / this.chunk);
+    const cz = Math.floor(lz / this.chunk);
+    const hd = this.hiData.get(`${cx}_${cz}`);
+    if (hd) {
+      const S = this.hiSamples;
+      const fx = (lx - cx * this.chunk) / this.hiStep + 1;
+      const fz = (lz - cz * this.chunk) / this.hiStep + 1;
+      const i = Math.min(S - 2, Math.floor(fx));
+      const j = Math.min(S - 2, Math.floor(fz));
+      const tx = fx - i;
+      const tz = fz - j;
+      const a = hd[j * S + i];
+      const b = hd[j * S + i + 1];
+      const c = hd[(j + 1) * S + i];
+      const d = hd[(j + 1) * S + i + 1];
+      return (a * (1 - tx) + b * tx) * (1 - tz) + (c * (1 - tx) + d * tx) * tz;
+    }
+    if (!this.coarse) return this.seaFloorM ?? -250;
+    const fx = lx / this.cstep;
+    const fz = lz / this.cstep;
+    const i = Math.floor(fx);
+    const j = Math.floor(fz);
+    const tx = fx - i;
+    const tz = fz - j;
+    const a = this._coarseAt(i, j);
+    const b = this._coarseAt(i + 1, j);
+    const c = this._coarseAt(i, j + 1);
+    const d = this._coarseAt(i + 1, j + 1);
+    return (a * (1 - tx) + b * tx) * (1 - tz) + (c * (1 - tx) + d * tx) * tz;
+  }
+
+  /** 地形表面のワールド Y（海底を含む） */
+  getHeightAt(x, z) {
+    return this.getHeightMeters(x, z) * M2Y;
+  }
+
+  /** 地表または海面のうち高い方の Y（カメラ・列車・キャラ配置用） */
+  getSurfaceY(x, z) {
+    const y = this.getHeightAt(x, z);
+    return y > 0 ? y : 0;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* メッシュ構築                                                          */
+  /* ------------------------------------------------------------------ */
+
+  _buildCoarseTiles() {
+    const tilesX = this.ncx / 2;
+    const tilesZ = Math.ceil(this.ncz / 2);
+    const N = (this.chunk * 2) / this.cstep; // 32
+    for (let tz = 0; tz < tilesZ; tz++) {
+      for (let tx = 0; tx < tilesX; tx++) {
+        const i0 = tx * N;
+        const j0 = tz * N;
+        let maxH = -Infinity;
+        for (let j = 0; j <= N; j++)
+          for (let i = 0; i <= N; i++) maxH = Math.max(maxH, this._coarseAt(i0 + i, j0 + j));
+        const children = [];
+        let hasHi = false;
+        for (let dz = 0; dz < 2; dz++)
+          for (let dx = 0; dx < 2; dx++) {
+            const cx = tx * 2 + dx;
+            const cz = tz * 2 + dz;
+            if (cz >= this.ncz) continue;
+            const key = `${cx}_${cz}`;
+            const hi = this.hiSet.has(key);
+            hasHi ||= hi;
+            children.push({ cx, cz, key, hi });
+          }
+        // 全面が深い海のタイルは作らない（海底面メッシュで代用）
+        if (maxH <= this.seaFloorM + 15 && !hasHi) continue;
+
+        const ox = this.x0 + tx * this.chunk * 2;
+        const oz = this.z0 + tz * this.chunk * 2;
+        const geo = buildTileGeometry(N, this.cstep, ox, oz, (i, j) => this._coarseAt(i0 + i, j0 + j));
+        const mesh = new THREE.Mesh(geo, this.material);
+        mesh.name = `coarse_${tx}_${tz}`;
+        mesh.matrixAutoUpdate = false;
+        this.group.add(mesh);
+        this.coarseTiles.push({
+          tx, tz, mesh, children, hasHi, split: false,
+          minX: ox, maxX: ox + this.chunk * 2, minZ: oz, maxZ: oz + this.chunk * 2,
+          maxY: Math.max(0, maxH * M2Y),
+        });
+      }
+    }
+  }
+
+  _buildChildMesh(c) {
+    let geo;
+    const ox = this.x0 + c.cx * this.chunk;
+    const oz = this.z0 + c.cz * this.chunk;
+    const hd = this.hiData.get(c.key);
+    if (hd) {
+      const S = this.hiSamples;
+      geo = buildTileGeometry(this.hiN, this.hiStep, ox, oz, (i, j) => hd[(j + 1) * S + (i + 1)]);
+    } else {
+      // 詳細データなし（深い海など）→ 粗データから 16 セルで作る
+      const N = this.chunk / this.cstep;
+      const i0 = c.cx * N;
+      const j0 = c.cz * N;
+      geo = buildTileGeometry(N, this.cstep, ox, oz, (i, j) => this._coarseAt(i0 + i, j0 + j));
+    }
+    const mesh = new THREE.Mesh(geo, this.material);
+    mesh.name = `hi_${c.key}`;
+    mesh.matrixAutoUpdate = false;
+    return mesh;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 遅延読み込み                                                          */
+  /* ------------------------------------------------------------------ */
+
+  _requestHi(c, priority) {
+    if (!c.hi || this.hiData.has(c.key) || this.hiPending.has(c.key)) return;
+    let resolveFn;
+    const p = new Promise((r) => (resolveFn = r));
+    this.hiPending.set(c.key, p);
+    this.fetchQueue.push({ c, priority, resolve: resolveFn });
+    this._pumpQueue();
+  }
+
+  _pumpQueue() {
+    this.fetchQueue.sort((a, b) => a.priority - b.priority);
+    while (this.activeFetches < MAX_CONCURRENT_FETCH && this.fetchQueue.length) {
+      const job = this.fetchQueue.shift();
+      this.activeFetches++;
+      fetch(`${this.dir}${this.manifest.hi.dir}h_${job.c.key}.bin`)
+        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status)))
+        .then((buf) => {
+          this.hiData.set(job.c.key, new Int16Array(buf));
+          this.stats.hiLoaded = this.hiData.size;
+        })
+        .catch((e) => {
+          console.warn('terrain chunk failed', job.c.key, e);
+          job.c.hi = false; // 粗データで代用
+        })
+        .finally(() => {
+          this.activeFetches--;
+          this.hiPending.delete(job.c.key);
+          job.resolve();
+          this._pumpQueue();
+        });
+    }
+  }
+
+  _childReady(c) {
+    return !c.hi || this.hiData.has(c.key);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 毎フレーム更新                                                        */
+  /* ------------------------------------------------------------------ */
+
+  /** @param {THREE.Camera} camera */
+  update(camera) {
+    this.frame++;
+    const p = camera.position;
+    let coarseVisible = 0;
+    let hiVisible = 0;
+
+    for (const t of this.coarseTiles) {
+      const dx = Math.max(t.minX - p.x, 0, p.x - t.maxX);
+      const dz = Math.max(t.minZ - p.z, 0, p.z - t.maxZ);
+      const dy = Math.max(0, p.y - t.maxY);
+      const d = Math.sqrt(dx * dx + dz * dz + dy * dy);
+
+      const wantSplit = t.hasHi && (t.split ? d < MERGE_DIST : d < SPLIT_DIST);
+
+      if (wantSplit) {
+        for (const c of t.children) this._requestHi(c, d);
+        const ready = t.children.every((c) => this._childReady(c));
+        if (ready) {
+          if (!t.split) {
+            t.split = true;
+          }
+          for (const c of t.children) {
+            let entry = this.hiMeshCache.get(c.key);
+            if (!entry) {
+              entry = { mesh: this._buildChildMesh(c), lastUsed: 0 };
+              this.hiMeshCache.set(c.key, entry);
+              this.group.add(entry.mesh);
+            }
+            entry.mesh.visible = true;
+            entry.lastUsed = this.frame;
+            hiVisible++;
+          }
+          t.mesh.visible = false;
+          continue;
+        }
+      }
+      // 粗表示
+      if (t.split) {
+        t.split = false;
+        for (const c of t.children) {
+          const e = this.hiMeshCache.get(c.key);
+          if (e) e.mesh.visible = false;
+        }
+      }
+      t.mesh.visible = true;
+      coarseVisible++;
+    }
+
+    // キャッシュ溢れの破棄（最も長く使っていないものから）
+    if (this.hiMeshCache.size > MAX_CACHED_HI_MESHES && this.frame % 30 === 0) {
+      const entries = [...this.hiMeshCache.entries()]
+        .filter(([, e]) => !e.mesh.visible)
+        .sort((a, b) => a[1].lastUsed - b[1].lastUsed);
+      const excess = this.hiMeshCache.size - MAX_CACHED_HI_MESHES;
+      for (let k = 0; k < excess && k < entries.length; k++) {
+        const [key, e] = entries[k];
+        this.group.remove(e.mesh);
+        e.mesh.geometry.dispose();
+        this.hiMeshCache.delete(key);
+      }
+    }
+    this.stats.coarseVisible = coarseVisible;
+    this.stats.hiVisible = hiVisible;
+  }
+
+  /** 読み込み済みでない近傍チャンクをまとめて先読みする（プリセット移動の直前など） */
+  prefetchAround(x, z, radiusKm = 150) {
+    for (const t of this.coarseTiles) {
+      const cx = (t.minX + t.maxX) / 2;
+      const cz = (t.minZ + t.maxZ) / 2;
+      const d = Math.hypot(cx - x, cz - z);
+      if (d < radiusKm + 90) for (const c of t.children) this._requestHi(c, d);
+    }
+  }
+}
+
+/* ====================================================================== */
+/* ジオメトリ生成                                                           */
+/* ====================================================================== */
+
+const _ll = { lat: 0, lon: 0 };
+
+/**
+ * 規則グリッドのタイルを作る（スカート付き）
+ * @param {number} n       セル数（頂点は n+1）
+ * @param {number} step    頂点間隔 [km]
+ * @param {number} ox,oz   左上（北西）角のワールド座標
+ * @param {(i:number,j:number)=>number} hAt  標高[m]。i,j は -1..n+1 を受け付けること
+ */
+function buildTileGeometry(n, step, ox, oz, hAt) {
+  const V = n + 1;
+  const mainCount = V * V;
+  const skirtCount = 4 * V;
+  const total = mainCount + skirtCount;
+  const pos = new Float32Array(total * 3);
+  const nor = new Float32Array(total * 3);
+  const col = new Float32Array(total * 3);
+
+  // 北限付近の色フェード計算のため、タイル中央の緯度で十分（タイル内での変化は小さい）
+  const inv2s = 1 / (2 * step);
+  const tmp = [0, 0, 0];
+
+  for (let j = 0; j <= n; j++) {
+    for (let i = 0; i <= n; i++) {
+      const k = j * V + i;
+      const hm = hAt(i, j);
+      const x = ox + i * step;
+      const z = oz + j * step;
+      const y = hm * M2Y;
+      pos[k * 3] = x;
+      pos[k * 3 + 1] = y;
+      pos[k * 3 + 2] = z;
+      const dX = (hAt(i + 1, j) - hAt(i - 1, j)) * M2Y * inv2s;
+      const dZ = (hAt(i, j + 1) - hAt(i, j - 1)) * M2Y * inv2s;
+      const il = 1 / Math.sqrt(dX * dX + 1 + dZ * dZ);
+      const ny = il;
+      nor[k * 3] = -dX * il;
+      nor[k * 3 + 1] = ny;
+      nor[k * 3 + 2] = -dZ * il;
+      worldToLatLon(x, z, _ll);
+      terrainColor(hm, ny, _ll.lat, x, z, tmp);
+      col[k * 3] = tmp[0];
+      col[k * 3 + 1] = tmp[1];
+      col[k * 3 + 2] = tmp[2];
+    }
+  }
+
+  // スカート頂点：外周の頂点をコピーして下へずらす
+  const edge = []; // 各辺の main 頂点 index 列（時計回りの向きは後で考慮）
+  const top = [], bottom = [], left = [], right = [];
+  for (let i = 0; i <= n; i++) {
+    top.push(i);
+    bottom.push(n * V + i);
+  }
+  for (let j = 0; j <= n; j++) {
+    left.push(j * V);
+    right.push(j * V + n);
+  }
+  edge.push(top, bottom, left, right);
+  let s = mainCount;
+  const skirtStart = [];
+  for (const e of edge) {
+    skirtStart.push(s);
+    for (const k of e) {
+      pos[s * 3] = pos[k * 3];
+      // 海中の縁はスカート不要（水面下で見えず、遠景で筋になるため）
+      pos[s * 3 + 1] = pos[k * 3 + 1] - (pos[k * 3 + 1] > UNDERWATER_Y ? SKIRT_DEPTH : 0);
+      pos[s * 3 + 2] = pos[k * 3 + 2];
+      nor[s * 3] = nor[k * 3];
+      nor[s * 3 + 1] = nor[k * 3 + 1];
+      nor[s * 3 + 2] = nor[k * 3 + 2];
+      col[s * 3] = col[k * 3];
+      col[s * 3 + 1] = col[k * 3 + 1];
+      col[s * 3 + 2] = col[k * 3 + 2];
+      s++;
+    }
+  }
+
+  const triCount = n * n * 2 + 4 * n * 2;
+  const idx = total > 65535 ? new Uint32Array(triCount * 3) : new Uint16Array(triCount * 3);
+  let q = 0;
+  for (let j = 0; j < n; j++) {
+    for (let i = 0; i < n; i++) {
+      const a = j * V + i;
+      const b = a + 1;
+      const c = a + V;
+      const d = c + 1;
+      // 上から見て反時計回り（法線 +Y）
+      idx[q++] = a; idx[q++] = c; idx[q++] = b;
+      idx[q++] = b; idx[q++] = c; idx[q++] = d;
+    }
+  }
+  // スカート（両面に見えるよう向きは外向き。material は FrontSide のため外側から見える向きに）
+  const addStrip = (mainIdx, sStart, flip) => {
+    for (let k = 0; k < n; k++) {
+      const a = mainIdx[k];
+      const b = mainIdx[k + 1];
+      const c = sStart + k;
+      const d = sStart + k + 1;
+      if (flip) {
+        idx[q++] = a; idx[q++] = b; idx[q++] = c;
+        idx[q++] = b; idx[q++] = d; idx[q++] = c;
+      } else {
+        idx[q++] = a; idx[q++] = c; idx[q++] = b;
+        idx[q++] = b; idx[q++] = c; idx[q++] = d;
+      }
+    }
+  };
+  addStrip(top, skirtStart[0], true); // 北辺：外 = -Z
+  addStrip(bottom, skirtStart[1], false); // 南辺：外 = +Z
+  addStrip(left, skirtStart[2], false); // 西辺：外 = -X
+  addStrip(right, skirtStart[3], true); // 東辺：外 = +X
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.setIndex(new THREE.BufferAttribute(idx, 1));
+  geo.computeBoundingSphere();
+  geo.computeBoundingBox();
+  return geo;
+}
+
+/* ====================================================================== */
+/* 地表色（sRGB で考えて最後にリニア化）                                     */
+/* ====================================================================== */
+
+function hash2(x, z) {
+  const s = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+function mix(a, b, t, out) {
+  out[0] = a[0] + (b[0] - a[0]) * t;
+  out[1] = a[1] + (b[1] - a[1]) * t;
+  out[2] = a[2] + (b[2] - a[2]) * t;
+  return out;
+}
+
+const C = {
+  deep: [0.05, 0.16, 0.3],
+  shelf: [0.16, 0.42, 0.52],
+  shallow: [0.42, 0.74, 0.72],
+  reef: [0.55, 0.86, 0.8],
+  sand: [0.86, 0.8, 0.62],
+  sandTrop: [0.94, 0.9, 0.78],
+  farm: [0.56, 0.63, 0.34],
+  grass: [0.38, 0.56, 0.27],
+  forest: [0.2, 0.38, 0.18],
+  highForest: [0.24, 0.33, 0.2],
+  scrub: [0.45, 0.43, 0.32],
+  rock: [0.55, 0.52, 0.48],
+  snow: [0.93, 0.94, 0.96],
+  tropic: [0.3, 0.6, 0.3],
+};
+const _a = [0, 0, 0];
+const _b = [0, 0, 0];
+
+function smooth(e0, e1, x) {
+  const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+  return t * t * (3 - 2 * t);
+}
+
+function terrainColor(h, ny, lat, x, z, out) {
+  const tropical = smooth(30.5, 28.0, lat); // 0:本土 1:南西諸島
+  // 深海は海底プレーンと同じ色に揃える（タイル境界を目立たせない）
+  const jitter = h < -120 ? 0 : (hash2(Math.round(x * 2), Math.round(z * 2)) - 0.5) * 0.06;
+
+  if (h <= 0) {
+    // 海底（半透明の海面越しに見える）
+    const d = -h;
+    if (d < 25) mix(tropical > 0.5 ? C.reef : C.shallow, C.shelf, d / 25, out);
+    else mix(C.shelf, C.deep, Math.min(1, (d - 25) / 120), out);
+  } else if (h < 18) {
+    mix(C.sand, C.sandTrop, tropical, _a);
+    mix(_a, C.farm, smooth(6, 18, h), out);
+  } else {
+    // 低地 → 森林 → 亜高山 → 岩 → 雪
+    mix(C.farm, C.grass, smooth(30, 180, h), _a);
+    mix(_a, C.forest, smooth(150, 700, h), _a);
+    mix(_a, C.highForest, smooth(900, 1600, h), _a);
+    mix(_a, C.scrub, smooth(1700, 2300, h), _a);
+    mix(_a, C.rock, smooth(2300, 2800, h), _a);
+    // 斜面が急なら岩
+    const steep = smooth(0.82, 0.55, ny) * smooth(400, 1200, h);
+    mix(_a, C.rock, steep * 0.7, _a);
+    mix(_a, C.snow, smooth(2850, 3300, h), _a);
+    // 南国は明るい緑に
+    mix(_a, C.tropic, tropical * smooth(30, 120, h) * (1 - smooth(300, 700, h)) * 0.6, out);
+  }
+
+  // 北限より北：彩度・明度を落として「範囲外」とわかるように
+  const outside = h > -60 ? smooth(NORTH_LIMIT_LAT, NORTH_LIMIT_LAT + 0.18, lat) : 0;
+  if (outside > 0) {
+    const g = (out[0] + out[1] + out[2]) / 3;
+    _b[0] = _b[1] = _b[2] = g * 0.75;
+    _b[2] += 0.04;
+    mix(out, _b, outside * 0.85, out);
+  }
+
+  // jitter + sRGB→linear（近似 γ2.2）
+  for (let k = 0; k < 3; k++) {
+    const v = Math.min(1, Math.max(0, out[k] + jitter));
+    out[k] = Math.pow(v, 2.2);
+  }
+  return out;
+}
