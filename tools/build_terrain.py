@@ -7,31 +7,40 @@ GitHub Pages では一切実行しない「事前生成」用スクリプト。
 生成物 (data/terrain/*) をリポジトリにコミットすれば、公開時は静的ファイル配信のみで動く。
 
 入力:
-  Natural Earth 1:10m  (Public Domain)
-    - ne_10m_land.geojson
-    - ne_10m_minor_islands.geojson
-    - ne_10m_lakes.geojson         (琵琶湖のみ使用)
-  取得元: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+  Natural Earth 1:10m  (Public Domain) … 海岸線・島・琵琶湖（陸と海の境界は v3 と同じ）
+    - ne_10m_land.geojson / ne_10m_minor_islands.geojson / ne_10m_lakes.geojson
+    - ne_10m_rivers_lake_centerlines.geojson（利根川）
+    取得元: https://github.com/nvkelso/natural-earth-vector/tree/master/geojson
+  v4: Copernicus DEM GLO-90（実測 DSM, 3 秒角 ≒ 90m）… 陸地の標高
+    取得: python3 tools/dem/copernicus.py --src ../src_data   （../src_data/dem/cop90/ にキャッシュ）
+    「produced using Copernicus WorldDEM-90 © DLR e.V. 2010-2014 and © Airbus Defence and Space
+      GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved」
 
 出力:
-  data/terrain/manifest.json      グリッド定義・投影定数・チャンク一覧
+  data/terrain/manifest.json      グリッド定義・投影定数・チャンク一覧・標高ソース
   data/terrain/coarse.bin         全域 4km 間隔の高さ (Int16 LE, メートル)
   data/terrain/hi/h_{cx}_{cz}.bin 64km四方チャンク 1km間隔 (Int16 LE, 67x67, 外周1サンプルの縁付き)
 
-標高について:
-  外部DEMは使わず、実在の山脈・火山・平野の位置と標高（一般的な地理知識）を
-  パラメータとして手で配置し、海岸からの距離 + ノイズで「それらしい」地形を合成している。
-  → データ由来の権利制約なし（本リポジトリの成果物として CC0 扱い）。
-  「リアル地図」ではなく「広域3Dステージ」用の簡略地形。
+標高（v4）:
+  陸地 … Copernicus DEM を 1km 頂点へ「尾根保存ブレンド」で縮約（tools/dem/resample.py）
+          h = mean + 0.5 × (p90 − mean)   ※ 1km 四方 64 サンプル、DSM の細い突起は事前にオープニングで除去
+  海岸 … 海岸線は Natural Earth のまま。陸側 0.6km で DEM 標高へなじませ、低地は 2〜10m を下限にする
+          （海面 Y=0 の板が海抜 0m 以下の低地へ透けて見えないように）
+  海底 … DEM に水深はないので v3 と同じ「海岸からの距離」による簡易水深
+  欠損 … DEM タイルが無い陸地だけ v3 の手続き生成で補完（件数を manifest に記録）
+  --elevation procedural で v3 と同じ手続き生成地形も作れる（比較・フォールバック用）
 
 使い方:
-  pip install numpy scipy pillow
+  pip install numpy scipy pillow tifffile imagecodecs
+  python3 tools/dem/copernicus.py --src ../src_data          # DEM 取得（初回のみ・約 100 タイル）
   python3 tools/build_terrain.py --src ../src_data --out data/terrain
 """
 import argparse
 import json
 import math
 import os
+import sys
+import time
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -263,60 +272,9 @@ def fbm(shape, base_cells, octaves, seed):
     return out / tot
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--src", default="../src_data")
-    ap.add_argument("--out", default="data/terrain")
-    # v3: 湖沼・河川（tools/water.py）。--no-water で v2 と同じ地形を出力
-    here = os.path.dirname(os.path.abspath(__file__))
-    ap.add_argument("--water-defs", default=os.path.join(here, "water_defs.json"))
-    ap.add_argument("--water-out", default=os.path.join(here, "..", "data", "water.json"))
-    ap.add_argument("--no-water", action="store_true")
-    a = ap.parse_args()
-
-    WX = NCX * CHUNK
-    WZ = NCZ * CHUNK
-    W, H = int(WX / RASTER), int(WZ / RASTER)
-    print("raster", W, H)
-
-    land = rasterize(load_polys(os.path.join(a.src, "ne_10m_land.geojson")), W, H)
-    land |= rasterize(load_polys(os.path.join(a.src, "ne_10m_minor_islands.geojson")), W, H)
-    lakes = [p for p in load_polys(os.path.join(a.src, "ne_10m_lakes.geojson")) if "Biwa" in str(p[1].get("name"))]
-    lake = rasterize(lakes, W, H)
-
-    # 画素中心の緯度経度
-    px = X0 + (np.arange(W) + 0.5) * RASTER
-    pz = Z0 + (np.arange(H) + 0.5) * RASTER
-    PX, PZ = np.meshgrid(px, pz)
-    LAT, LON = w2ll(PX, PZ)
-
-    # 日本以外を除外（朝鮮半島・済州島・台湾・大陸）
-    foreign = (LON < 122.3) | ((LON < 129.0) & (LAT > 34.0)) | ((LON < 128.5) & (LAT > 32.9)) | ((LON < 130.0) & (LAT > 34.75))
-    land[foreign] = 0
-    land[LAT > FADE_END + 0.25] = 0
-    land_b = land > 0
-    land_b &= ~(lake > 0)
-
-    # 符号付き距離 (km)  陸:+  海:-
-    d_in = ndimage.distance_transform_edt(land_b) * RASTER
-    d_out = ndimage.distance_transform_edt(~land_b) * RASTER
-    sd = np.where(land_b, d_in - RASTER * 0.5, -(d_out - RASTER * 0.5)).astype(np.float32)
-    sd = ndimage.gaussian_filter(sd, 1.0)
-    del d_in, d_out
-    print("signed distance done")
-
-    # 1km 頂点グリッドへサンプリング
-    NXv, NZv = int(WX / HI_STEP) + 1, int(WZ / HI_STEP) + 1
-    vx = X0 + np.arange(-1, NXv + 1) * HI_STEP   # 縁 1 サンプル付き
-    vz = Z0 + np.arange(-1, NZv + 1) * HI_STEP
-    VX, VZ = np.meshgrid(vx, vz)
-    ci = (VX - X0) / RASTER - 0.5
-    cj = (VZ - Z0) / RASTER - 0.5
-    S = ndimage.map_coordinates(sd, [cj, ci], order=1, mode="nearest").astype(np.float32)
-    VLAT, VLON = w2ll(VX, VZ)
-    shape = S.shape
-    print("vertex grid", shape)
-
+def procedural_heights(VX, VZ, S, shape):
+    """v1〜v3 の手続き生成標高（陸 land_h・海 sea_h）。
+    v4 では (1) --elevation procedural、(2) DEM タイルが欠損した陸地の補完、(3) 海底（水深）にだけ使う。"""
     # ---- 標高合成 (m) ----
     def wdist(lat, lon):
         x, z = ll2w(lat, lon)
@@ -377,20 +335,226 @@ def main():
     # 海岸線直上は 0 を跨ぐように（-S 小さいところは浅瀬）
     Hm = np.where((S <= 0) & (S > -1.5), -2 + S * 3, Hm)
     # 湖（琵琶湖）は浅く沈める
+    return land_h, sea_h, Hm
+
+
+def japan_tile_mask(src):
+    """1°タイル (lat, lon) がステージ内の日本の陸地に掛かるか（DEM の取得タイル選定用）"""
+    WX, WZ = NCX * CHUNK, NCZ * CHUNK
+    R = 2.0
+    W, H = int(WX / R), int(WZ / R)
+    global RASTER
+    keep = RASTER
+    RASTER = R
+    try:
+        land = rasterize(load_polys(os.path.join(src, "ne_10m_land.geojson")), W, H)
+        land |= rasterize(load_polys(os.path.join(src, "ne_10m_minor_islands.geojson")), W, H)
+    finally:
+        RASTER = keep
+    px = X0 + (np.arange(W) + 0.5) * R
+    pz = Z0 + (np.arange(H) + 0.5) * R
+    PX, PZ = np.meshgrid(px, pz)
+    LAT, LON = w2ll(PX, PZ)
+    land = (land > 0) & ~foreign_mask(LAT, LON) & (LAT <= FADE_END + 0.25)
+    land = ndimage.binary_dilation(land, iterations=2)
+    la = np.floor(LAT[land]).astype(int)
+    lo = np.floor(LON[land]).astype(int)
+    S = set(zip(la.tolist(), lo.tolist()))
+    return lambda lat, lon: (lat, lon) in S
+
+
+def foreign_mask(LAT, LON):
+    """日本以外（朝鮮半島・済州島・台湾・大陸）"""
+    return (LON < 122.3) | ((LON < 129.0) & (LAT > 34.0)) | ((LON < 128.5) & (LAT > 32.9)) | ((LON < 130.0) & (LAT > 34.75))
+
+
+def smoothstep(e0, e1, x):
+    t = np.clip((x - e0) / (e1 - e0), 0, 1)
+    return t * t * (3 - 2 * t)
+
+
+# 海岸のなじませ（v4・DEM 使用時）
+COAST_TAPER_KM = 0.6    # 海岸線からこの距離で DEM 標高へ完全に移行
+LOW_FLOOR_COAST = 2.0   # m  海岸線上の陸の下限
+LOW_FLOOR_IN = 10.0     # m  内陸（1.5km 以上）の陸の下限（海抜 0m 以下の干拓地なども 10m に持ち上げる）
+LOW_FLOOR_KM = 1.5
+
+
+def dem_land_heights(a, VX, VZ, S, land_proc, shape, src):
+    """Copernicus DEM → 1km 頂点の陸地標高。→ (land_h, info dict, grids, f025)"""
+    here = os.path.dirname(os.path.abspath(__file__))
+    sys.path.insert(0, os.path.join(here, "dem"))
+    from copernicus import DemMosaic  # noqa
+    from resample import build_dem_grids, ridge_blend, RIDGE_W  # noqa
+
+    cache = a.dem_cache or os.path.join(src, "dem", "cop90")
+    npz = os.path.join(cache, "_grids_cache.npz")
+    t0 = time.time()
+    if a.reuse_dem and os.path.exists(npz):
+        z = np.load(npz)
+        grids = {k: z[k] for k in z.files if k != "f025"}
+        f025 = z["f025"]
+        print("dem grids: reuse", npz)
+    else:
+        mosaic = DemMosaic(cache)
+        # チャンク（＋2km）に日本の陸地があるか
+        landv = (S > -2.5)
+        N = CHUNK
+
+        def has_land(cx, cz):
+            blk = landv[cz * N:(cz + 1) * N + 3, cx * N:(cx + 1) * N + 3]
+            return bool(blk.any())
+
+        grids, f025 = build_dem_grids(mosaic, w2ll, X0, Z0, shape[1], shape[0], CHUNK, has_land)
+        np.savez(npz, f025=f025, **grids)
+        print(f"dem grids: {time.time() - t0:.0f}s")
+    method = a.dem_method
+    if method == "ridge":
+        Hd = ridge_blend(grids, RIDGE_W)
+    else:
+        Hd = grids[method].copy()
+    valid = grids["valid"] >= 0.5
+    land = S > 0
+    fallback = land & ~valid
+    Hd = np.where(valid, Hd, land_proc)
+    # 海岸：NE の海岸線へなじませる＋低地の下限
+    floor = LOW_FLOOR_COAST + (LOW_FLOOR_IN - LOW_FLOOR_COAST) * smoothstep(0, LOW_FLOOR_KM, S)
+    taper = smoothstep(0.0, COAST_TAPER_KM, S)
+    Hl = floor + (np.maximum(Hd, floor) - floor) * taper
+    info = {
+        "method": method, "ridgeW": RIDGE_W if method == "ridge" else None,
+        "landVertices": int(land.sum()), "fallbackVertices": int(fallback.sum()),
+        "flooredVertices": int((land & valid & (Hd < floor)).sum()),
+    }
+    print("dem land vertices", info)
+    return Hl.astype(np.float32), info, grids, f025
+
+
+LM_PAD_CORE = 0.6   # km  ランドマーク中心からこの距離の頂点を「実際の地盤高」にそろえる
+LM_PAD_RAMP = 0.7   # km  その外側で元の地形へ戻す幅
+
+
+def landmark_pads(Hm, a, path):
+    """v4: ランドマーク（橋を除く）の足元の 1km 頂点を、その地点の実際の地盤高（DEM 90m の半径 300m の下位 20% 値＝DSM の樹木・建物を避ける）にそろえる。
+    1km の尾根保存ブレンドは周囲の山の高さを拾うので、海辺の厳島神社が山腹（80m）に乗るなどを防ぐ。"""
+    if not os.path.exists(path):
+        return
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "dem"))
+    from copernicus import DemMosaic  # noqa
+    mos = DemMosaic(a.dem_cache or os.path.join(a.src, "dem", "cop90"))
+    L = json.load(open(path, encoding="utf-8"))
+    items = L["landmarks"] if isinstance(L, dict) else L
+    for it in items:
+        if it.get("kind") == "bridge":
+            continue
+        lat, lon = it["lat"], it["lon"]
+        A, top, left, dlat, dlon = mos.window(lat - 0.005, lat + 0.005, lon - 0.005, lon + 0.005, pad_px=2)
+        R_, C_ = np.mgrid[0:A.shape[0], 0:A.shape[1]]
+        la = top - (R_ + 0.5) * dlat
+        lo = left + (C_ + 0.5) * dlon
+        dk = np.hypot((la - lat) * 111.0, (lo - lon) * 111.0 * math.cos(math.radians(lat)))
+        v = A[(dk < 0.3) & np.isfinite(A)]
+        if len(v) == 0:
+            continue
+        target = max(float(np.percentile(v, 20)), LOW_FLOOR_COAST + 1)   # DSM の樹木・建物を拾わないよう下位 20%
+        x, z = ll2w(lat, lon)
+        i0, i1 = int(x - X0) - 2, int(x - X0) + 5
+        j0, j1 = int(z - Z0) - 2, int(z - Z0) + 5
+        J, I = np.mgrid[j0:j1, i0:i1]
+        d = np.hypot(X0 + (I - 1) - x, Z0 + (J - 1) - z)
+        h = Hm[j0:j1, i0:i1].astype(np.float32)
+        land = h > 0
+        t = smoothstep(LM_PAD_CORE, LM_PAD_CORE + LM_PAD_RAMP, d)
+        new = np.where(land, target + (h - target) * t, h)
+        Hm[j0:j1, i0:i1] = np.round(new).astype(Hm.dtype)
+        print(f"  landmark pad {it['id']:<22} ground {target:6.1f} m  (1km grid before {h[land].max() if land.any() else 0:6.0f} m max nearby)")
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--src", default="../src_data")
+    ap.add_argument("--out", default="data/terrain")
+    ap.add_argument("--elevation", choices=["dem", "procedural"], default="dem")
+    ap.add_argument("--dem-cache", default=None, help="Copernicus GLO-90 タイルの置き場（既定 SRC/dem/cop90）")
+    ap.add_argument("--dem-method", default="ridge", choices=["ridge", "mean", "median", "p75", "p90", "max"])
+    ap.add_argument("--reuse-dem", action="store_true", help="前回の DEM 縮約結果（キャッシュ）を再利用")
+    # v3: 湖沼・河川（tools/water.py）。--no-water で湖沼・河川の加工なし
+    here = os.path.dirname(os.path.abspath(__file__))
+    ap.add_argument("--water-defs", default=os.path.join(here, "water_defs.json"))
+    ap.add_argument("--water-out", default=os.path.join(here, "..", "data", "water.json"))
+    ap.add_argument("--no-water", action="store_true")
+    a = ap.parse_args()
+
+    WX = NCX * CHUNK
+    WZ = NCZ * CHUNK
+    W, H = int(WX / RASTER), int(WZ / RASTER)
+    print("raster", W, H)
+
+    land = rasterize(load_polys(os.path.join(a.src, "ne_10m_land.geojson")), W, H)
+    land |= rasterize(load_polys(os.path.join(a.src, "ne_10m_minor_islands.geojson")), W, H)
+    lakes = [p for p in load_polys(os.path.join(a.src, "ne_10m_lakes.geojson")) if "Biwa" in str(p[1].get("name"))]
+    lake = rasterize(lakes, W, H)
+
+    # 画素中心の緯度経度
+    px = X0 + (np.arange(W) + 0.5) * RASTER
+    pz = Z0 + (np.arange(H) + 0.5) * RASTER
+    PX, PZ = np.meshgrid(px, pz)
+    LAT, LON = w2ll(PX, PZ)
+
+    # 日本以外を除外（朝鮮半島・済州島・台湾・大陸）
+    land[foreign_mask(LAT, LON)] = 0
+    land[LAT > FADE_END + 0.25] = 0
+    land_b = land > 0
+    land_b &= ~(lake > 0)
+    del PX, PZ, LAT, LON
+
+    # 符号付き距離 (km)  陸:+  海:-
+    d_in = ndimage.distance_transform_edt(land_b) * RASTER
+    d_out = ndimage.distance_transform_edt(~land_b) * RASTER
+    sd = np.where(land_b, d_in - RASTER * 0.5, -(d_out - RASTER * 0.5)).astype(np.float32)
+    sd = ndimage.gaussian_filter(sd, 1.0)
+    del d_in, d_out
+    print("signed distance done")
+
+    # 1km 頂点グリッドへサンプリング
+    NXv, NZv = int(WX / HI_STEP) + 1, int(WZ / HI_STEP) + 1
+    vx = X0 + np.arange(-1, NXv + 1) * HI_STEP   # 縁 1 サンプル付き
+    vz = Z0 + np.arange(-1, NZv + 1) * HI_STEP
+    VX, VZ = np.meshgrid(vx, vz)
+    ci = (VX - X0) / RASTER - 0.5
+    cj = (VZ - Z0) / RASTER - 0.5
+    S = ndimage.map_coordinates(sd, [cj, ci], order=1, mode="nearest").astype(np.float32)
+    VLAT, VLON = w2ll(VX, VZ)
+    shape = S.shape
+    print("vertex grid", shape)
+
+    land_proc, sea_h, Hm_proc = procedural_heights(VX, VZ, S, shape)
+    dem_info = None
+    grids = f025 = None
+    if a.elevation == "dem":
+        land_dem, dem_info, grids, f025 = dem_land_heights(a, VX, VZ, S, land_proc, shape, a.src)
+        Hm = np.where(S > 0, land_dem, Hm_proc)
+    else:
+        Hm = Hm_proc
+
     # 北限より北はなじませながら海へ沈める
     fade = np.clip((VLAT - NORTH_LIMIT - 0.03) / (FADE_END - NORTH_LIMIT), 0, 1)
     fade = fade * fade * (3 - 2 * fade)
     Hm = Hm * (1 - fade) + SEA_FLOOR * fade * 0.6 + np.minimum(Hm, 0) * fade * 0.4
     Hm = np.clip(Hm, SEA_FLOOR, 4000).astype(np.int16)
     print("height range", Hm.min(), Hm.max())
+    if a.elevation == "dem":
+        landmark_pads(Hm, a, os.path.join(here, "..", "data", "landmarks.json"))
+    Hm_pre_water = Hm.copy()
 
     # ---- v3: 湖沼・河川で地形を加工し、水域データを書き出す ----
     water = None
     if not a.no_water and os.path.exists(a.water_defs):
-        import sys
         sys.path.insert(0, here)
         from water import WaterBuilder
-        water = WaterBuilder(a.water_defs, a.src, ll2w, w2ll, X0, Z0, HI_STEP)
+        water = WaterBuilder(a.water_defs, a.src, ll2w, w2ll, X0, Z0, HI_STEP,
+                             dem_cache=(a.dem_cache or os.path.join(a.src, "dem", "cop90")) if a.elevation == "dem" else None,
+                             f025=f025)
         print("water: lakes")
         water.carve_lakes(Hm)
         print("water: rivers")
@@ -404,11 +568,24 @@ def main():
 
     # coarse (4km)  … 縁なし。index: [j][i] , x = X0 + i*4
     st = int(COARSE_STEP / HI_STEP)
-    coarse = Hm[1:-1:st, 1:-1:st]
-    coarse = np.ascontiguousarray(coarse).astype("<i2")
+    point = Hm[1:-1:st, 1:-1:st].astype(np.float32)
+    if a.elevation == "dem":
+        # v4: 4km 頂点は「周囲 4km の尾根保存ブレンド」（点の間引きだと 4km 未満の山地・尾根が消える）
+        Hp = np.maximum(Hm.astype(np.float32), 0)
+        k = np.array([0.5, 1, 1, 1, 0.5], np.float32)
+        K = np.outer(k, k)
+        K /= K.sum()
+        mean4 = ndimage.convolve(Hp, K, mode="nearest")
+        p90_4 = ndimage.percentile_filter(Hp, 90, size=5, mode="nearest")
+        blend = mean4 + 0.5 * (p90_4 - mean4)
+        blend = blend[1:-1:st, 1:-1:st]
+        coarse = np.where(point > 0, np.maximum(np.maximum(blend, 2.0), np.minimum(point, 2.0)), point)
+    else:
+        coarse = point
+    coarse = np.ascontiguousarray(np.round(coarse)).astype("<i2")
     if water is not None:
         coarse = water.carve_lakes_coarse(coarse, COARSE_STEP)
-        water.export(a.water_out)
+        water.export(a.water_out, elevation_source=a.elevation)
     coarse.tofile(os.path.join(a.out, "coarse.bin"))
     print("coarse", coarse.shape, coarse.nbytes)
 
@@ -427,8 +604,19 @@ def main():
             chunks.append([cx, cz, int(blk.max())])
     print("hi chunks", len(chunks), "bytes", total)
 
+    elev = {"source": "procedural", "note": "v1-v3 procedural terrain (not measured)"}
+    if a.elevation == "dem":
+        elev = {
+            "source": "Copernicus DEM GLO-90",
+            "attribution": "produced using Copernicus WorldDEM-90 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved",
+            "sourceResolution": "3 arc-second (~90 m), EGM2008 heights, DSM",
+            "resampling": "3x3 grey opening, then per 1 km vertex: mean + 0.5*(p90-mean) of 64 samples (0.125 km) in the 1 km footprint; coarse 4 km = same blend over 5x5 of the 1 km grid",
+            "coastline": "Natural Earth 1:10m (land/sea mask unchanged); land floor 2-10 m; 0.6 km coastal taper",
+            "seaFloor": "synthetic (distance from coast), not measured",
+            **(dem_info or {}),
+        }
     manifest = {
-        "version": 1,
+        "version": 2,
         "projection": {
             "type": "sinusoidal",
             "lon0": LON0, "lat0": LAT0, "earthRadiusKm": EARTH_R,
@@ -437,6 +625,7 @@ def main():
         "northLimitLat": NORTH_LIMIT,
         "fadeEndLat": FADE_END,
         "seaFloorM": SEA_FLOOR,
+        "elevation": elev,
         "grid": {"x0": X0, "z0": Z0, "chunkKm": CHUNK, "ncx": NCX, "ncz": NCZ},
         "coarse": {"file": "coarse.bin", "stepKm": COARSE_STEP, "nx": int(coarse.shape[1]), "nz": int(coarse.shape[0])},
         "hi": {"dir": "hi/", "stepKm": HI_STEP, "samples": N + 3, "border": 1,
@@ -444,17 +633,19 @@ def main():
         "format": "Int16 little-endian, metres above sea level, row-major [z][x]",
     }
     with open(os.path.join(a.out, "manifest.json"), "w") as f:
-        json.dump(manifest, f, separators=(",", ":"))
+        json.dump(manifest, f, separators=(",", ":"), ensure_ascii=False)
 
-    # プレビュー画像（確認用、配信には不要）
+    # プレビュー・検証用（配信には不要）
     prev = coarse.astype(np.float32)
     img = np.zeros(prev.shape + (3,), np.uint8)
     land_m = prev > 0
-    img[~land_m] = (np.array([20, 60, 120]) + (prev[~land_m, None] / SEA_FLOOR * -0 + 0)).clip(0, 255)
+    img[~land_m] = (20, 60, 120)
     g = np.clip(prev / 3000, 0, 1)
     img[land_m] = (np.stack([60 + 180 * g, 140 + 60 * g, 60 + 150 * g], -1)[land_m]).astype(np.uint8)
     Image.fromarray(img).save(os.path.join(a.src, "preview.png"))
-    np.save(os.path.join(a.src, "hm_full.npy"), Hm)  # 確認用（配信には不要）
+    np.save(os.path.join(a.src, "hm_full.npy"), Hm)
+    np.save(os.path.join(a.src, "hm_prewater.npy"), Hm_pre_water)
+    np.save(os.path.join(a.src, "signed_dist.npy"), S)
 
 
 if __name__ == "__main__":
