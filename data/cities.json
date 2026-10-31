@@ -3,8 +3,8 @@
  "criteria": "2020年国勢調査（総務省統計局）の人口がおおむね10万人以上の市。境界付近（9.9〜10.1万人程度）は旅ステージとして含める側に倒した。東京23区は1つの都市『東京』として扱う。",
  "population": "pop は 2020年国勢調査ベースの概数（千人単位で丸め）。表示規模の決定にのみ使用し、統計値として使わないこと。",
  "coordinates": "lat/lon は市の中心市街地（主要駅・市役所付近）の概略位置。Geolonia 住所データ（CC BY 4.0）の町丁目代表点と照合し、全都市で市域内（最寄り町丁目代表点から1km以内）であることを確認済み。座標データ自体は本リポジトリで作成。",
- "rank": "metro=大都市圏 / major=地方中枢・主要都市 / city=その他",
- "fields": "id, name, pref, type, rank, lat, lon, pop, cores?[[lat,lon,weight]]（副都心など高層の核）, heightScale?（高さ規制の強い都市の高さ倍率）",
+ "rank": "metro=大都市圏 / major=地方中枢・主要都市 / city=その他 / town=中小都市・観光都市・島嶼都市（v5）",
+ "fields": "id, name, pref, type, rank, lat, lon, pop, cores?[[lat,lon,weight]]（副都心など高層の核）, heightScale?（高さ規制の強い都市の高さ倍率） / v5: rKm?（市街地の代表半径 km。指定時は人口式より優先）, added?, group?, slopeMax?/slopeSoft?（建物を建てる斜度の上限・間引き開始 m/km。既定 95/45。熱海のみ 170/90）",
  "cities": [
   {
    "id": "koriyama",
@@ -2615,6 +2615,261 @@
    "lat": 26.246,
    "lon": 127.722,
    "pop": 115000
+  },
+  {
+   "id": "shimizu",
+   "name": "清水",
+   "pref": "静岡県",
+   "type": "city",
+   "rank": "city",
+   "lat": 35.016,
+   "lon": 138.492,
+   "pop": 228000,
+   "rKm": 3.0,
+   "added": "v5",
+   "group": "larger",
+   "cores": [
+    [
+     35.0148,
+     138.4905,
+     1
+    ],
+    [
+     35.0105,
+     138.5015,
+     0.75
+    ]
+   ]
+  },
+  {
+   "id": "tsuruga",
+   "name": "敦賀",
+   "pref": "福井県",
+   "type": "city",
+   "rank": "town",
+   "lat": 35.651,
+   "lon": 136.064,
+   "pop": 64000,
+   "rKm": 2.4,
+   "added": "v5",
+   "group": "larger"
+  },
+  {
+   "id": "takayama",
+   "name": "高山",
+   "pref": "岐阜県",
+   "type": "city",
+   "rank": "town",
+   "lat": 36.142,
+   "lon": 137.255,
+   "pop": 84000,
+   "rKm": 2.3,
+   "added": "v5",
+   "group": "larger",
+   "heightScale": 0.6
+  },
+  {
+   "id": "maizuru",
+   "name": "舞鶴",
+   "pref": "京都府",
+   "type": "city",
+   "rank": "town",
+   "lat": 35.457,
+   "lon": 135.364,
+   "pop": 80000,
+   "rKm": 2.6,
+   "added": "v5",
+   "group": "larger",
+   "cores": [
+    [
+     35.4436,
+     135.3326,
+     1
+    ],
+    [
+     35.4688,
+     135.3953,
+     0.9
+    ]
+   ]
+  },
+  {
+   "id": "omura",
+   "name": "大村",
+   "pref": "長崎県",
+   "type": "city",
+   "rank": "town",
+   "lat": 32.905,
+   "lon": 129.96,
+   "pop": 95000,
+   "rKm": 2.4,
+   "added": "v5",
+   "group": "larger"
+  },
+  {
+   "id": "atami",
+   "name": "熱海",
+   "pref": "静岡県",
+   "type": "city",
+   "rank": "town",
+   "lat": 35.097,
+   "lon": 139.079,
+   "pop": 35000,
+   "rKm": 2.2,
+   "added": "v5",
+   "group": "small",
+   "slopeMax": 170,
+   "slopeSoft": 90,
+   "cores": [
+    [
+     35.101,
+     139.077,
+     0.8
+    ],
+    [
+     35.095,
+     139.074,
+     1
+    ]
+   ]
+  },
+  {
+   "id": "karuizawa",
+   "name": "軽井沢",
+   "pref": "長野県",
+   "type": "city",
+   "rank": "town",
+   "lat": 36.348,
+   "lon": 138.625,
+   "pop": 20000,
+   "rKm": 2.0,
+   "added": "v5",
+   "group": "small",
+   "heightScale": 0.45,
+   "cores": [
+    [
+     36.3428,
+     138.6355,
+     1
+    ],
+    [
+     36.356,
+     138.633,
+     0.6
+    ],
+    [
+     36.358,
+     138.588,
+     0.5
+    ]
+   ]
+  },
+  {
+   "id": "nikko",
+   "name": "日光",
+   "pref": "栃木県",
+   "type": "city",
+   "rank": "town",
+   "lat": 36.747,
+   "lon": 139.622,
+   "pop": 30000,
+   "rKm": 1.6,
+   "added": "v5",
+   "group": "small",
+   "heightScale": 0.5
+  },
+  {
+   "id": "hagi",
+   "name": "萩",
+   "pref": "山口県",
+   "type": "city",
+   "rank": "town",
+   "lat": 34.409,
+   "lon": 131.399,
+   "pop": 44000,
+   "rKm": 1.8,
+   "added": "v5",
+   "group": "small",
+   "heightScale": 0.55
+  },
+  {
+   "id": "takeo",
+   "name": "武雄",
+   "pref": "佐賀県",
+   "type": "city",
+   "rank": "town",
+   "lat": 33.195,
+   "lon": 130.02,
+   "pop": 48000,
+   "rKm": 1.6,
+   "added": "v5",
+   "group": "small",
+   "heightScale": 0.8
+  },
+  {
+   "id": "imari",
+   "name": "伊万里",
+   "pref": "佐賀県",
+   "type": "city",
+   "rank": "town",
+   "lat": 33.266,
+   "lon": 129.879,
+   "pop": 52000,
+   "rKm": 1.7,
+   "added": "v5",
+   "group": "small",
+   "heightScale": 0.9
+  },
+  {
+   "id": "yukuhashi",
+   "name": "行橋",
+   "pref": "福岡県",
+   "type": "city",
+   "rank": "town",
+   "lat": 33.728,
+   "lon": 130.981,
+   "pop": 72000,
+   "rKm": 1.9,
+   "added": "v5",
+   "group": "small",
+   "heightScale": 0.9
+  },
+  {
+   "id": "ishigaki",
+   "name": "石垣島",
+   "pref": "沖縄県",
+   "type": "city",
+   "rank": "town",
+   "lat": 24.342,
+   "lon": 124.157,
+   "pop": 49000,
+   "rKm": 2.0,
+   "added": "v5",
+   "group": "island"
+  },
+  {
+   "id": "miyako",
+   "name": "宮古島",
+   "pref": "沖縄県",
+   "type": "city",
+   "rank": "town",
+   "lat": 24.803,
+   "lon": 125.283,
+   "pop": 55000,
+   "rKm": 2.1,
+   "added": "v5",
+   "group": "island"
+  }
+ ],
+ "v5": "v5 で人口にかかわらず追加した 14 地域（新幹線停車駅・重要観光地・地域拠点）：熱海・清水・軽井沢・日光・敦賀・高山・舞鶴・萩・武雄・大村・伊万里・行橋・石垣島・宮古島。rank=town（中小都市・観光都市・島嶼都市）、rKm で市街地の代表半径を直接指定（人口比例ではなく 3D で都市と認識できる大きさ）。清水は静岡市清水区だが、静岡中心部とは別の都市クラスターとして扱う（separators で間の市街地密度を下げる）。pop は概数（清水は清水区の人口、日光・高山は中心市街地相当の概数）。",
+ "separators": [
+  {
+   "id": "shizuoka-shimizu",
+   "lat": 34.997,
+   "lon": 138.443,
+   "rKm": 2.4,
+   "strength": 0.8,
+   "note": "静岡中心部と清水の間（草薙付近）の市街地密度を下げ、2 つの都市核を見分けられるようにする"
   }
  ]
 }
