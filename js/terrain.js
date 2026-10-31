@@ -548,13 +548,17 @@ function terrainColor(h, ny, lat, x, z, out) {
     const d = -h;
     if (d < 25) mix(tropical > 0.5 ? C.reef : C.shallow, C.shelf, d / 25, out);
     else mix(C.shelf, C.deep, Math.min(1, (d - 25) / 120), out);
-  } else if (h < 18) {
+  } else if (h < 7) {
+    // v4: 実 DEM の低地は陸の下限 10m（tools/build_terrain.py）。砂浜色は海岸線際（2〜9m）だけにする
     mix(C.sand, C.sandTrop, tropical, _a);
-    mix(_a, C.farm, smooth(6, 18, h), out);
+    mix(_a, C.farm, smooth(2.5, 7, h), out);
   } else {
     // 低地 → 森林 → 亜高山 → 岩 → 雪
     mix(C.farm, C.grass, smooth(30, 180, h), _a);
     mix(_a, C.forest, smooth(150, 700, h), _a);
+    // v4: 実 DEM の丘陵（房総・三浦など数百 m の起伏）は標高が低くても斜面なら森の色に
+    //     （平らな低地＝田畑・市街地との差が遠景でも分かる）
+    mix(_a, C.forest, smooth(0.995, 0.95, ny) * smooth(20, 80, h) * 0.8, _a);
     mix(_a, C.highForest, smooth(900, 1600, h), _a);
     mix(_a, C.scrub, smooth(1700, 2300, h), _a);
     mix(_a, C.rock, smooth(2300, 2800, h), _a);

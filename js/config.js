@@ -54,6 +54,11 @@ export const CAMERA_PRESETS = [
   { id: 'hiroshima', label: '広島・宮島', lat: 34.36, lon: 132.40, dist: 45, polar: 58, azimuth: 160 },
   { id: 'kanmon', label: '関門海峡・福岡', lat: 33.75, lon: 130.66, dist: 95, polar: 56, azimuth: 200 },
   { id: 'kumamoto', label: '熊本', lat: 32.80, lon: 130.70, dist: 22, polar: 60, azimuth: 200 },
+  // ---- v4: 地形（実測 DEM）確認用 ----
+  { id: 'kofu-misaka', label: '甲府・御坂・富士五湖', lat: 35.55, lon: 138.70, dist: 62, polar: 66, azimuth: 225 },
+  { id: 'boso', label: '房総半島南部', lat: 35.10, lon: 139.98, dist: 42, polar: 68, azimuth: 200 },
+  { id: 'miura', label: '三浦半島', lat: 35.24, lon: 139.64, dist: 32, polar: 64, azimuth: 180 },
+  { id: 'tanzawa-hakone', label: '丹沢・箱根', lat: 35.36, lon: 139.08, dist: 70, polar: 62, azimuth: 110 },
 ];
 
 export const WORLD_BOUNDS = { minX: -1100, maxX: 1000, minZ: -900, maxZ: 900 };
