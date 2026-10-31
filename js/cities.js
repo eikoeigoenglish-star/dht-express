@@ -51,6 +51,8 @@ const RANK = {
   metro: { rMul: 1.0, tallM: 210, midM: 45, baseM: 13, coreR: 0.11, labelDist: 3400, prio: 4.6 },
   major: { rMul: 1.0, tallM: 120, midM: 30, baseM: 11, coreR: 0.2, labelDist: 900, prio: 3.4 },
   city: { rMul: 1.0, tallM: 55, midM: 18, baseM: 9, coreR: 0.24, labelDist: 170, prio: 2.1 },
+  // v5: 中小都市・観光都市・島嶼都市（人口10万人未満でも、新幹線駅・観光地・地域拠点として追加した 14 地域）
+  town: { rMul: 1.0, tallM: 34, midM: 13, baseM: 8, coreR: 0.3, labelDist: 140, prio: 2.0 },
 };
 
 const PALETTE_LOW = ['#d8d3c8', '#cdc6b9', '#c2bcb1', '#e2ddd3', '#c9c3b8', '#b9b4ab', '#d4cdc0', '#bdb3a4'];
@@ -76,6 +78,7 @@ export class CitySystem {
     this.chunks = []; // 生成単位 {cx, cz, key, minX..., cities[], state}
     this.tiles = []; // 表示単位 {key, minX..., mesh, total, maxY}
     this.exclusions = [];
+    this.separators = []; // v5
     this.waterMask = null; // v3: (x, z, margin) => boolean（js/water.js の isWater）
     this.genQueue = [];
     this.gen = null;
@@ -109,13 +112,15 @@ export class CitySystem {
     this.cities = json.cities.map((c, i) => {
       const w = latLonToWorld(c.lat, c.lon);
       const rk = RANK[c.rank] ?? RANK.city;
-      const r = radiusFromPop(c.pop) * rk.rMul;
+      // v5: rKm があれば人口式より優先（3D で都市と認識できる大きさを直接指定）
+      const r = (c.rKm ?? radiusFromPop(c.pop)) * rk.rMul;
       const cores = (c.cores ?? [[c.lat, c.lon, 1]]).map(([la, lo, wgt]) => {
         const p = latLonToWorld(la, lo);
         return { x: p.x, z: p.z, w: wgt };
       });
       // 中小都市でも人口に応じて核の高さを少し変える
-      const tallM = c.rank === 'city' ? rk.tallM * (0.75 + 0.35 * Math.min(1, (c.pop - 100000) / 400000)) : rk.tallM;
+      let tallM = c.rank === 'city' ? rk.tallM * (0.75 + 0.35 * Math.min(1, (c.pop - 100000) / 400000)) : rk.tallM;
+      if (c.rank === 'town') tallM = rk.tallM * (0.8 + 0.25 * Math.min(1, c.pop / 100000)); // v5
       return {
         ...c,
         index: i,
@@ -133,8 +138,25 @@ export class CitySystem {
         angle: ((hashString(c.id + ':a') % 1000) / 1000) * (Math.PI / 2),
       };
     });
+    // v5: 都市の間の市街地密度を下げる点（静岡中心部と清水を別の都市核として見せる など）
+    this.separators = (json.separators ?? []).map((q) => {
+      const p = latLonToWorld(q.lat, q.lon);
+      return { x: p.x, z: p.z, r2: q.rKm * q.rKm, reach2: (q.rKm * 2.5) ** 2, s: q.strength ?? 0.8 };
+    });
     this._buildBuckets();
     return this;
+  }
+
+  /** v5: separators による密度の倍率 0..1（1 = 影響なし） */
+  _sepFactor(x, z) {
+    let f = 1;
+    for (const q of this.separators) {
+      const dx = x - q.x;
+      const dz = z - q.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < q.reach2) f *= 1 - q.s * Math.exp(-d2 / q.r2);
+    }
+    return f;
   }
 
   /* ------------------------------------------------------------------ */
@@ -179,6 +201,7 @@ export class CitySystem {
       return out;
     }
     let dens = Math.exp(-(d2 / (c.r * c.r)) * 1.25) * (0.5 + 0.95 * n);
+    if (this.separators.length) dens *= this._sepFactor(x, z);
     let core = 0;
     const cr2 = c.coreR * c.coreR;
     for (const k of c.cores) {
@@ -391,8 +414,11 @@ export class CitySystem {
           const hmin = Math.min(h1, h2, h3, h4);
           if (hmin < 0.5) continue;
           const slope = (Math.max(h1, h2, h3, h4) - hmin) / (CELL * 1.414); // m / km
-          if (slope > 95) continue;
-          if (slope > 45 && hash2i(i, j, 13) < (slope - 45) / 50) continue;
+          // v5: 都市ごとに許容斜度を変えられる（熱海のように実際に海岸斜面に市街地がある所だけ緩める）
+          const sMax = c.slopeMax ?? 95;
+          const sSoft = c.slopeSoft ?? 45;
+          if (slope > sMax) continue;
+          if (slope > sSoft && hash2i(i, j, 13) < (slope - sSoft) / (sMax - sSoft + 5)) continue;
 
           let skip = false;
           for (const x of excl) {
@@ -427,7 +453,7 @@ export class CitySystem {
             hm += c.midM * f.d * f.d * (0.3 + 0.7 * rd);
             hm += c.tallM * Math.pow(core, 1.6) * (0.3 + 0.7 * Math.pow(rc, 0.6));
             if (core > 0.25 && rd > 0.93) hm *= 1.35; // ところどころ突出したタワー
-            hm *= 1 - smooth(45, 95, slope) * 0.5;
+            hm *= 1 - smooth(c.slopeSoft ?? 45, c.slopeMax ?? 95, slope) * 0.5;
 
             // 平面寸法 [km]（高い建物ほど細く、郊外の低層は面で広く）
             const tall = smooth(40, 160, hm);

@@ -89,6 +89,11 @@ export class PlaceLabels {
     this.root.style.display = v ? '' : 'none';
   }
 
+  /** v5: 種類ごとの表示 ON/OFF（ルート表示の R キー用） */
+  setTypeVisible(types, v) {
+    for (const it of this.items) if (types.includes(it.type)) it.hidden = !v;
+  }
+
   _itemY(it) {
     if (it.type === 'sea') return 0;
     const g = this.terrain.getSurfaceY(it.x, it.z);
@@ -103,6 +108,10 @@ export class PlaceLabels {
     const cand = [];
     for (const it of this.items) {
       // 遠すぎるものは高さ計算・投影の前に除外（水平距離で粗く判定）
+      if (it.hidden) {
+        this._set(it, false);
+        continue;
+      }
       const hx = it.x - cp.x;
       const hz = it.z - cp.z;
       if (hx * hx + hz * hz > it.maxDist * it.maxDist) {

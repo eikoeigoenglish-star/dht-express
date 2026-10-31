@@ -76,6 +76,9 @@ export class UI {
         case 'KeyB':
           opts.onToggleCity?.();
           break;
+        case 'KeyR': // v5: DHT EXPRESS ルート（線・ノード・ラベル）の表示 ON/OFF
+          opts.onToggleRoute?.();
+          break;
       }
     });
   }

@@ -15,7 +15,8 @@
  *   water.js       湖沼・河川（v3。水面メッシュ 2 つ・水域マスク・ラベル）
  *   meshkit.js     部品の結合・乱数などの小道具
  *   ui.js          HUD
- *   route.js       （将来用）km → ルート上の位置
+ *   route.js       v5: 距離ベースのルートエンジン（論理 km → 3D 位置。Journey / RailRoute / FerryRoute）
+ *   journey.js     v5: ルート線・10km 発光ノード・寄港地の表示
  *
  * シーングラフ
  *   scene
@@ -25,6 +26,7 @@
  *    ├─ stations    (station-platforms, station-pins … InstancedMesh 2つ)
  *    ├─ landmarks   (landmark_* … 1件 = 1 Mesh)
  *    ├─ water       (lakes, rivers … 全湖・全河川で Mesh 2 つ)   ← v3
+ *    ├─ journey     (route-* 線 5 本 + route-nodes 1 つ)          ← v5 DHT EXPRESS ルート
  *    ├─ actors      ← 将来：列車・9体のキャラクター GLB をここへ
  *    └─ fx          ← 将来：演出・パーティクル
  */
@@ -35,6 +37,8 @@ import { CitySystem } from './cities.js';
 import { StationSystem } from './stations.js';
 import { LandmarkSystem } from './landmarks.js';
 import { WaterSystem } from './water.js';
+import { loadJourney } from './route.js';
+import { JourneyLayer } from './journey.js';
 import { Environment } from './environment.js';
 import { createCamera, CameraRig, presetToView, presetToExploreView } from './camera.js';
 import { MapController, ExploreController } from './controls.js';
@@ -49,6 +53,7 @@ const renderer = new THREE.WebGLRenderer({
   antialias: true,
   powerPreference: 'high-performance',
   logarithmicDepthBuffer: true, // 地表 10m 〜 地平線 数千km を1つのカメラで扱うため
+  stencil: true, // v5: ルートの発光帯を 1 ピクセル 1 回だけ描く（細かい線分の重なりで白飛びしないように）
 });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
 renderer.setSize(innerWidth, innerHeight, false);
@@ -66,7 +71,8 @@ const cities = new CitySystem(terrain);
 const stations = new StationSystem(terrain);
 const landmarks = new LandmarkSystem(terrain);
 const water = new WaterSystem(terrain);
-scene.add(cities.group, stations.group, landmarks.group, water.group);
+const journeyLayer = new JourneyLayer(terrain, { urbanAt: (x, z) => cities.densityAt(x, z) }); // v5
+scene.add(cities.group, stations.group, landmarks.group, water.group, journeyLayer.group);
 
 const actors = new THREE.Group();
 actors.name = 'actors';
@@ -92,6 +98,11 @@ const ui = new UI({
   onToggleCity: () => {
     cities.setVisible(!cities.visible);
     return cities.visible;
+  },
+  onToggleRoute: () => {
+    journeyLayer.setVisible(!journeyLayer.visible);
+    labels.setTypeVisible(['routekm', 'routeend', 'port'], journeyLayer.visible);
+    return journeyLayer.visible;
   },
 });
 exploreCtl.onLockChange = (l) => ui.setLocked(l);
@@ -216,11 +227,29 @@ async function setupOverlays() {
   if (cities.cities.length) {
     cities.prepareChunks();
     // places.json に同じ都市のラベルがあれば重複させない
-    labels.addItems(cities.labelItems().filter((c) => !labels.findNear(c.x, c.z, 9)));
+    // v5: 島名ラベルと同じ名前の都市（宮古島・石垣島）も二重にしない
+    labels.addItems(
+      cities
+        .labelItems()
+        .filter((c) => !labels.findNear(c.x, c.z, 9) && !labels.items.some((it) => it.name === c.name && Math.hypot(it.x - c.x, it.z - c.z) < 40)),
+    );
   }
   if (st.status === 'fulfilled') labels.addItems(stations.labelItems());
   if (lm.status === 'fulfilled') labels.addItems(landmarks.labelItems());
   if (water.lakes.length) labels.addItems(water.labelItems());
+}
+
+/** v5: DHT EXPRESS のルート（新幹線・鹿児島接続・フェリー）。距離エンジンは window.DHT.journey */
+async function setupJourney() {
+  try {
+    const j = await loadJourney(ASSETS.journey, { getSurfaceY: (x, z) => terrain.getSurfaceY(x, z) });
+    app.journey = j;
+    app.route = { rail: j.rail, connector: j.connector, ferry: j.ferry };
+    journeyLayer.build(j);
+    labels.addItems(journeyLayer.labelItems());
+  } catch (e) {
+    console.warn('journey', e);
+  }
 }
 
 /* ---------------------------------------------------------------------- */
@@ -238,6 +267,7 @@ async function start() {
     await labels.load(ASSETS.places).catch((e) => console.warn('labels', e));
     await setupWater();
     await setupOverlays();
+    await setupJourney();
   } catch (e) {
     console.error(e);
     ui.error(
@@ -276,6 +306,7 @@ async function start() {
     stations.update();
     landmarks.update(camera);
     water.update();
+    journeyLayer.update(camera, innerWidth, innerHeight);
     const p = camera.position;
     env.update(camera, dt, p.y - terrain.getSurfaceY(p.x, p.z));
     renderer.render(scene, camera);
@@ -291,7 +322,7 @@ addEventListener('resize', () => {
 });
 
 // 将来の拡張・デバッグ用ハンドル（コンソールから window.DHT で触れる）
-export const app = { renderer, scene, camera, terrain, env, rig, mapCtl, exploreCtl, labels, cities, stations, landmarks, water, layers: { actors, fx }, geo, presets: CAMERA_PRESETS, setMode, goPreset };
+export const app = { renderer, scene, camera, terrain, env, rig, mapCtl, exploreCtl, labels, cities, stations, landmarks, water, journeyLayer, journey: null, route: null, layers: { actors, fx }, geo, presets: CAMERA_PRESETS, setMode, goPreset };
 window.DHT = app;
 
 start();

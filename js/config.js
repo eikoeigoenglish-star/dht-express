@@ -19,6 +19,7 @@ export const ASSETS = {
   stations: asset('data/stations.json'), // 東京〜鹿児島中央の新幹線駅（全46駅）
   landmarks: asset('data/landmarks.json'), // ランドマーク（モデルは js/landmarks.js）
   water: asset('data/water.json'), // v3: 湖沼・河川（地形の加工と同時に tools/water.py が生成）
+  journey: asset('data/routes/journey.json'), // v5: DHT EXPRESS 全行程（新幹線・鹿児島接続・フェリー。tools/route/build_routes.py が生成）
 
   // ---- 将来追加予定（今回は読み込まない）----
   // models: {
@@ -38,6 +39,8 @@ export const ASSETS = {
  */
 export const CAMERA_PRESETS = [
   { id: 'all', label: '全体俯瞰', lat: 30.9, lon: 132.4, dist: 1800, polar: 30, azimuth: 0 },
+  // v5: 東京 → 鹿児島中央 → 那覇（DHT EXPRESS 全行程）を一望
+  { id: 'dht-route', label: 'DHT ROUTE 全体', lat: 30.75, lon: 133.6, dist: 1900, polar: 24, azimuth: 0 },
   { id: 'tokyo', label: '東京付近', lat: 35.62, lon: 139.72, dist: 150, polar: 58, azimuth: 205 },
   { id: 'tokai', label: '名古屋〜東海', lat: 35.0, lon: 137.6, dist: 260, polar: 56, azimuth: 175 },
   { id: 'kansai', label: '関西', lat: 34.72, lon: 135.55, dist: 190, polar: 56, azimuth: 195 },
