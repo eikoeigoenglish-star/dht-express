@@ -1,0 +1,34 @@
+{
+ "_comment": "DHT EXPRESS 全行程（1 DHT = 1 km）。区間を順につなぎ、累積 km（論理距離）で位置を引く。js/route.js の Journey が読む。",
+ "unit": "km",
+ "segments": [
+  {
+   "id": "shinkansen-tokyo-kagoshima",
+   "type": "rail",
+   "file": "shinkansen.json",
+   "fromKm": 0.0,
+   "toKm": 1325.9
+  },
+  {
+   "id": "connector-kagoshima",
+   "type": "connector",
+   "file": "connector-kagoshima.json",
+   "fromKm": 1325.9,
+   "toKm": 1329.4
+  },
+  {
+   "id": "ferry-kagoshima-naha",
+   "type": "ferry",
+   "file": "ferry-kagoshima-naha.json",
+   "fromKm": 1329.4,
+   "toKm": 2064.4
+  }
+ ],
+ "totalKm": 2064.4,
+ "nodes": {
+  "railIntervalKm": 10,
+  "railMajorKm": 100,
+  "railMidKm": 50,
+  "ferryIntervalKm": 10
+ }
+}
