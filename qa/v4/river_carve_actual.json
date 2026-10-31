@@ -1,0 +1,158 @@
+[
+ {
+  "name": "信濃川",
+  "lowerMaxM": 402,
+  "belowRealDemMaxM": 434,
+  "belowRealDemP95M": 144
+ },
+ {
+  "name": "利根川",
+  "lowerMaxM": 302,
+  "belowRealDemMaxM": 236,
+  "belowRealDemP95M": 93
+ },
+ {
+  "name": "阿武隈川",
+  "lowerMaxM": 200,
+  "belowRealDemMaxM": 144,
+  "belowRealDemP95M": 88
+ },
+ {
+  "name": "木曽川",
+  "lowerMaxM": 388,
+  "belowRealDemMaxM": 341,
+  "belowRealDemP95M": 214
+ },
+ {
+  "name": "天竜川",
+  "lowerMaxM": 517,
+  "belowRealDemMaxM": 493,
+  "belowRealDemP95M": 262
+ },
+ {
+  "name": "阿賀野川",
+  "lowerMaxM": 393,
+  "belowRealDemMaxM": 386,
+  "belowRealDemP95M": 176
+ },
+ {
+  "name": "四万十川",
+  "lowerMaxM": 289,
+  "belowRealDemMaxM": 294,
+  "belowRealDemP95M": 199
+ },
+ {
+  "name": "江の川",
+  "lowerMaxM": 297,
+  "belowRealDemMaxM": 290,
+  "belowRealDemP95M": 206
+ },
+ {
+  "name": "吉野川",
+  "lowerMaxM": 471,
+  "belowRealDemMaxM": 415,
+  "belowRealDemP95M": 269
+ },
+ {
+  "name": "荒川",
+  "lowerMaxM": 379,
+  "belowRealDemMaxM": 333,
+  "belowRealDemP95M": 186
+ },
+ {
+  "name": "大井川",
+  "lowerMaxM": 740,
+  "belowRealDemMaxM": 645,
+  "belowRealDemP95M": 405
+ },
+ {
+  "name": "斐伊川",
+  "lowerMaxM": 218,
+  "belowRealDemMaxM": 213,
+  "belowRealDemP95M": 122
+ },
+ {
+  "name": "那珂川",
+  "lowerMaxM": 170,
+  "belowRealDemMaxM": 119,
+  "belowRealDemP95M": 88
+ },
+ {
+  "name": "常願寺川",
+  "lowerMaxM": 449,
+  "belowRealDemMaxM": 438,
+  "belowRealDemP95M": 327
+ },
+ {
+  "name": "神通川",
+  "lowerMaxM": 567,
+  "belowRealDemMaxM": 474,
+  "belowRealDemP95M": 345
+ },
+ {
+  "name": "庄川",
+  "lowerMaxM": 525,
+  "belowRealDemMaxM": 524,
+  "belowRealDemP95M": 251
+ },
+ {
+  "name": "淀川",
+  "lowerMaxM": 345,
+  "belowRealDemMaxM": 333,
+  "belowRealDemP95M": 149
+ },
+ {
+  "name": "紀の川",
+  "lowerMaxM": 323,
+  "belowRealDemMaxM": 273,
+  "belowRealDemP95M": 189
+ },
+ {
+  "name": "長良川",
+  "lowerMaxM": 256,
+  "belowRealDemMaxM": 214,
+  "belowRealDemP95M": 137
+ },
+ {
+  "name": "矢作川",
+  "lowerMaxM": 331,
+  "belowRealDemMaxM": 288,
+  "belowRealDemP95M": 184
+ },
+ {
+  "name": "安倍川",
+  "lowerMaxM": 478,
+  "belowRealDemMaxM": 388,
+  "belowRealDemP95M": 282
+ },
+ {
+  "name": "富士川",
+  "lowerMaxM": 366,
+  "belowRealDemMaxM": 340,
+  "belowRealDemP95M": 177
+ },
+ {
+  "name": "酒匂川",
+  "lowerMaxM": 298,
+  "belowRealDemMaxM": 221,
+  "belowRealDemP95M": 159
+ },
+ {
+  "name": "相模川",
+  "lowerMaxM": 359,
+  "belowRealDemMaxM": 340,
+  "belowRealDemP95M": 206
+ },
+ {
+  "name": "多摩川",
+  "lowerMaxM": 470,
+  "belowRealDemMaxM": 421,
+  "belowRealDemP95M": 230
+ },
+ {
+  "name": "江戸川",
+  "lowerMaxM": 18,
+  "belowRealDemMaxM": 20,
+  "belowRealDemP95M": 12
+ }
+]

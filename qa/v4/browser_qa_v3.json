@@ -1,0 +1,704 @@
+{
+ "loadMs": 3707,
+ "initialDataBytes": 539686,
+ "presets": [
+  {
+   "id": "all",
+   "label": "全体俯瞰",
+   "calls": 90,
+   "tris": 201081,
+   "hi": 0,
+   "coarse": 83,
+   "hiLoaded": 76,
+   "fps": 2.3,
+   "settleMs": 24602
+  },
+  {
+   "id": "tokyo",
+   "label": "東京付近",
+   "calls": 53,
+   "tris": 159183,
+   "hi": 36,
+   "coarse": 74,
+   "hiLoaded": 131,
+   "fps": 3.5,
+   "settleMs": 33010
+  },
+  {
+   "id": "tokai",
+   "label": "名古屋〜東海",
+   "calls": 111,
+   "tris": 244275,
+   "hi": 28,
+   "coarse": 76,
+   "hiLoaded": 143,
+   "fps": 1.9,
+   "settleMs": 32190
+  },
+  {
+   "id": "kansai",
+   "label": "関西",
+   "calls": 99,
+   "tris": 248825,
+   "hi": 40,
+   "coarse": 73,
+   "hiLoaded": 150,
+   "fps": 1.6,
+   "settleMs": 45459
+  },
+  {
+   "id": "chugoku",
+   "label": "中国地方",
+   "calls": 74,
+   "tris": 157933,
+   "hi": 4,
+   "coarse": 82,
+   "hiLoaded": 160,
+   "fps": 0.9,
+   "settleMs": 42256
+  },
+  {
+   "id": "nkyushu",
+   "label": "北部九州",
+   "calls": 87,
+   "tris": 224753,
+   "hi": 40,
+   "coarse": 73,
+   "hiLoaded": 160,
+   "fps": 1.5,
+   "settleMs": 40139
+  },
+  {
+   "id": "kagoshima",
+   "label": "鹿児島",
+   "calls": 46,
+   "tris": 178829,
+   "hi": 48,
+   "coarse": 71,
+   "hiLoaded": 160,
+   "fps": 2.2,
+   "settleMs": 49323
+  },
+  {
+   "id": "amami",
+   "label": "鹿児島〜奄美",
+   "calls": 54,
+   "tris": 118137,
+   "hi": 0,
+   "coarse": 83,
+   "hiLoaded": 170,
+   "fps": 1.6,
+   "settleMs": 39055
+  },
+  {
+   "id": "okinawa",
+   "label": "沖縄",
+   "calls": 25,
+   "tris": 125570,
+   "hi": 20,
+   "coarse": 78,
+   "hiLoaded": 174,
+   "fps": 2.4,
+   "settleMs": 38636
+  },
+  {
+   "id": "tokyo-center",
+   "label": "東京都心",
+   "calls": 43,
+   "tris": 256687,
+   "hi": 52,
+   "coarse": 70,
+   "hiLoaded": 174,
+   "fps": 1.7,
+   "settleMs": 42340
+  },
+  {
+   "id": "nagoya",
+   "label": "名古屋",
+   "calls": 55,
+   "tris": 203989,
+   "hi": 48,
+   "coarse": 71,
+   "hiLoaded": 174,
+   "fps": 3.8,
+   "settleMs": 47976
+  },
+  {
+   "id": "kyoto-osaka",
+   "label": "京都・大阪",
+   "calls": 67,
+   "tris": 204033,
+   "hi": 52,
+   "coarse": 70,
+   "hiLoaded": 174,
+   "fps": 1.7,
+   "settleMs": 39716
+  },
+  {
+   "id": "setouchi",
+   "label": "岡山・瀬戸大橋",
+   "calls": 69,
+   "tris": 228471,
+   "hi": 56,
+   "coarse": 69,
+   "hiLoaded": 174,
+   "fps": 2,
+   "settleMs": 46943
+  },
+  {
+   "id": "hiroshima",
+   "label": "広島・宮島",
+   "calls": 95,
+   "tris": 254409,
+   "hi": 52,
+   "coarse": 70,
+   "hiLoaded": 174,
+   "fps": 1.9,
+   "settleMs": 42937
+  },
+  {
+   "id": "kanmon",
+   "label": "関門海峡・福岡",
+   "calls": 77,
+   "tris": 229707,
+   "hi": 44,
+   "coarse": 72,
+   "hiLoaded": 174,
+   "fps": 2.2,
+   "settleMs": 51387
+  },
+  {
+   "id": "kumamoto",
+   "label": "熊本",
+   "calls": 52,
+   "tris": 197381,
+   "hi": 52,
+   "coarse": 70,
+   "hiLoaded": 174,
+   "fps": 1.5,
+   "settleMs": 43690
+  }
+ ],
+ "checks": {
+  "placement": {
+   "landmarks": [
+    {
+     "id": "tokyo-skytree",
+     "kind": "skytree",
+     "built": true,
+     "meshY": 0.1156,
+     "groundY": 0.1156,
+     "surfaceY": 0.1184,
+     "surfaceM": 39
+    },
+    {
+     "id": "tokyo-tower",
+     "kind": "tokyoTower",
+     "built": true,
+     "meshY": 0.078,
+     "groundY": 0.078,
+     "surfaceY": 0.0801,
+     "surfaceM": 27
+    },
+    {
+     "id": "sensoji",
+     "kind": "temple",
+     "built": true,
+     "meshY": 0.1311,
+     "groundY": 0.1311,
+     "surfaceY": 0.1321,
+     "surfaceM": 44
+    },
+    {
+     "id": "nagoya-castle",
+     "kind": "castleNagoya",
+     "built": true,
+     "meshY": 0.1658,
+     "groundY": 0.1658,
+     "surfaceY": 0.1678,
+     "surfaceM": 56
+    },
+    {
+     "id": "jr-central-towers",
+     "kind": "twinTowers",
+     "built": true,
+     "meshY": 0.1215,
+     "groundY": 0.1215,
+     "surfaceY": 0.1231,
+     "surfaceM": 41
+    },
+    {
+     "id": "kyoto-tower",
+     "kind": "kyotoTower",
+     "built": true,
+     "meshY": 0.122,
+     "groundY": 0.122,
+     "surfaceY": 0.1232,
+     "surfaceM": 41
+    },
+    {
+     "id": "kinkakuji",
+     "kind": "kinkaku",
+     "built": true,
+     "meshY": 0.1666,
+     "groundY": 0.1666,
+     "surfaceY": 0.168,
+     "surfaceM": 56
+    },
+    {
+     "id": "tempozan-wheel",
+     "kind": "ferrisWheel",
+     "built": true,
+     "meshY": 0.0425,
+     "groundY": 0.0425,
+     "surfaceY": 0.0464,
+     "surfaceM": 15
+    },
+    {
+     "id": "daisen-kofun",
+     "kind": "kofun",
+     "built": true,
+     "meshY": 0.1296,
+     "groundY": 0.1296,
+     "surfaceY": 0.1303,
+     "surfaceM": 43
+    },
+    {
+     "id": "akashi-kaikyo-bridge",
+     "kind": "bridge",
+     "built": true,
+     "meshY": 0,
+     "groundY": 0,
+     "surfaceY": 0,
+     "surfaceM": 0
+    },
+    {
+     "id": "himeji-castle",
+     "kind": "castleHimeji",
+     "built": true,
+     "meshY": 0.235,
+     "groundY": 0.235,
+     "surfaceY": 0.2374,
+     "surfaceM": 79
+    },
+    {
+     "id": "kibitsu-jinja",
+     "kind": "kibitsu",
+     "built": true,
+     "meshY": 0.2043,
+     "groundY": 0.2043,
+     "surfaceY": 0.2047,
+     "surfaceM": 68
+    },
+    {
+     "id": "seto-ohashi",
+     "kind": "bridge",
+     "built": true,
+     "meshY": 0,
+     "groundY": 0,
+     "surfaceY": 0,
+     "surfaceM": 0
+    },
+    {
+     "id": "itsukushima-jinja",
+     "kind": "itsukushima",
+     "built": true,
+     "meshY": 0.0169,
+     "groundY": 0.0169,
+     "surfaceY": 0.0198,
+     "surfaceM": 7
+    },
+    {
+     "id": "kanmon-bridge",
+     "kind": "bridge",
+     "built": true,
+     "meshY": 0,
+     "groundY": 0,
+     "surfaceY": 0,
+     "surfaceM": 0
+    },
+    {
+     "id": "fukuoka-tower",
+     "kind": "fukuokaTower",
+     "built": true,
+     "meshY": 0.01,
+     "groundY": 0.01,
+     "surfaceY": 0.0115,
+     "surfaceM": 4
+    },
+    {
+     "id": "kumamoto-castle",
+     "kind": "castleKumamoto",
+     "built": true,
+     "meshY": 0.039,
+     "groundY": 0.039,
+     "surfaceY": 0.039,
+     "surfaceM": 13
+    }
+   ],
+   "stations": [
+    {
+     "name": "東京",
+     "y": 0.1081,
+     "surfaceY": 0.1081,
+     "m": 36
+    },
+    {
+     "name": "品川",
+     "y": 0.08,
+     "surfaceY": 0.08,
+     "m": 27
+    },
+    {
+     "name": "新横浜",
+     "y": 0.2092,
+     "surfaceY": 0.2092,
+     "m": 70
+    },
+    {
+     "name": "小田原",
+     "y": 0.0125,
+     "surfaceY": 0.0125,
+     "m": 4
+    },
+    {
+     "name": "熱海",
+     "y": 0.0264,
+     "surfaceY": 0.0264,
+     "m": 9
+    },
+    {
+     "name": "三島",
+     "y": 0.3988,
+     "surfaceY": 0.3988,
+     "m": 133
+    },
+    {
+     "name": "新富士",
+     "y": 0.077,
+     "surfaceY": 0.077,
+     "m": 26
+    },
+    {
+     "name": "静岡",
+     "y": 0.1644,
+     "surfaceY": 0.1644,
+     "m": 55
+    },
+    {
+     "name": "掛川",
+     "y": 0.2469,
+     "surfaceY": 0.2469,
+     "m": 82
+    },
+    {
+     "name": "浜松",
+     "y": 0.1732,
+     "surfaceY": 0.1732,
+     "m": 58
+    },
+    {
+     "name": "豊橋",
+     "y": 0.1813,
+     "surfaceY": 0.1813,
+     "m": 60
+    },
+    {
+     "name": "三河安城",
+     "y": 0.3523,
+     "surfaceY": 0.3523,
+     "m": 117
+    },
+    {
+     "name": "名古屋",
+     "y": 0.1209,
+     "surfaceY": 0.1209,
+     "m": 40
+    },
+    {
+     "name": "岐阜羽島",
+     "y": 0.3049,
+     "surfaceY": 0.3049,
+     "m": 102
+    },
+    {
+     "name": "米原",
+     "y": 0.1968,
+     "surfaceY": 0.1968,
+     "m": 66
+    },
+    {
+     "name": "京都",
+     "y": 0.1262,
+     "surfaceY": 0.1262,
+     "m": 42
+    },
+    {
+     "name": "新大阪",
+     "y": 0.057,
+     "surfaceY": 0.057,
+     "m": 19
+    },
+    {
+     "name": "新神戸",
+     "y": 0.2546,
+     "surfaceY": 0.2546,
+     "m": 85
+    },
+    {
+     "name": "西明石",
+     "y": 0.0789,
+     "surfaceY": 0.0789,
+     "m": 26
+    },
+    {
+     "name": "姫路",
+     "y": 0.1949,
+     "surfaceY": 0.1949,
+     "m": 65
+    },
+    {
+     "name": "相生",
+     "y": 0.2929,
+     "surfaceY": 0.2929,
+     "m": 98
+    },
+    {
+     "name": "岡山",
+     "y": 0.2063,
+     "surfaceY": 0.2063,
+     "m": 69
+    },
+    {
+     "name": "新倉敷",
+     "y": 0.348,
+     "surfaceY": 0.348,
+     "m": 116
+    },
+    {
+     "name": "福山",
+     "y": 0.3257,
+     "surfaceY": 0.3257,
+     "m": 109
+    },
+    {
+     "name": "新尾道",
+     "y": 0.2351,
+     "surfaceY": 0.2351,
+     "m": 78
+    },
+    {
+     "name": "三原",
+     "y": 0.0877,
+     "surfaceY": 0.0877,
+     "m": 29
+    },
+    {
+     "name": "東広島",
+     "y": 0.378,
+     "surfaceY": 0.378,
+     "m": 126
+    },
+    {
+     "name": "広島",
+     "y": 0.1827,
+     "surfaceY": 0.1827,
+     "m": 61
+    },
+    {
+     "name": "新岩国",
+     "y": 0.4935,
+     "surfaceY": 0.4935,
+     "m": 164
+    },
+    {
+     "name": "徳山",
+     "y": 0.0998,
+     "surfaceY": 0.0998,
+     "m": 33
+    },
+    {
+     "name": "新山口",
+     "y": 0.2395,
+     "surfaceY": 0.2395,
+     "m": 80
+    },
+    {
+     "name": "厚狭",
+     "y": 0.2927,
+     "surfaceY": 0.2927,
+     "m": 98
+    },
+    {
+     "name": "新下関",
+     "y": 0.2377,
+     "surfaceY": 0.2377,
+     "m": 79
+    },
+    {
+     "name": "小倉",
+     "y": 0.044,
+     "surfaceY": 0.044,
+     "m": 15
+    },
+    {
+     "name": "博多",
+     "y": 0.0663,
+     "surfaceY": 0.0663,
+     "m": 22
+    },
+    {
+     "name": "新鳥栖",
+     "y": 0.4434,
+     "surfaceY": 0.4434,
+     "m": 148
+    },
+    {
+     "name": "久留米",
+     "y": 0.1463,
+     "surfaceY": 0.1463,
+     "m": 49
+    },
+    {
+     "name": "筑後船小屋",
+     "y": 0.105,
+     "surfaceY": 0.105,
+     "m": 35
+    },
+    {
+     "name": "新大牟田",
+     "y": 0.0801,
+     "surfaceY": 0.0801,
+     "m": 27
+    },
+    {
+     "name": "新玉名",
+     "y": 0.0624,
+     "surfaceY": 0.0624,
+     "m": 21
+    },
+    {
+     "name": "熊本",
+     "y": 0.0361,
+     "surfaceY": 0.0361,
+     "m": 12
+    },
+    {
+     "name": "新八代",
+     "y": 0.015,
+     "surfaceY": 0.015,
+     "m": 5
+    },
+    {
+     "name": "新水俣",
+     "y": 0.1,
+     "surfaceY": 0.1,
+     "m": 33
+    },
+    {
+     "name": "出水",
+     "y": 0.2273,
+     "surfaceY": 0.2273,
+     "m": 76
+    },
+    {
+     "name": "川内",
+     "y": 0.526,
+     "surfaceY": 0.526,
+     "m": 175
+    },
+    {
+     "name": "鹿児島中央",
+     "y": 0.1922,
+     "surfaceY": 0.1922,
+     "m": 64
+    }
+   ]
+  },
+  "buildings": {
+   "instances": 46929,
+   "onWater": 0,
+   "floatingBase": 0,
+   "buriedTop": 1,
+   "onSteep120mPerKm": 27,
+   "samples": []
+  },
+  "flights": [
+   {
+    "name": "kofu_to_misaka",
+    "frames": 34,
+    "km": 34.9,
+    "framesInsideTerrain": 0,
+    "minAboveFloorKm": 0,
+    "minAglKm": 1.16,
+    "maxGroundM": 1274
+   },
+   {
+    "name": "kofu_to_misaka_slow",
+    "frames": 33,
+    "km": 12.5,
+    "framesInsideTerrain": 0,
+    "minAboveFloorKm": 0.077,
+    "minAglKm": 1.121,
+    "maxGroundM": 444
+   },
+   {
+    "name": "sagami_to_tanzawa",
+    "frames": 31,
+    "km": 41.9,
+    "framesInsideTerrain": 0,
+    "minAboveFloorKm": 0.073,
+    "minAglKm": 1.32,
+    "maxGroundM": 947
+   },
+   {
+    "name": "tokyobay_to_boso",
+    "frames": 34,
+    "km": 27.2,
+    "framesInsideTerrain": 0,
+    "minAboveFloorKm": 0.001,
+    "minAglKm": 1.005,
+    "maxGroundM": 125
+   },
+   {
+    "name": "miura_south",
+    "frames": 31,
+    "km": 43.8,
+    "framesInsideTerrain": 0,
+    "minAboveFloorKm": 0.005,
+    "minAglKm": 1.008,
+    "maxGroundM": 76
+   },
+   {
+    "name": "fuji_summit",
+    "frames": 33,
+    "km": 47.7,
+    "framesInsideTerrain": 0,
+    "minAboveFloorKm": 0,
+    "minAglKm": 1.852,
+    "maxGroundM": 3131
+   },
+   {
+    "name": "kamiyama_hakone",
+    "frames": 25,
+    "km": 18.7,
+    "framesInsideTerrain": 0,
+    "minAboveFloorKm": 0.163,
+    "minAglKm": 1.28,
+    "maxGroundM": 705
+   },
+   {
+    "name": "alps_crossing",
+    "frames": 35,
+    "km": 58.1,
+    "framesInsideTerrain": 0,
+    "minAboveFloorKm": 0,
+    "minAglKm": 1.09,
+    "maxGroundM": 2612
+   }
+  ]
+ },
+ "errors": [],
+ "http4xx5xx": [],
+ "dataRequests": 181
+}

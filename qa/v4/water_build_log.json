@@ -1,0 +1,432 @@
+{
+ "lakes": [
+  {
+   "id": "lake-kasumigaura",
+   "name": "霞ヶ浦",
+   "levelM": 3.0,
+   "demLevelM": 0.0,
+   "cutFillMaxM": 32.0
+  },
+  {
+   "id": "lake-kitaura",
+   "name": "北浦",
+   "levelM": 3.0,
+   "demLevelM": 0.0,
+   "cutFillMaxM": 47.0
+  },
+  {
+   "id": "lake-hamana",
+   "name": "浜名湖",
+   "levelM": 3.0,
+   "demLevelM": 0.0,
+   "cutFillMaxM": 199.0
+  },
+  {
+   "id": "lake-nakaumi",
+   "name": "中海",
+   "levelM": 3.0,
+   "demLevelM": 0.0,
+   "cutFillMaxM": 132.0
+  },
+  {
+   "id": "lake-shinji",
+   "name": "宍道湖",
+   "levelM": 3.0,
+   "demLevelM": 0.0,
+   "cutFillMaxM": 139.0
+  },
+  {
+   "id": "lake-suwa",
+   "name": "諏訪湖",
+   "levelM": 758.5,
+   "demLevelM": 758.5,
+   "cutFillMaxM": 300.0
+  },
+  {
+   "id": "lake-chuzenji",
+   "name": "中禅寺湖",
+   "levelM": 1268.5,
+   "demLevelM": 1268.5,
+   "cutFillMaxM": 440.0
+  },
+  {
+   "id": "lake-ikeda",
+   "name": "池田湖",
+   "levelM": 65.0,
+   "demLevelM": 65.0,
+   "cutFillMaxM": 241.0
+  },
+  {
+   "id": "lake-hibara",
+   "name": "桧原湖",
+   "levelM": 820.0,
+   "demLevelM": 820.0,
+   "cutFillMaxM": 262.0
+  },
+  {
+   "id": "lake-inba",
+   "name": "印旛沼",
+   "levelM": 3.0,
+   "demLevelM": 0.0,
+   "cutFillMaxM": 37.0
+  },
+  {
+   "id": "lake-hinuma",
+   "name": "涸沼",
+   "levelM": 6.0,
+   "demLevelM": 6.0,
+   "cutFillMaxM": 37.0
+  },
+  {
+   "id": "lake-motosu",
+   "name": "本栖湖",
+   "levelM": 899.0,
+   "demLevelM": 899.0,
+   "cutFillMaxM": 380.0
+  },
+  {
+   "id": "lake-shoji",
+   "name": "精進湖",
+   "levelM": 899.0,
+   "demLevelM": 899.0,
+   "cutFillMaxM": 259.0
+  },
+  {
+   "id": "lake-sai",
+   "name": "西湖",
+   "levelM": 899.0,
+   "demLevelM": 899.0,
+   "cutFillMaxM": 329.0
+  },
+  {
+   "id": "lake-kawaguchi",
+   "name": "河口湖",
+   "levelM": 831.0,
+   "demLevelM": 831.0,
+   "cutFillMaxM": 397.0
+  },
+  {
+   "id": "lake-yamanaka",
+   "name": "山中湖",
+   "levelM": 981.5,
+   "demLevelM": 981.5,
+   "cutFillMaxM": 174.0
+  },
+  {
+   "id": "lake-ashi",
+   "name": "芦ノ湖",
+   "levelM": 727.5,
+   "demLevelM": 727.5,
+   "cutFillMaxM": 362.0
+  },
+  {
+   "id": "lake-togo",
+   "name": "東郷池",
+   "levelM": 3.0,
+   "demLevelM": 0.0,
+   "cutFillMaxM": 112.0
+  },
+  {
+   "id": "lake-koyama",
+   "name": "湖山池",
+   "levelM": 3.0,
+   "demLevelM": 0.0,
+   "cutFillMaxM": 82.0
+  },
+  {
+   "id": "lake-inawashiro",
+   "name": "猪苗代湖",
+   "levelM": 513.0,
+   "demLevelM": 513.0,
+   "cutFillMaxM": 205.0
+  }
+ ],
+ "rivers": [
+  {
+   "id": "river-shinano",
+   "name": "信濃川",
+   "lengthKm": 253.3,
+   "cutMaxM": 317.0,
+   "cutMeanM": 48.4,
+   "cutP95M": 153.0,
+   "maxShiftKm": 4.62,
+   "belowRealFloorMaxM": 173.0,
+   "belowRealFloorP95M": 37.0
+  },
+  {
+   "id": "river-tone",
+   "name": "利根川",
+   "lengthKm": 262.7,
+   "cutMaxM": 217.0,
+   "cutMeanM": 22.1,
+   "cutP95M": 127.0,
+   "maxShiftKm": 1.52,
+   "belowRealFloorMaxM": 105.0,
+   "belowRealFloorP95M": 6.0
+  },
+  {
+   "id": "river-abukuma",
+   "name": "阿武隈川",
+   "lengthKm": 91.3,
+   "cutMaxM": 196.0,
+   "cutMeanM": 33.0,
+   "cutP95M": 104.0,
+   "maxShiftKm": 6.25,
+   "belowRealFloorMaxM": 145.0,
+   "belowRealFloorP95M": 27.0
+  },
+  {
+   "id": "river-kiso",
+   "name": "木曽川",
+   "lengthKm": 176.6,
+   "cutMaxM": 271.0,
+   "cutMeanM": 79.6,
+   "cutP95M": 194.0,
+   "maxShiftKm": 3.21,
+   "belowRealFloorMaxM": 202.0,
+   "belowRealFloorP95M": 22.0
+  },
+  {
+   "id": "river-tenryu",
+   "name": "天竜川",
+   "lengthKm": 165.8,
+   "cutMaxM": 325.0,
+   "cutMeanM": 84.3,
+   "cutP95M": 226.0,
+   "maxShiftKm": 5.08,
+   "belowRealFloorMaxM": 200.0,
+   "belowRealFloorP95M": 31.0
+  },
+  {
+   "id": "river-agano",
+   "name": "阿賀野川",
+   "lengthKm": 122.6,
+   "cutMaxM": 265.0,
+   "cutMeanM": 72.3,
+   "cutP95M": 168.0,
+   "maxShiftKm": 6.52,
+   "belowRealFloorMaxM": 170.0,
+   "belowRealFloorP95M": 44.0
+  },
+  {
+   "id": "river-shimanto",
+   "name": "四万十川",
+   "lengthKm": 100.6,
+   "cutMaxM": 196.0,
+   "cutMeanM": 88.6,
+   "cutP95M": 168.0,
+   "maxShiftKm": 3.86,
+   "belowRealFloorMaxM": 205.0,
+   "belowRealFloorP95M": 75.0
+  },
+  {
+   "id": "river-gonokawa",
+   "name": "江の川",
+   "lengthKm": 115.0,
+   "cutMaxM": 240.0,
+   "cutMeanM": 88.9,
+   "cutP95M": 192.0,
+   "maxShiftKm": 7.21,
+   "belowRealFloorMaxM": 223.0,
+   "belowRealFloorP95M": 142.0
+  },
+  {
+   "id": "river-yoshino",
+   "name": "吉野川",
+   "lengthKm": 159.9,
+   "cutMaxM": 307.0,
+   "cutMeanM": 96.8,
+   "cutP95M": 220.0,
+   "maxShiftKm": 4.23,
+   "belowRealFloorMaxM": 295.0,
+   "belowRealFloorP95M": 21.0
+  },
+  {
+   "id": "river-arakawa",
+   "name": "荒川",
+   "lengthKm": 142.3,
+   "cutMaxM": 301.0,
+   "cutMeanM": 47.1,
+   "cutP95M": 238.0,
+   "maxShiftKm": 1.48,
+   "belowRealFloorMaxM": 297.0,
+   "belowRealFloorP95M": 37.0
+  },
+  {
+   "id": "river-oi",
+   "name": "大井川",
+   "lengthKm": 113.6,
+   "cutMaxM": 618.0,
+   "cutMeanM": 154.9,
+   "cutP95M": 345.0,
+   "maxShiftKm": 7.04,
+   "belowRealFloorMaxM": 662.0,
+   "belowRealFloorP95M": 53.0
+  },
+  {
+   "id": "river-hii",
+   "name": "斐伊川",
+   "lengthKm": 55.0,
+   "cutMaxM": 161.0,
+   "cutMeanM": 49.2,
+   "cutP95M": 112.0,
+   "maxShiftKm": 3.73,
+   "belowRealFloorMaxM": 132.0,
+   "belowRealFloorP95M": 39.0
+  },
+  {
+   "id": "river-naka",
+   "name": "那珂川",
+   "lengthKm": 119.1,
+   "cutMaxM": 247.0,
+   "cutMeanM": 26.2,
+   "cutP95M": 77.0,
+   "maxShiftKm": 3.97,
+   "belowRealFloorMaxM": 127.0,
+   "belowRealFloorP95M": 8.0
+  },
+  {
+   "id": "river-joganji",
+   "name": "常願寺川",
+   "lengthKm": 41.7,
+   "cutMaxM": 327.0,
+   "cutMeanM": 112.1,
+   "cutP95M": 302.0,
+   "maxShiftKm": 2.68,
+   "belowRealFloorMaxM": 247.0,
+   "belowRealFloorP95M": 130.0
+  },
+  {
+   "id": "river-jinzu",
+   "name": "神通川",
+   "lengthKm": 74.5,
+   "cutMaxM": 440.0,
+   "cutMeanM": 127.4,
+   "cutP95M": 324.0,
+   "maxShiftKm": 4.89,
+   "belowRealFloorMaxM": 400.0,
+   "belowRealFloorP95M": 217.0
+  },
+  {
+   "id": "river-sho",
+   "name": "庄川",
+   "lengthKm": 100.4,
+   "cutMaxM": 453.0,
+   "cutMeanM": 89.5,
+   "cutP95M": 235.0,
+   "maxShiftKm": 5.1,
+   "belowRealFloorMaxM": 416.0,
+   "belowRealFloorP95M": 71.0
+  },
+  {
+   "id": "river-yodo",
+   "name": "淀川",
+   "lengthKm": 58.8,
+   "cutMaxM": 241.0,
+   "cutMeanM": 25.5,
+   "cutP95M": 185.0,
+   "maxShiftKm": 7.17,
+   "belowRealFloorMaxM": 193.0,
+   "belowRealFloorP95M": 89.0
+  },
+  {
+   "id": "river-kinokawa",
+   "name": "紀の川",
+   "lengthKm": 104.0,
+   "cutMaxM": 283.0,
+   "cutMeanM": 69.9,
+   "cutP95M": 209.0,
+   "maxShiftKm": 2.88,
+   "belowRealFloorMaxM": 251.0,
+   "belowRealFloorP95M": 23.0
+  },
+  {
+   "id": "river-nagara",
+   "name": "長良川",
+   "lengthKm": 117.6,
+   "cutMaxM": 209.0,
+   "cutMeanM": 48.2,
+   "cutP95M": 141.0,
+   "maxShiftKm": 2.43,
+   "belowRealFloorMaxM": 73.0,
+   "belowRealFloorP95M": 10.0
+  },
+  {
+   "id": "river-yahagi",
+   "name": "矢作川",
+   "lengthKm": 86.9,
+   "cutMaxM": 220.0,
+   "cutMeanM": 65.4,
+   "cutP95M": 189.0,
+   "maxShiftKm": 6.7,
+   "belowRealFloorMaxM": 147.0,
+   "belowRealFloorP95M": 25.0
+  },
+  {
+   "id": "river-abe",
+   "name": "安倍川",
+   "lengthKm": 48.8,
+   "cutMaxM": 336.0,
+   "cutMeanM": 122.2,
+   "cutP95M": 277.0,
+   "maxShiftKm": 1.94,
+   "belowRealFloorMaxM": 202.0,
+   "belowRealFloorP95M": 33.0
+  },
+  {
+   "id": "river-fuji",
+   "name": "富士川",
+   "lengthKm": 103.7,
+   "cutMaxM": 347.0,
+   "cutMeanM": 73.8,
+   "cutP95M": 209.0,
+   "maxShiftKm": 4.43,
+   "belowRealFloorMaxM": 284.0,
+   "belowRealFloorP95M": 21.0
+  },
+  {
+   "id": "river-sakawa",
+   "name": "酒匂川",
+   "lengthKm": 31.9,
+   "cutMaxM": 168.0,
+   "cutMeanM": 44.5,
+   "cutP95M": 133.0,
+   "maxShiftKm": 1.09,
+   "belowRealFloorMaxM": 149.0,
+   "belowRealFloorP95M": 54.0
+  },
+  {
+   "id": "river-sagami",
+   "name": "相模川",
+   "lengthKm": 86.0,
+   "cutMaxM": 489.0,
+   "cutMeanM": 65.7,
+   "cutP95M": 163.0,
+   "maxShiftKm": 3.41,
+   "belowRealFloorMaxM": 427.0,
+   "belowRealFloorP95M": 85.0
+  },
+  {
+   "id": "river-tama",
+   "name": "多摩川",
+   "lengthKm": 106.1,
+   "cutMaxM": 281.0,
+   "cutMeanM": 73.1,
+   "cutP95M": 206.0,
+   "maxShiftKm": 1.21,
+   "belowRealFloorMaxM": 253.0,
+   "belowRealFloorP95M": 29.0
+  },
+  {
+   "id": "river-edo",
+   "name": "江戸川",
+   "lengthKm": 55.5,
+   "cutMaxM": 8.0,
+   "cutMeanM": 1.0,
+   "cutP95M": 6.0,
+   "maxShiftKm": 1.36,
+   "belowRealFloorMaxM": 6.0,
+   "belowRealFloorP95M": 4.0
+  }
+ ]
+}

@@ -1,0 +1,175 @@
+{
+ "res": [
+  {
+   "id": "tokyo-skytree",
+   "kind": "skytree",
+   "meshY": 0.0121,
+   "groundYmin": 0.0121,
+   "surfaceY": 0.0128,
+   "surfaceM": 4,
+   "floatingM": 0,
+   "sinkM": 0
+  },
+  {
+   "id": "tokyo-tower",
+   "kind": "tokyoTower",
+   "meshY": 0.0473,
+   "groundYmin": 0.0473,
+   "surfaceY": 0.0482,
+   "surfaceM": 16,
+   "floatingM": 0,
+   "sinkM": 0
+  },
+  {
+   "id": "sensoji",
+   "kind": "temple",
+   "meshY": 0.0222,
+   "groundYmin": 0.0222,
+   "surfaceY": 0.0225,
+   "surfaceM": 7,
+   "floatingM": 0,
+   "sinkM": 0
+  },
+  {
+   "id": "nagoya-castle",
+   "kind": "castleNagoya",
+   "meshY": 0.0131,
+   "groundYmin": 0.0131,
+   "surfaceY": 0.0136,
+   "surfaceM": 5,
+   "floatingM": 0,
+   "sinkM": 0
+  },
+  {
+   "id": "jr-central-towers",
+   "kind": "twinTowers",
+   "meshY": 0.0104,
+   "groundYmin": 0.0104,
+   "surfaceY": 0.0111,
+   "surfaceM": 4,
+   "floatingM": 0,
+   "sinkM": 0
+  },
+  {
+   "id": "kyoto-tower",
+   "kind": "kyotoTower",
+   "meshY": 0.0979,
+   "groundYmin": 0.0979,
+   "surfaceY": 0.0985,
+   "surfaceM": 33,
+   "floatingM": 0,
+   "sinkM": 0
+  },
+  {
+   "id": "kinkakuji",
+   "kind": "kinkaku",
+   "meshY": 0.2966,
+   "groundYmin": 0.2966,
+   "surfaceY": 0.3039,
+   "surfaceM": 101,
+   "floatingM": 0,
+   "sinkM": 2
+  },
+  {
+   "id": "tempozan-wheel",
+   "kind": "ferrisWheel",
+   "meshY": 0.0096,
+   "groundYmin": 0.0096,
+   "surfaceY": 0.0106,
+   "surfaceM": 4,
+   "floatingM": 0,
+   "sinkM": 0
+  },
+  {
+   "id": "daisen-kofun",
+   "kind": "kofun",
+   "meshY": 0.054,
+   "groundYmin": 0.054,
+   "surfaceY": 0.0541,
+   "surfaceM": 18,
+   "floatingM": 0,
+   "sinkM": 0
+  },
+  {
+   "id": "akashi-kaikyo-bridge",
+   "kind": "bridge",
+   "meshY": 0,
+   "groundYmin": 0,
+   "surfaceY": 0,
+   "surfaceM": 0,
+   "floatingM": 0,
+   "sinkM": 0
+  },
+  {
+   "id": "himeji-castle",
+   "kind": "castleHimeji",
+   "meshY": 0.0514,
+   "groundYmin": 0.0514,
+   "surfaceY": 0.0516,
+   "surfaceM": 17,
+   "floatingM": 0,
+   "sinkM": 0
+  },
+  {
+   "id": "kibitsu-jinja",
+   "kind": "kibitsu",
+   "meshY": 0.026,
+   "groundYmin": 0.026,
+   "surfaceY": 0.0334,
+   "surfaceM": 11,
+   "floatingM": 0,
+   "sinkM": 2
+  },
+  {
+   "id": "seto-ohashi",
+   "kind": "bridge",
+   "meshY": 0,
+   "groundYmin": 0,
+   "surfaceY": 0,
+   "surfaceM": 0,
+   "floatingM": 0,
+   "sinkM": 0
+  },
+  {
+   "id": "itsukushima-jinja",
+   "kind": "itsukushima",
+   "meshY": 0.0338,
+   "groundYmin": 0.0338,
+   "surfaceY": 0.0384,
+   "surfaceM": 13,
+   "floatingM": 0,
+   "sinkM": 2
+  },
+  {
+   "id": "kanmon-bridge",
+   "kind": "bridge",
+   "meshY": 0,
+   "groundYmin": 0.0365,
+   "surfaceY": 0.0518,
+   "surfaceM": 17,
+   "floatingM": -12,
+   "sinkM": 17
+  },
+  {
+   "id": "fukuoka-tower",
+   "kind": "fukuokaTower",
+   "meshY": 0.009,
+   "groundYmin": 0.009,
+   "surfaceY": 0.009,
+   "surfaceM": 3,
+   "floatingM": 0,
+   "sinkM": 0
+  },
+  {
+   "id": "kumamoto-castle",
+   "kind": "castleKumamoto",
+   "meshY": 0.0697,
+   "groundYmin": 0.0697,
+   "surfaceY": 0.0705,
+   "surfaceM": 24,
+   "floatingM": 0,
+   "sinkM": 0
+  }
+ ],
+ "errors": []
+}
