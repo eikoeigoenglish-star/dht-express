@@ -21,13 +21,12 @@ export const ASSETS = {
   water: asset('data/water.json'), // v3: 湖沼・河川（地形の加工と同時に tools/water.py が生成）
   journey: asset('data/routes/journey.json'), // v5: DHT EXPRESS 全行程（新幹線・鹿児島接続・フェリー。tools/route/build_routes.py が生成）
 
-  // ---- 将来追加予定（今回は読み込まない）----
-  // models: {
-  //   train:    asset('models/train.glb'),
-  //   squirrel: asset('models/characters/squirrel.glb'),
-  //   duck:     asset('models/characters/duck.glb'),
-  //   monkey:   asset('models/characters/monkey.glb'),
-  // },
+  // v7: FOREST SCHOOL の列車・船（GLB。塗装は js/livery.js が読み込み後に適用）
+  models: {
+    train: asset('models/forest-school-train.glb'),
+    ship: asset('models/forest-school-ship.glb'),
+    // 将来：characters/squirrel.glb などをここへ
+  },
 };
 
 /**

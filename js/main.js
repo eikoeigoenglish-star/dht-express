@@ -17,6 +17,9 @@
  *   ui.js          HUD
  *   route.js       v5: 距離ベースのルートエンジン（論理 km → 3D 位置。Journey / RailRoute / FerryRoute）
  *   journey.js     v5: ルート線・10km 発光ノード・寄港地の表示
+ *   livery.js      v7: FOREST SCHOOL の列車・船の塗装（GLB 読み込み後にマテリアルを差し替え）
+ *   vehicles.js    v7: 列車・船の配置と「昨日 → 今日」の移動アニメーション
+ *   progress.js    v7: DHT 進捗 API（GAS。fetch → 失敗時 JSONP）と進捗パネル
  *
  * シーングラフ
  *   scene
@@ -27,7 +30,7 @@
  *    ├─ landmarks   (landmark_* … 1件 = 1 Mesh)
  *    ├─ water       (lakes, rivers … 全湖・全河川で Mesh 2 つ)   ← v3
  *    ├─ journey     (route-* 線 5 本 + route-nodes 1 つ)          ← v5 DHT EXPRESS ルート
- *    ├─ actors      ← 将来：列車・9体のキャラクター GLB をここへ
+ *    ├─ actors      (dht-vehicles: vehicle-train / vehicle-ship)  ← v7。将来：9体のキャラクター GLB もここへ
  *    └─ fx          ← 将来：演出・パーティクル
  */
 import * as THREE from 'three';
@@ -44,6 +47,8 @@ import { createCamera, CameraRig, presetToView, presetToExploreView } from './ca
 import { MapController, ExploreController } from './controls.js';
 import { PlaceLabels } from './labels.js';
 import { UI } from './ui.js';
+import { VehicleSystem } from './vehicles.js';
+import { loadProgress, ProgressHud } from './progress.js';
 import * as geo from './geo.js';
 
 const canvas = document.getElementById('scene');
@@ -79,6 +84,15 @@ actors.name = 'actors';
 const fx = new THREE.Group();
 fx.name = 'fx';
 scene.add(actors, fx);
+
+// v7: FOREST SCHOOL の列車・船。進捗 API は起動と同時に取りに行く（地形の読み込みを待たない）
+const vehicles = new VehicleSystem(terrain, { renderer, urbanAt: (x, z) => cities.densityAt(x, z) });
+actors.add(vehicles.group);
+vehicles.attachTags(document.getElementById('labels-layer'));
+const progressPromise = loadProgress().then(
+  (r) => r,
+  (e) => ({ error: e }),
+);
 
 const rig = new CameraRig(camera);
 const mapCtl = new MapController(camera, canvas, terrain);
@@ -252,6 +266,44 @@ async function setupJourney() {
   }
 }
 
+/** v7: 列車・船の GLB を読み込み、進捗 API の結果で「昨日 → 今日」を再生する */
+const hud = new ProgressHud(document.getElementById('dht-progress'), {
+  onReplay: () => vehicles.play(0.2),
+  onFocus: (kind) => {
+    if (!vehicles.plan) return;
+    goPreset(vehicles.focusPreset(kind));
+  },
+});
+hud.setLoading();
+vehicles.onLive = (km) => hud.setLive(km);
+
+async function setupVehicles() {
+  if (!app.journey) return;
+  try {
+    await vehicles.load(ASSETS.models);
+    vehicles.setJourney(app.journey);
+  } catch (e) {
+    console.warn('vehicles', e);
+    hud.setError('列車・船のモデルを読み込めませんでした');
+    return;
+  }
+  const r = await progressPromise;
+  let p;
+  if (r.error) {
+    console.warn('[progress] 進捗 API を取得できませんでした', r.error);
+    hud.setError('進捗データを取得できませんでした（0 km 表示）');
+    p = { previousKm: 0, currentKm: 0 };
+    vehicles.setProgress(p);
+  } else {
+    p = r.progress;
+    const plan = vehicles.setProgress(p);
+    hud.setProgress(p, plan, r.source);
+    app.progress = { ...r, plan };
+  }
+  hud.setLive(p.previousKm);
+  vehicles.play(1.2);
+}
+
 /* ---------------------------------------------------------------------- */
 /* 起動                                                                     */
 /* ---------------------------------------------------------------------- */
@@ -289,6 +341,7 @@ async function start() {
   // 最初のフレームを描いてからローディングを消す
   renderer.render(scene, camera);
   requestAnimationFrame(() => ui.loaded());
+  setupVehicles(); // v7（待たない：モデルと API がそろった時点で表示・再生）
 
   const timer = new THREE.Timer();
   timer.connect(document);
@@ -307,6 +360,7 @@ async function start() {
     landmarks.update(camera);
     water.update();
     journeyLayer.update(camera, innerWidth, innerHeight);
+    vehicles.update(camera, dt, innerHeight, innerWidth); // v7
     const p = camera.position;
     env.update(camera, dt, p.y - terrain.getSurfaceY(p.x, p.z));
     renderer.render(scene, camera);
@@ -322,7 +376,7 @@ addEventListener('resize', () => {
 });
 
 // 将来の拡張・デバッグ用ハンドル（コンソールから window.DHT で触れる）
-export const app = { renderer, scene, camera, terrain, env, rig, mapCtl, exploreCtl, labels, cities, stations, landmarks, water, journeyLayer, journey: null, route: null, layers: { actors, fx }, geo, presets: CAMERA_PRESETS, setMode, goPreset };
+export const app = { renderer, scene, camera, terrain, env, rig, mapCtl, exploreCtl, labels, cities, stations, landmarks, water, journeyLayer, journey: null, route: null, vehicles, progress: null, layers: { actors, fx }, geo, presets: CAMERA_PRESETS, setMode, goPreset };
 window.DHT = app;
 
 start();
