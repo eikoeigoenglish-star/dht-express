@@ -1,6 +1,11 @@
 {
- "_comment": "DHT EXPRESS 全行程（1 DHT = 1 km）。区間を順につなぎ、累積 km（論理距離）で位置を引く。js/route.js の Journey が読む。",
+ "_comment": "DHT EXPRESS 全行程（1 DHT = 1 km）。東京 0 km から那覇 2060.9 km まで距離を一度もリセットしない 1 本の累積距離軸。js/route.js の Journey が読む。",
  "unit": "km",
+ "distancePolicy": {
+  "axis": "tokyo-cumulative",
+  "note": "v6: 鹿児島中央→鹿児島新港の接続区間は RAIL→FERRY の乗換演出区間（見た目のみ）。DHT 累積距離には加算しない（fromKm = toKm = 1325.9）。",
+  "displayRounding": "Math.round（1325.9 → 1326 km）"
+ },
  "segments": [
   {
    "id": "shinkansen-tokyo-kagoshima",
@@ -14,21 +19,32 @@
    "type": "connector",
    "file": "connector-kagoshima.json",
    "fromKm": 1325.9,
-   "toKm": 1329.4
+   "toKm": 1325.9,
+   "dhtKm": 0.0,
+   "visualKm": 3.5,
+   "role": "transfer"
   },
   {
    "id": "ferry-kagoshima-naha",
    "type": "ferry",
    "file": "ferry-kagoshima-naha.json",
-   "fromKm": 1329.4,
-   "toKm": 2064.4
+   "fromKm": 1325.9,
+   "toKm": 2060.9
   }
  ],
- "totalKm": 2064.4,
+ "totalKm": 2060.9,
+ "journeyEnd": {
+  "portId": "naha",
+  "journeyKm": 2060.9,
+  "displayKm": 2061,
+  "role": "journey-end"
+ },
  "nodes": {
   "railIntervalKm": 10,
   "railMajorKm": 100,
   "railMidKm": 50,
-  "ferryIntervalKm": 10
+  "ferryIntervalKm": 10,
+  "ferryMajorKm": 100,
+  "ferryNodeBasis": "tokyo-cumulative"
  }
 }
