@@ -16,6 +16,9 @@ const SKY_HORIZON = new THREE.Color('#bcd6ea');
 const SKY_ZENITH = new THREE.Color('#3f7fc0');
 const WATER_SIZE = 40000; // km（地平線まで覆う）
 const WAVE_TILE = 5; // km（波模様1周期）
+// v8: 南国の浅瀬を出す範囲（ワールド z。北緯 27.58° → 27.47°でなめらかに。徳之島の南端 27.66° は含まない）
+export const TROPIC_Z0 = -(27.58 - 31.0) * ((6371.0088 * Math.PI) / 180);
+export const TROPIC_Z1 = -(27.47 - 31.0) * ((6371.0088 * Math.PI) / 180);
 
 export class Environment {
   constructor(scene) {
@@ -38,8 +41,8 @@ export class Environment {
     const skyGeo = new THREE.SphereGeometry(1, 32, 16);
     const skyMat = new THREE.ShaderMaterial({
       uniforms: {
-        uHorizon: { value: SKY_HORIZON },
-        uZenith: { value: SKY_ZENITH },
+        uHorizon: { value: SKY_HORIZON.clone() },
+        uZenith: { value: SKY_ZENITH.clone() },
       },
       vertexShader: /* glsl */ `
         varying vec3 vDir;
@@ -87,6 +90,19 @@ export class Environment {
     // 2 枚の巨大な三角形だと、カメラ近くで深度の補間精度が足りず海面が陸地の上に描かれることがあるため、
     // カメラ中心の同心円状に分割した板にする（見た目・UV は従来の 1 枚板と同じ）
     const waterGeo = makeRadialPlane(WATER_SIZE);
+    // v8: 沖永良部島以南（北緯 27.5° 付近より南）は海面を少し透明にして、地形側のエメラルドの浅瀬（terrain.js）を見せる。
+    //     沖合は地形の海底色が深い紺なので、透明にしても深い青のまま。
+    waterMat.onBeforeCompile = (sh) => {
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vTodW;')
+        .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvTodW = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;');
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vTodW;')
+        .replace('vec4 diffuseColor = vec4( diffuse, opacity );', `vec4 diffuseColor = vec4( diffuse, opacity );
+          float todTropic = smoothstep( ${TROPIC_Z0.toFixed(1)}, ${TROPIC_Z1.toFixed(1)}, vTodW.z );
+          diffuseColor.a *= mix( 1.0, 0.62, todTropic );`);
+    };
+    waterMat.customProgramCacheKey = () => 'dht-sea-v8';
     this.water = new THREE.Mesh(waterGeo, waterMat);
     this.water.name = 'sea-surface';
     this.water.renderOrder = 2;
@@ -101,6 +117,25 @@ export class Environment {
     this.seabed.position.y = metersToY(-420); // タイルの海底(-250m)より下に置き、Zファイティングを避ける
     this.seabed.name = 'seabed';
     this.group.add(this.seabed);
+  }
+
+  /** v8: 時間帯の見た目（timeofday.js の LOOKS を補間した値）を反映 */
+  applyLook(L) {
+    this.hemi.color.copy(L.hemiSky);
+    this.hemi.groundColor.copy(L.hemiGround);
+    this.hemi.intensity = L.hemi;
+    this.sun.color.copy(L.sunColor);
+    this.sun.intensity = L.sun;
+    this.sun.position.copy(L.sunDir).multiplyScalar(1000);
+    const u = this.sky.material.uniforms;
+    u.uHorizon.value.copy(L.horizon);
+    u.uZenith.value.copy(L.zenith);
+    this.scene.fog.color.copy(L.fog);
+    this.scene.background.copy(L.horizon);
+    const wm = this.water.material;
+    wm.color.copy(L.water);
+    wm.opacity = L.waterOpacity;
+    wm.specular.copy(L.waterSpec);
   }
 
   /** 毎フレーム：空と海をカメラに追従させ、高度に応じてフォグを調整 */

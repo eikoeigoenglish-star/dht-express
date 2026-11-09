@@ -30,6 +30,7 @@
       <div class="modes" role="tablist" aria-label="操作モード">
         <button class="mode" data-mode="map" role="tab"><kbd>1</kbd>MAP VIEW</button>
         <button class="mode" data-mode="explore" role="tab"><kbd>2</kbd>EXPLORE VIEW</button>
+        <button class="mode" data-mode="vehicle" role="tab"><kbd>3</kbd>VEHICLE VIEW</button>
       </div>
     </header>
 
@@ -52,12 +53,17 @@
         <p><b>Q</b> 下降　<b>E</b> 上昇　<b>Shift</b> 高速飛行</p>
         <p><b>クリック</b> マウス視点ON　<b>Esc</b> 解除</p>
       </div>
-      <p class="help__keys"><kbd>1</kbd><kbd>2</kbd> モード　<kbd>L</kbd> 地名　<kbd>B</kbd> 都市　<kbd>R</kbd> ルート　<kbd>I</kbd> 情報　<kbd>H</kbd> 操作説明</p>
+      <div class="help help--vehicle">
+        <p><b>FOREST SCHOOL</b> の列車・船を斜め後方から追跡</p>
+        <p><b>ドラッグ</b> 追跡の向きをずらす　<b>ホイール</b> 距離</p>
+        <p>右上の <b>列車へ / 船へ</b> で追跡対象を切替</p>
+      </div>
+      <p class="help__keys"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> モード　<kbd>L</kbd> 地名　<kbd>B</kbd> 都市　<kbd>R</kbd> ルート　<kbd>I</kbd> 情報　<kbd>H</kbd> 操作説明</p>
     </section>
 
     <!-- v7: FOREST SCHOOL の進捗（昨日 → 今日） -->
     <section class="panel panel--dht" id="dht-progress" aria-live="polite">
-      <div class="panel__title">FOREST SCHOOL · TODAY <span class="dht-hud__src"></span></div>
+      <div class="panel__title"><span>FOREST SCHOOL · TODAY <span class="dht-hud__tod" title=""></span></span><span class="dht-hud__src"></span></div>
       <div class="dht-hud__route">–</div>
       <div class="dht-hud__row"><b class="dht-hud__live">–</b><span class="dht-hud__delta"></span><span class="dht-hud__mode"></span></div>
       <div class="dht-hud__btns">

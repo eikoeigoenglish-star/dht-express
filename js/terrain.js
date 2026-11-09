@@ -19,6 +19,8 @@
  */
 import * as THREE from 'three';
 import { NORTH_LIMIT_LAT, VERTICAL_EXAGGERATION, worldToLatLon } from './geo.js';
+import { TOD_UNIFORMS } from './timeofday.js';
+import { TROPIC_Z0, TROPIC_Z1 } from './environment.js';
 
 const SPLIT_DIST = 170; // km : これより近い粗タイルは詳細化
 const MERGE_DIST = 215; // km : これより遠ければ粗に戻す
@@ -54,6 +56,7 @@ export class TerrainSystem {
 
     this.material = new THREE.MeshLambertMaterial({ vertexColors: true });
     this.material.name = 'terrain-shared';
+    patchTerrainMaterial(this.material); // v8: 夜の市街地の光・沖永良部島以南のエメラルドの浅瀬
 
     this.coarseTiles = []; // {tx,tz, mesh, children:[4], split:bool, hasHi:bool, minX..}
     this.hiData = new Map(); // key -> Int16Array (読み込み済み)
@@ -390,6 +393,7 @@ function buildTileGeometry(n, step, ox, oz, hAt) {
   const pos = new Float32Array(total * 3);
   const nor = new Float32Array(total * 3);
   const col = new Float32Array(total * 3);
+  const urb = new Float32Array(total); // v8: 市街地の度合い（夜の光）
 
   // 北限付近の色フェード計算のため、タイル中央の緯度で十分（タイル内での変化は小さい）
   const inv2s = 1 / (2 * step);
@@ -417,6 +421,10 @@ function buildTileGeometry(n, step, ox, oz, hAt) {
       col[k * 3] = tmp[0];
       col[k * 3 + 1] = tmp[1];
       col[k * 3 + 2] = tmp[2];
+      if (urbanField && hm > 0) {
+        const u = urbanField(x, z);
+        urb[k] = u > 0.02 ? Math.min(1, u * 1.15) * smooth(0.8, 0.95, ny) : 0;
+      }
     }
   }
 
@@ -447,6 +455,7 @@ function buildTileGeometry(n, step, ox, oz, hAt) {
       col[s * 3] = col[k * 3];
       col[s * 3 + 1] = col[k * 3 + 1];
       col[s * 3 + 2] = col[k * 3 + 2];
+      urb[s] = urb[k];
       s++;
     }
   }
@@ -490,6 +499,7 @@ function buildTileGeometry(n, step, ox, oz, hAt) {
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('urban', new THREE.BufferAttribute(urb, 1));
   geo.setIndex(new THREE.BufferAttribute(idx, 1));
   geo.computeBoundingSphere();
   geo.computeBoundingBox();
@@ -595,4 +605,87 @@ function terrainColor(h, ny, lat, x, z, out) {
     out[k] = Math.pow(v, 2.2);
   }
   return out;
+}
+
+/* ====================================================================== */
+/* v8: 時間帯（夜の市街地の光・南国の浅瀬）                                     */
+/* ====================================================================== */
+
+/**
+ * 地形の共有マテリアルに 2 つの表現を足す（どちらも頂点数・draw call は増えない）
+ *  ・夜の市街地の光：頂点属性 urban（都市密度 × 平坦さ）に応じて暖色の発光。遠景ほど強く（建物が描かれない距離でも都市の灯りが見える）。
+ *  ・沖永良部島以南の浅瀬：海面下の地形を、水深（＝海岸からの距離で作った合成海底の深さ）でエメラルド → ターコイズ → 青緑へ。
+ *    水深 0〜7m（海岸から約 1.5km）がエメラルド、〜22m（約 3km）ターコイズ、〜40m 青緑、それより深いと既存の紺のまま。
+ */
+function patchTerrainMaterial(mat) {
+  const U = TOD_UNIFORMS;
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, { uCityGlow: U.uCityGlow, uCityCoverage: U.uCityCoverage, uReef0: U.uReef0, uReef1: U.uReef1, uReef2: U.uReef2, uReefAmt: U.uReefAmt });
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float urban;\nvarying float vUrban;\nvarying vec3 vTodW;')
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvUrban = urban;\nvTodW = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+        varying float vUrban;
+        varying vec3 vTodW;
+        uniform float uCityGlow;
+        uniform float uCityCoverage;
+        float tdHash( vec2 p ) {
+          vec3 p3 = fract( vec3( p.xyx ) * 0.1031 );
+          p3 += dot( p3, p3.yzx + 33.33 );
+          return fract( ( p3.x + p3.y ) * p3.z );
+        }
+        // 1 段分の光点（格子 cell [km] ごとに最大 1 点。点灯は 密度 × 点灯率 未満のハッシュ）
+        float tdCityDots( vec2 p, float cell, float dens ) {
+          vec2 g = p / cell;
+          vec2 id = floor( g );
+          vec2 f = fract( g );
+          float h = tdHash( id + cell * 0.37 );
+          if ( h > dens * uCityCoverage * 0.95 ) return 0.0;
+          vec2 c = vec2( 0.2 + 0.6 * tdHash( id + 3.1 ), 0.2 + 0.6 * tdHash( id + 7.7 ) );
+          float d = length( f - c );
+          float cellPx = 1.0 / max( max( fwidth( g.x ), fwidth( g.y ) ), 1e-5 );
+          float r = clamp( 1.5 / cellPx, 0.02, 0.22 );
+          return ( 1.0 - smoothstep( r * 0.45, r, d ) ) * ( 0.65 + 0.35 * tdHash( id + 11.0 ) );
+        }
+        uniform vec3 uReef0; uniform vec3 uReef1; uniform vec3 uReef2; uniform float uReefAmt;`,
+      )
+      .replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        {
+          float tropic = smoothstep( ${TROPIC_Z0.toFixed(1)}, ${TROPIC_Z1.toFixed(1)}, vTodW.z );
+          if ( tropic > 0.0 && vTodW.y < 0.0 ) {
+            float depthM = -vTodW.y / ${M2Y.toFixed(6)};
+            vec3 rc = mix( uReef0, uReef1, smoothstep( 5.0, 15.0, depthM ) );
+            rc = mix( rc, uReef2, smoothstep( 16.0, 32.0, depthM ) );
+            float amt = tropic * uReefAmt * ( 1.0 - smoothstep( 32.0, 48.0, depthM ) );
+            diffuseColor.rgb = mix( diffuseColor.rgb, rc, amt );
+          }
+        }`,
+      )
+      .replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+        if ( uCityGlow > 0.001 && vUrban > 0.02 ) {
+          // v8: 街明かりの「点」。街区ごとの決定的ハッシュで点灯（チラつかない）、点は画面上 1〜2px。
+          //     格子の大きさはカメラ距離で 2 倍ずつ切り替え（近景 0.15km 〜 遠景 4.8km）、隣の段となめらかに混ぜる。
+          float camD = distance( cameraPosition, vTodW );
+          float lv = clamp( log2( camD / 14.0 ), 0.0, 5.0 );
+          float k = floor( lv );
+          float t = lv - k;
+          float dens = smoothstep( 0.04, 0.75, vUrban );
+          float a0 = tdCityDots( vTodW.xz, 0.15 * exp2( k ), dens );
+          float a1 = tdCityDots( vTodW.xz, 0.15 * exp2( k + 1.0 ), dens );
+          float lights = mix( a0, a1, t );
+          vec3 warm = vec3( 1.0, 0.66, 0.32 );
+          vec3 white = vec3( 0.95, 0.93, 0.88 );
+          vec3 lc = mix( warm, white, step( 0.62, tdHash( floor( vTodW.xz / 0.6 ) + 5.0 ) ) );
+          totalEmissiveRadiance += lc * lights * uCityGlow * 3.2;
+        }`,
+      );
+  };
+  mat.customProgramCacheKey = () => 'dht-terrain-v8';
 }

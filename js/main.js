@@ -49,6 +49,9 @@ import { PlaceLabels } from './labels.js';
 import { UI } from './ui.js';
 import { VehicleSystem } from './vehicles.js';
 import { loadProgress, ProgressHud } from './progress.js';
+import { TimeOfDay } from './timeofday.js';
+import { VehicleFollowController } from './vehiclecam.js';
+import { LighthouseBeacons } from './lighthouses.js';
 import * as geo from './geo.js';
 
 const canvas = document.getElementById('scene');
@@ -68,6 +71,7 @@ const camera = createCamera();
 scene.add(camera);
 
 const env = new Environment(scene);
+const tod = new TimeOfDay(env); // v8: MORNING / DAY / EVENING / NIGHT（明石市の日出・日没、JST）
 const terrain = new TerrainSystem({ dir: ASSETS.terrainDir, manifestUrl: ASSETS.terrainManifest });
 scene.add(terrain.group);
 
@@ -78,6 +82,8 @@ const landmarks = new LandmarkSystem(terrain);
 const water = new WaterSystem(terrain);
 const journeyLayer = new JourneyLayer(terrain, { urbanAt: (x, z) => cities.densityAt(x, z) }); // v5
 scene.add(cities.group, stations.group, landmarks.group, water.group, journeyLayer.group);
+const beacons = new LighthouseBeacons(terrain, landmarks); // v8: 灯台 13 件の灯火（夕方・夜）
+scene.add(beacons.group);
 
 const actors = new THREE.Group();
 actors.name = 'actors';
@@ -97,9 +103,11 @@ const progressPromise = loadProgress().then(
 const rig = new CameraRig(camera);
 const mapCtl = new MapController(camera, canvas, terrain);
 const exploreCtl = new ExploreController(camera, canvas, terrain);
+const follow = new VehicleFollowController(camera, canvas, terrain, vehicles); // v8: VEHICLE VIEW
 const labels = new PlaceLabels(document.getElementById('labels-layer'), terrain);
 
-let mode = 'map';
+let mode = 'vehicle'; // v8: 初期表示は VEHICLE VIEW（列車・船の準備ができたら追跡を開始）
+let vehicleReady = false;
 
 const ui = new UI({
   presets: CAMERA_PRESETS,
@@ -128,6 +136,15 @@ exploreCtl.onLockChange = (l) => ui.setLocked(l);
 function setMode(next) {
   if (next === mode || rig.animating) return;
   ui.setActivePreset(null);
+  if (mode === 'vehicle') follow.disable();
+  if (next === 'vehicle') {
+    mapCtl.disable();
+    exploreCtl.disable();
+    mode = 'vehicle';
+    ui.setMode(mode);
+    enterVehicleView();
+    return;
+  }
   if (next === 'explore') {
     mapCtl.disable();
     mode = 'explore';
@@ -162,6 +179,29 @@ function setMode(next) {
   }
 }
 
+/**
+ * v8: VEHICLE VIEW に入る。カメラが遠ければ既存の滑らか移動（rig.flyTo）で追跡位置まで飛んでから追跡を始める。
+ * 列車・船の準備前なら、準備ができた時点（setupVehicles）で呼び直す。
+ */
+function enterVehicleView() {
+  if (!vehicleReady) return 0;
+  const v = follow.desiredPose();
+  if (!v) return 0;
+  terrain.prefetchAround(v.look.x, v.look.z);
+  if (camera.position.distanceTo(v.pos) > 6) {
+    const duration = camera.position.distanceTo(v.pos) > 300 ? 3.2 : 2.0;
+    rig.flyTo(v.pos, v.look, {
+      fromTarget: mapCtl.target.clone(),
+      duration,
+      getGround: (x, z) => terrain.getSurfaceY(x, z),
+      onDone: () => mode === 'vehicle' && follow.enable(),
+    });
+    return duration;
+  }
+  follow.enable();
+  return 0;
+}
+
 /** カメラの視線が地表（海面）に当たる点。当たらなければ前方の地表点 */
 function groundPointAhead() {
   const dir = new THREE.Vector3();
@@ -193,6 +233,12 @@ function groundPointAhead() {
 /* ---------------------------------------------------------------------- */
 
 function goPreset(p) {
+  // v8: VEHICLE VIEW 中にプリセットを選んだら MAP VIEW に切り替えて移動
+  if (mode === 'vehicle') {
+    follow.disable();
+    mode = 'map';
+    ui.setMode(mode);
+  }
   ui.setActivePreset(p.id);
   const ground = (x, z) => terrain.getSurfaceY(x, z);
   if (mode === 'map') {
@@ -232,7 +278,7 @@ async function setupWater() {
 }
 
 async function setupOverlays() {
-  const [st, lm] = await Promise.allSettled([stations.load(ASSETS.stations), landmarks.load(ASSETS.landmarks)]);
+  const [st, lm] = await Promise.allSettled([stations.load(ASSETS.stations), landmarks.load(ASSETS.landmarks, ASSETS.landmarksV8)]);
   if (st.status === 'rejected') console.warn('stations', st.reason);
   if (lm.status === 'rejected') console.warn('landmarks', lm.reason);
   // 駅・ランドマークの周りには建物を建てない
@@ -249,7 +295,10 @@ async function setupOverlays() {
     );
   }
   if (st.status === 'fulfilled') labels.addItems(stations.labelItems());
-  if (lm.status === 'fulfilled') labels.addItems(landmarks.labelItems());
+  if (lm.status === 'fulfilled') {
+    labels.addItems(landmarks.labelItems());
+    beacons.build(); // v8
+  }
   if (water.lakes.length) labels.addItems(water.labelItems());
 }
 
@@ -271,11 +320,22 @@ const hud = new ProgressHud(document.getElementById('dht-progress'), {
   onReplay: () => vehicles.play(0.2),
   onFocus: (kind) => {
     if (!vehicles.plan) return;
-    goPreset(vehicles.focusPreset(kind));
+    // v8: VEHICLE VIEW 中は追跡対象の切り替え、それ以外は従来どおりその位置へ移動
+    if (mode === 'vehicle') vehicles.followOverride = kind;
+    else goPreset(vehicles.focusPreset(kind));
   },
 });
 hud.setLoading();
 vehicles.onLive = (km) => hud.setLive(km);
+// v8: 右上パネルに現在の時間帯（明石市の日出・日没基準）
+tod.onChange((m, t) => {
+  const el = document.querySelector('.dht-hud__tod');
+  if (!el) return;
+  const d = t.describe();
+  el.textContent = m.toUpperCase();
+  el.dataset.mode = m;
+  el.title = `明石市 日出 ${d.sunrise} / 日没 ${d.sunset}（夕方 ${d.eveningStart}〜）${d.forced ? '・URL で固定' : ''}`;
+});
 
 async function setupVehicles() {
   if (!app.journey) return;
@@ -301,7 +361,12 @@ async function setupVehicles() {
     app.progress = { ...r, plan };
   }
   hud.setLive(p.previousKm);
-  vehicles.play(1.2);
+  // v8: 1 度配置してから VEHICLE VIEW の追跡を始める（初期表示）。
+  //     カメラが乗り物の後ろへ飛び終わってから「昨日 → 今日」を再生する（飛行中に動いて追跡位置がずれないように）
+  vehicles.update(camera, 0, innerHeight, innerWidth);
+  vehicleReady = true;
+  const fly = mode === 'vehicle' ? enterVehicleView() : 0;
+  vehicles.play(1.2 + fly);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -334,9 +399,10 @@ async function start() {
   const v = presetToView(first, terrain);
   camera.position.copy(v.position);
   camera.lookAt(v.target);
-  mapCtl.enable(v.target);
+  if (mode === 'map') mapCtl.enable(v.target);
+  else mapCtl.target.copy(v.target); // v8: VEHICLE VIEW の準備ができるまで全体俯瞰のまま待つ
   ui.setMode(mode);
-  ui.setActivePreset(first.id);
+  if (mode === 'map') ui.setActivePreset(first.id);
 
   // 最初のフレームを描いてからローディングを消す
   renderer.render(scene, camera);
@@ -351,6 +417,9 @@ async function start() {
     const dt = Math.min(0.1, rawDt);
     if (!rig.update(dt)) {
       if (mode === 'map') mapCtl.update(dt);
+      else if (mode === 'vehicle') {
+        /* v8: VEHICLE VIEW は乗り物の配置の後で更新する（下） */
+      }
       // 飛空艇は速度を km/h で固定しているので、低 FPS（〜4fps）でも実時間どおりに進める
       else exploreCtl.update(Math.min(0.25, rawDt));
     }
@@ -358,10 +427,15 @@ async function start() {
     cities.update(camera);
     stations.update();
     landmarks.update(camera);
+    beacons.update(camera, dt, innerHeight); // v8
     water.update();
     journeyLayer.update(camera, innerWidth, innerHeight);
-    vehicles.update(camera, dt, innerHeight, innerWidth); // v7
+    // v8: 列車・船の再生は実時間（低 FPS の端末でも 4〜8 秒で終わるように。1 フレーム最大 0.25 秒）
+    const vdt = Math.min(0.25, rawDt);
+    vehicles.update(camera, vdt, innerHeight, innerWidth); // v7
+    if (mode === 'vehicle' && !rig.animating) follow.update(vdt); // v8
     const p = camera.position;
+    tod.update(dt); // v8
     env.update(camera, dt, p.y - terrain.getSurfaceY(p.x, p.z));
     renderer.render(scene, camera);
     labels.update(camera, innerWidth, innerHeight);
@@ -376,7 +450,7 @@ addEventListener('resize', () => {
 });
 
 // 将来の拡張・デバッグ用ハンドル（コンソールから window.DHT で触れる）
-export const app = { renderer, scene, camera, terrain, env, rig, mapCtl, exploreCtl, labels, cities, stations, landmarks, water, journeyLayer, journey: null, route: null, vehicles, progress: null, layers: { actors, fx }, geo, presets: CAMERA_PRESETS, setMode, goPreset };
+export const app = { renderer, scene, camera, terrain, env, rig, mapCtl, exploreCtl, labels, cities, stations, landmarks, water, journeyLayer, journey: null, route: null, vehicles, follow, beacons, progress: null, tod, mode: () => mode, layers: { actors, fx }, geo, presets: CAMERA_PRESETS, setMode, goPreset };
 window.DHT = app;
 
 start();

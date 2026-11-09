@@ -30,6 +30,7 @@
  *     Raycaster で instanceId が取れたら cities[cityOf[instanceId]] でどの都市か分かる。
  */
 import * as THREE from 'three';
+import { patchCityMaterial } from './nightlights.js';
 import { latLonToWorld, VERTICAL_EXAGGERATION } from './geo.js';
 import { hash2i, hashString, valueNoise } from './meshkit.js';
 import { PRIO_NEAR } from './labels.js';
@@ -105,6 +106,7 @@ export class CitySystem {
     this.geometry = box;
     this.material = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true });
     this.material.name = 'city-buildings-shared';
+    patchCityMaterial(this.material); // v8: 夕方 50%・夜 100% の窓の灯り（棟ごとの決定的ハッシュ）
   }
 
   async load(url) {

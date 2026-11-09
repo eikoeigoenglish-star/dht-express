@@ -64,6 +64,10 @@ export class UI {
         case 'Numpad2':
           opts.onMode('explore');
           break;
+        case 'Digit3': // v8: VEHICLE VIEW
+        case 'Numpad3':
+          opts.onMode('vehicle');
+          break;
         case 'KeyH':
           toggleHelp();
           break;
@@ -86,6 +90,7 @@ export class UI {
   setMode(mode) {
     document.body.classList.toggle('mode-explore', mode === 'explore');
     document.body.classList.toggle('mode-map', mode === 'map');
+    document.body.classList.toggle('mode-vehicle', mode === 'vehicle'); // v8
     document.querySelectorAll('.mode').forEach((b) => {
       const on = b.dataset.mode === mode;
       b.classList.toggle('is-active', on);

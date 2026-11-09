@@ -62,6 +62,9 @@ body.mode-explore #scene { cursor: crosshair; }
 .help p { margin: 2px 0; color: var(--ink); }
 .help b { color: var(--accent); font-weight: 600; }
 .help--explore { display: none; }
+.help--vehicle { display: none; } /* v8 */
+body.mode-vehicle .help--map { display: none; }
+body.mode-vehicle .help--vehicle { display: block; }
 body.mode-explore .help--map { display: none; }
 body.mode-explore .help--explore { display: block; }
 .help__keys { margin: 8px 0 0; color: var(--ink-dim); font-size: 11px; }
@@ -81,6 +84,11 @@ body.mode-explore .only-explore { display: initial; }
 /* ---------- v7: FOREST SCHOOL 進捗パネル（右上） ---------- */
 .panel--dht { top: 14px; right: 14px; padding: 10px 12px; min-width: 228px; }
 .panel--dht .panel__title { margin-bottom: 6px; }
+.dht-hud__tod { margin-left: 6px; padding: 1px 5px; border-radius: 3px; font: 700 9px/1.3 var(--mono); letter-spacing: 0.08em; color: #12233a; background: #cfe3f2; }
+.dht-hud__tod[data-mode="morning"] { background: #bfe6ff; }
+.dht-hud__tod[data-mode="day"] { background: #ffe9a6; }
+.dht-hud__tod[data-mode="evening"] { background: #ffb37a; }
+.dht-hud__tod[data-mode="night"] { background: #2a3b66; color: #dfe8ff; box-shadow: 0 0 0 1px rgba(160, 190, 255, 0.4); }
 .dht-hud__src { font: 600 9px/1 var(--mono); color: #8fd6a4; letter-spacing: 0.08em; }
 .dht-hud__route { font-size: 12px; color: var(--ink-dim); }
 .dht-hud__route b { color: var(--ink); font-variant-numeric: tabular-nums; }

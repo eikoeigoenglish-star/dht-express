@@ -27,6 +27,7 @@ import { makeLiveryMaterial } from './livery.js';
 
 const M2Y = VERTICAL_EXAGGERATION / 1000;
 export const RAIL_END_KM = 1325.9;
+const TRANSFER_SEC = 1.6; // v8: 陸 → 海をまたぐ日の乗換区間（VEHICLE VIEW のカメラが鹿児島中央 → 鹿児島新港へ移る時間）
 
 const STYLE = {
   // px: 画面上の目標の長さ / min・max: 車体長 [km] / hover: 浮かせる量（車体長に対する比）
@@ -158,12 +159,15 @@ export class VehicleSystem {
       // 陸路 → 海路の順に（合計 ≤ 8 秒）
       const total = Math.min(8, dur(train.to - train.from + ship.to - ship.from) + 1);
       const a = clamp(total * (Math.abs(train.to - train.from) / (Math.abs(train.to - train.from) + Math.abs(ship.to - ship.from))), 2.5, total - 2.5);
-      timeline.push({ kind: 'train', t0: t, t1: t + a }, { kind: 'ship', t0: t + a, t1: t + total });
+      // v8: 列車（→ 鹿児島中央）と船（鹿児島新港 →）の間に乗換区間（接続線上を 1.6 秒。距離は 1325.9 km のまま）
+      const tr = TRANSFER_SEC;
+      timeline.push({ kind: 'train', t0: t, t1: t + a }, { kind: 'transfer', t0: t + a, t1: t + a + tr }, { kind: 'ship', t0: t + a + tr, t1: t + total + tr });
     } else if (train.moving) timeline.push({ kind: 'train', t0: t, t1: t + dur(train.to - train.from) });
     else if (ship.moving) timeline.push({ kind: 'ship', t0: t, t1: t + dur(ship.to - ship.from) });
     this.train.userData.km = train.from;
     this.ship.userData.km = ship.from;
     this.anim = timeline.length ? { t: 0, timeline, end: timeline[timeline.length - 1].t1 } : null;
+    this.followOverride = null;
     this.liveKm = this.plan.prev;
     if (!this.anim) this.liveKm = this.plan.cur;
   }
@@ -245,6 +249,7 @@ export class VehicleSystem {
       this.anim.t += dt;
       const { train, ship } = this.plan;
       for (const seg of this.anim.timeline) {
+        if (seg.kind === 'transfer') continue;
         const u = easeInOutCubic(clamp((this.anim.t - seg.t0) / (seg.t1 - seg.t0), 0, 1));
         const P = seg.kind === 'train' ? train : ship;
         const obj = seg.kind === 'train' ? this.train : this.ship;
@@ -262,6 +267,40 @@ export class VehicleSystem {
     const w = viewportW ?? innerWidth;
     this._tag(this.train, camera, w, viewportH, pt);
     this._tag(this.ship, camera, w, viewportH, ps);
+  }
+
+  /**
+   * v8: VEHICLE VIEW の追跡対象（位置・進行方向）。
+   *   再生中は「今動いている区間」の乗り物、乗換区間では鹿児島中央 → 鹿児島新港の接続線上の点、
+   *   再生していなければ今日の担当（海路に入っていれば船、そうでなければ列車）。followOverride で固定も可。
+   */
+  followTarget() {
+    if (!this.plan || !this.journey) return null;
+    let kind = this.followOverride;
+    let u = 0;
+    if (!kind) {
+      if (this.anim && this.anim.t < this.anim.end) {
+        let cur = this.anim.timeline[0];
+        for (const s of this.anim.timeline) if (this.anim.t >= s.t0) cur = s;
+        kind = cur.kind;
+        u = clamp((this.anim.t - cur.t0) / (cur.t1 - cur.t0), 0, 1);
+      } else kind = this.plan.ship.active ? 'ship' : 'train';
+    }
+    if (kind === 'transfer') {
+      const e = easeInOutCubic(u);
+      const q = this.journey.getTransferPosition(e, this._tq ?? (this._tq = {}));
+      const r = this.journey.getTransferPosition(Math.min(1, e + 0.05), this._tr ?? (this._tr = {}));
+      const dx = r.x - q.x;
+      const dz = r.z - q.z;
+      // 乗換線の向き → 終盤は船の向きへなめらかに
+      const hShip = this.ship.rotation.y;
+      const hLine = dx * dx + dz * dz > 1e-8 ? Math.atan2(-dx, -dz) : hShip;
+      const w = THREE.MathUtils.smoothstep(u, 0.55, 1);
+      const heading = hLine + Math.atan2(Math.sin(hShip - hLine), Math.cos(hShip - hLine)) * w;
+      return { kind, x: q.x, y: Math.max(0, this.terrain.getSurfaceY(q.x, q.z)) + 0.05, z: q.z, heading, lengthKm: 0.4 };
+    }
+    const obj = kind === 'ship' ? this.ship : this.train;
+    return { kind, x: obj.position.x, y: obj.position.y, z: obj.position.z, heading: obj.rotation.y, lengthKm: obj.userData.lengthKm };
   }
 
   /** カメラを向けるためのプリセット（緯度経度・距離） */

@@ -1352,3 +1352,6 @@ export const KANTO_BUILDERS = {
   daibutsu, tsurugaoka, seaCandle, hakkeijima, yokosukaPort, shinshoji, makuhariMesse, baseballStadium, chibaPortTower,
   themeParkCastle, themeParkVolcano, umihotaru, motherFarm, nokogiri, lighthouse,
 };
+
+// v8: 全国ランドマーク（landmarks-japan.js）で同じ小道具を使うための公開（既存のモデル・挙動は変更なし）
+export { C as KANTO_COLORS, drape, skirt, pad, ringE, cylE, dome, ball, slab, path as drapePath, trees, wheel, pagodaK, torii, footY, ellipse, rect, inPoly, dirOf };

@@ -21,6 +21,8 @@ import { latLonToWorld, VERTICAL_EXAGGERATION } from './geo.js';
 import { GeoBuilder } from './meshkit.js';
 import { KANTO_BUILDERS } from './landmarks-kanto.js';
 import { PRIO_NEAR } from './labels.js';
+import { patchLandmarkMaterial } from './nightlights.js';
+import { JAPAN_BUILDERS, JAPAN_EXCLUDE } from './landmarks-japan.js';
 
 const M2Y = VERTICAL_EXAGGERATION / 1000;
 const D2R = Math.PI / 180;
@@ -436,7 +438,7 @@ function fukuokaTower(b) {
   return { height: 234 * s, exclude: 0.3 };
 }
 
-const BUILDERS = { skytree, tokyoTower, temple, castleNagoya, castleHimeji, castleKumamoto, twinTowers, kyotoTower, kinkaku, ferrisWheel, kofun, itsukushima, kibitsu, fukuokaTower, ...KANTO_BUILDERS };
+const BUILDERS = { skytree, tokyoTower, temple, castleNagoya, castleHimeji, castleKumamoto, twinTowers, kyotoTower, kinkaku, ferrisWheel, kofun, itsukushima, kibitsu, fukuokaTower, ...KANTO_BUILDERS, ...JAPAN_BUILDERS };
 
 /* ====================================================================== */
 /* 橋（海峡を跨ぐ構造物。path の両端が結ぶ陸地）                                */
@@ -639,6 +641,7 @@ export class LandmarkSystem {
     this.group.name = 'landmarks';
     this.material = new THREE.MeshLambertMaterial({ vertexColors: true });
     this.material.name = 'landmarks-shared';
+    patchLandmarkMaterial(this.material); // v8: 夕方・夜のライトアップ
     this.items = [];
     this.byId = new Map();
     this.frame = 0;
@@ -646,15 +649,26 @@ export class LandmarkSystem {
     this.stats = { built: 0, visible: 0, simple: 0 };
   }
 
-  async load(url) {
+  /**
+   * @param {string} url data/landmarks.json（v2〜v6）
+   * @param {string} [extraUrl] v8: data/landmarks-v8.json（全国ランドマーク・灯台。augment で既存件に情報を足す）
+   */
+  async load(url, extraUrl) {
     const json = await (await fetch(url)).json();
-    this.items = json.landmarks.map((l) => {
+    let list = json.landmarks;
+    if (extraUrl) {
+      const ex = await (await fetch(extraUrl)).json();
+      const known = new Set(list.map((l) => l.id));
+      list = list.map((l) => (ex.augment?.[l.id] ? { ...l, ...ex.augment[l.id] } : l));
+      for (const l of ex.landmarks) if (!known.has(l.id)) list.push(l); // 既存と同じ id は重複させない
+    }
+    this.items = list.map((l) => {
       const w = latLonToWorld(l.lat, l.lon);
       const it = { ...l, type: 'landmark', x: w.x, z: w.z, mesh: null, state: 'idle', height: 0.5, labelY: null };
       // 建物を建てない範囲（橋は両岸の取付部）
       it.exclusions = l.path
         ? l.path.map(([la, lo]) => ({ ...latLonToWorld(la, lo), r: 0.25 }))
-        : [{ x: w.x, z: w.z, r: EXCLUDE_GUESS[l.kind] ?? 0.4 }];
+        : [{ x: w.x, z: w.z, r: l.excludeR ?? EXCLUDE_GUESS[l.kind] ?? JAPAN_EXCLUDE[l.kind] ?? 0.4 }];
       // v6: landmarks.json の除外範囲（ローカル座標 km、heading で回転）。面積型は向きのある長方形
       if (l.exclude || l.excludeRect) {
         const h = (l.heading ?? 0) * D2R;
@@ -714,7 +728,7 @@ export class LandmarkSystem {
     const full = this._geometry(it, y, 0);
     const res = full.res;
     it.labelY = it.kind === 'bridge' ? res.height + 0.1 : null;
-    const simple = this._geometry(it, y, it.minPart ?? (it.group === 'kanto-v6' ? 0.045 : SIMPLE_MIN_PART));
+    const simple = this._geometry(it, y, it.minPart ?? (it.group === 'kanto-v6' ? 0.045 : it.group === 'japan-v8' ? 0.03 : SIMPLE_MIN_PART));
     // 省いた部品がなければ同じジオメトリを使う
     if (!simple.skipped) simple.geo.dispose();
     it.geoFull = full.geo;
@@ -731,6 +745,7 @@ export class LandmarkSystem {
     mesh.matrixAutoUpdate = false;
     it.mesh = mesh;
     it.height = res.height;
+    it.lampY = res.lampY ?? null; // v8: 灯台の灯室の高さ（lighthouses.js）
     it.state = 'ready';
     this.group.add(mesh);
     this.stats.built++;
@@ -750,6 +765,8 @@ export class LandmarkSystem {
     const p = camera.position;
     let vis = 0;
     let simple = 0;
+    let next = null;
+    let nextD = Infinity;
     for (const it of this.items) {
       const d = Math.hypot(p.x - it.x, p.y, p.z - it.z);
       const maxD = it.showKm ?? DIST[it.tier] ?? 200;
@@ -770,9 +787,10 @@ export class LandmarkSystem {
         }
         Promise.all([...keys.values()].map((c) => this.terrain.requestChunkData(c.cx, c.cz, d))).then(() => (it.state = 'queued'));
       }
-      if (it.state === 'queued' && !this.building) {
-        this.building = true; // 1 フレーム 1 件まで
-        this._build(it);
+      // v8: 1 フレーム 1 件まで。件数が増えたので「待ち行列の中でカメラに最も近いもの」から作る
+      if (it.state === 'queued' && (!next || d < nextD)) {
+        next = it;
+        nextD = d;
       }
       if (it.mesh) {
         it.mesh.visible = d < maxD;
@@ -796,6 +814,11 @@ export class LandmarkSystem {
         }
       }
     }
+    if (next) {
+      this._build(next);
+      // 作った直後の 1 フレーム目から表示・LOD を正しく
+      next.mesh.visible = nextD < (next.showKm ?? DIST[next.tier] ?? 200);
+    }
     this.building = false;
     this.stats.visible = vis;
     this.stats.simple = simple;
@@ -816,7 +839,7 @@ export class LandmarkSystem {
       // v6: 優先度 = 「ROUTE 重要ノード > 駅 > ランドマーク > 都市 > 水系」（labels.js の PRIO_NEAR）。
       //     近距離ではランドマーク帯（7.0〜7.9）の中で重要度 imp と近さで重なりを解く。
       //     遠距離（新規 38 件）は駅（1.9〜）より下・湖沼（〜1.75）より上。既存 17 件の遠距離の値は従来どおり。
-      prio: it.group === 'kanto-v6' ? 1.8 + (it.imp ?? 0.5) * 0.08 : it.tier === 1 ? 3.7 : 2.6,
+      prio: it.group === 'kanto-v6' || it.group === 'japan-v8' ? 1.8 + (it.imp ?? 0.5) * 0.08 : it.tier === 1 ? 3.7 : 2.6,
       nearDist: it.nearKm ?? 40,
       prioNear: PRIO_NEAR.landmark + (it.imp ?? (it.tier === 1 ? 0.6 : 0.4)),
       nearBoost: 0.3,
