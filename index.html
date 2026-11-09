@@ -55,6 +55,18 @@
       <p class="help__keys"><kbd>1</kbd><kbd>2</kbd> モード　<kbd>L</kbd> 地名　<kbd>B</kbd> 都市　<kbd>R</kbd> ルート　<kbd>I</kbd> 情報　<kbd>H</kbd> 操作説明</p>
     </section>
 
+    <!-- v7: FOREST SCHOOL の進捗（昨日 → 今日） -->
+    <section class="panel panel--dht" id="dht-progress" aria-live="polite">
+      <div class="panel__title">FOREST SCHOOL · TODAY <span class="dht-hud__src"></span></div>
+      <div class="dht-hud__route">–</div>
+      <div class="dht-hud__row"><b class="dht-hud__live">–</b><span class="dht-hud__delta"></span><span class="dht-hud__mode"></span></div>
+      <div class="dht-hud__btns">
+        <button class="dht-btn" data-act="replay" title="昨日 → 今日 をもう一度再生">▶ 再生</button>
+        <button class="dht-btn" data-focus="train">列車へ</button>
+        <button class="dht-btn" data-focus="ship">船へ</button>
+      </div>
+    </section>
+
     <section class="panel panel--info" id="info">
       <div class="readout">
         <span>FPS</span><b id="r-fps">–</b>

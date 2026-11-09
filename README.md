@@ -3,7 +3,7 @@
 北緯 **37°40′23″（37.6731°N）以南** の日本（本州南部・四国・九州・南西諸島〜沖縄・先島）を、
 Three.js 上の 1 つの連続した 3D 空間として表示し、**俯瞰（MAP VIEW）** と **一人称の自由飛行（EXPLORE VIEW）** で探索できる Web アプリです。
 
-将来「DHT EXPRESS」の列車と 9 体のキャラクターを載せるための**ステージ（土台）**です。v5 で旅のルート（東京 → 鹿児島中央 → 那覇）と距離エンジンを敷きましたが、列車・船・キャラクター・カウンター等はまだ含みません。
+将来「DHT EXPRESS」の列車と 9 体のキャラクターを載せるための**ステージ（土台）**です。v5 で旅のルート（東京 → 鹿児島中央 → 那覇）と距離エンジンを敷き、v7 で FOREST SCHOOL の列車・船と DHT 進捗 API による「昨日 → 今日」の移動アニメーションを載せました（キャラクターは未実装）。
 
 > **v2 追加（都市・新幹線駅・ランドマーク）**
 > 既存の地形・操作・座標系・LOD・カメラ・GitHub Pages 対応はそのままに、次の 3 つを増築しました（詳細は [§11](#11-都市新幹線駅ランドマークv2-追加)）。
@@ -75,6 +75,12 @@ Node.js がある場合は `npx serve .` などでも構いません。**これ�
 - `index.html` の Import Map で `three` と `three/addons/` を同梱ファイルに割り当てています。
   バージョンを上げるときは、npm から新しい `build/three.module.js`・`build/three.core.js`・`examples/jsm/controls/OrbitControls.js` に差し替えるだけです。
 
+> **v7 追加（FOREST SCHOOL の列車・船と「昨日 → 今日」の移動アニメーション）**
+> 地図・地形・都市・ランドマーク・ルート・UI・カメラプリセットはそのままに、次を追加しました（詳細は [§16](#16-forest-school-の列車船と進捗アニメーションv7)）。
+> - **列車 GLB・船 GLB**（`models/forest-school-*.glb`）を読み込み、四面図どおりの外観（白基調・下部の深い緑帯・ダークグレーの窓・側面の樹木ロゴと「FOREST SCHOOL」・ヘッドライト・船の流れる緑ライン・煙突ロゴ）を実行時の塗装シェーダ + CanvasTexture で適用
+> - **DHT 進捗 API（Google Apps Script）**を読み込み（fetch → 失敗時は JSONP）、`previousProgressKm → currentKm` の差分だけ列車（陸路 0〜1325.9 km）・船（海路 1325.9〜2060.9 km）を約 4.5〜8 秒で前進させる
+> - 画面右上に進捗パネル（昨日 → 今日・増分・再生・列車へ / 船へ）
+
 ---
 
 ## 3. ファイル構成
@@ -102,7 +108,10 @@ js/
   landmarks-kanto.js       【v6】東京・神奈川・千葉のランドマーク 38 件のモデルと小道具（drape・pad など）
   water.js                 【v3】湖沼・河川の水面メッシュ（全体で 2 Mesh）・水域マスク・ラベル
   meshkit.js               【v2】部品を頂点カラー付き 1 ジオメトリへ結合する道具・決定的乱数
-  vendor/                  three.js 同梱
+  livery.js                【v7】FOREST SCHOOL の列車・船の塗装（GLB 読み込み後のマテリアル差し替え・ロゴ/文字の CanvasTexture）
+  vehicles.js              【v7】列車・船の配置（向き・高さ・大きさ）と「昨日 → 今日」の移動アニメーション
+  progress.js              【v7】DHT 進捗 API の取得（fetch → JSONP）と進捗パネル
+  vendor/                  three.js 同梱（v7: addons/loaders/GLTFLoader.js・addons/utils/ を追加）
 data/
   places.json              地名ラベル用の緯度経度（方位確認用）
   cities.json              【v2】人口10万人以上の都市一覧（240 都市）
@@ -118,10 +127,13 @@ data/
     manifest.json          グリッド定義・投影定数・チャンク一覧
     coarse.bin             全域 4km 間隔の標高（約 400KB, 起動時に読込）
     hi/h_X_Z.bin           64km 四方・1km 間隔の標高（214 枚 × 約 9KB, 近づいた所だけ遅延読込）
-models/                    将来の GLB 置き場（今回は空）
+models/                    【v7】GLB
+  forest-school-train.glb  列車（リニアモーターカー風、約 200KB）
+  forest-school-ship.glb   船（2 層の旅客船、約 270KB）
 qa/                        【v3】QA のコンタクトシートと操作テスト結果（配信には不要・削除可）
   v4/                      【v4】地形 Before/After 比較画像・地形 QA 画像・数値 QA（配信には不要・削除可）
   v6/                      【v6】38 ランドマークのコンタクトシート・首都圏広域・海路ノード・数値・性能（配信には不要・削除可）
+  v7/                      【v7】列車・船の外観（四面図との比較）・移動アニメーション・API の QA（配信には不要・削除可）
 tools/
   build_terrain.py         地形データの事前生成スクリプト（公開時には不要）。v4: 実測 DEM → 1km / 4km 格子
   dem/                     【v4】DEM の取得・縮約・検証スクリプト（§13）
@@ -1912,3 +1924,113 @@ J.getTransferPosition(0.5);                    // → 接続区間の中ほど�
 - 都市の建物数はランドマークの除外範囲の分だけわずかに減ります（東京都心 13,264 → 13,083）。
 - 実 GPU（PC Chrome）での目安：v5 の首都圏近景（draw call 約 50・三角形 約 35 万）に対し v6 は draw call 約 70・三角形 約 37 万で、いずれも 60fps 帯の範囲です（draw call・三角形とも v5 の関西・東海の視点と同程度）。
 
+
+---
+
+## 16. FOREST SCHOOL の列車・船と進捗アニメーション（v7）
+
+v6 の地図・地形・都市・ランドマーク・ルート・ノード・ラベル・UI・カメラプリセット・MAP VIEW / EXPLORE VIEW はそのままに、**列車・船の外観・配置・「昨日 → 今日」の移動アニメーション**だけを追加しました（クリックで内部画面へ切り替える機能は今回は対象外）。
+
+### 16.1 ファイル（v7 で追加・変更）
+
+| ファイル | 内容 |
+|---|---|
+| `models/forest-school-train.glb` | **新規**。列車 GLB（添付のまま。形状・頂点は変更なし） |
+| `models/forest-school-ship.glb` | **新規**。船 GLB（同上） |
+| `js/livery.js` | **新規**。塗装シェーダ（MeshStandardMaterial + onBeforeCompile）とロゴ・文字の CanvasTexture |
+| `js/vehicles.js` | **新規**。`VehicleSystem`：距離 → 位置・向き・高さ・大きさ、アニメーション、遠景用の札 |
+| `js/progress.js` | **新規**。進捗 API の取得（fetch → JSONP）・JSON の解釈・進捗パネル |
+| `js/vendor/addons/loaders/GLTFLoader.js` ほか `addons/utils/BufferGeometryUtils.js`・`SkeletonUtils.js` | **新規**。three.js r187 同梱版（npm `three@0.187.0` の `examples/jsm/`、MIT） |
+| `js/main.js` | 列車・船の生成（`actors` グループ）、API の読込開始、毎フレームの `vehicles.update()`、`window.DHT.vehicles` / `DHT.progress` |
+| `js/config.js` | `ASSETS.models.train / ship`（相対パス） |
+| `index.html` / `css/style.css` | 右上の進捗パネル、遠景の札（`.vehicle-tag`） |
+| `qa/v7/` | QA 画像・結果（配信には不要・削除可） |
+
+既存のデータ（地形・ルート JSON・駅・都市・ランドマーク）と `route.js`・`journey.js`・`controls.js`・`camera.js`・`ui.js`・`labels.js` は**変更していません**。
+
+### 16.2 外観（四面図の再現）
+
+GLB は 1 メッシュ・1 マテリアル・UV なし・テクスチャなし（Tripo 生成）。形状はそのまま使い、**読み込み後にマテリアルを差し替えて塗装**します。
+
+- 塗り分けは**モデル座標（GLB の頂点座標）と法線の関数**（GLSL）。白ボディ・下部の深い緑帯・屋根肩の緑・窓（黒い枠 + ダークグレーのガラス、上がわずかに明るい）・ドアの目地と緑の取っ手・ヘッドライト（発光）を、GLB の窓の凹み・ドア・ライトの位置を正射影で測った座標に合わせて角丸矩形などの距離関数で描いています。輪郭は `fwidth()` でアンチエイリアス（近づいてもにじまない）。
+- **ロゴと「FOREST SCHOOL」**は実行時に Canvas 2D で描いた CanvasTexture を側面へ投影。**左右どちらの側面でも「樹木ロゴ → FOREST SCHOOL」の順に読める**向き（四面図と同じ。鏡文字にならない）。列車は前後のドアの間、船は船体中央、船の煙突側面には樹木ロゴ。
+- 質感：ラフネス 0.42〜0.45・メタルネス 0（テカりすぎない）、ガラスは 0.26。外部画像・フォントの読み込みなし（文字は端末のサンセリフ太字で描画し、幅を四面図の比率に合わせる）。
+- 色（四面図から採取した sRGB）：白 `#f1f0ec`、緑帯 `#1d5a2b`、ライン `#25693a`、ガラス `#3b4046`、窓枠 `#121517`、文字 `#1c5a2a`。
+
+| 列車 | 船 |
+|---|---|
+| リニア風の丸い先頭はそのまま。屋根の肩の緑が先頭で下りて前面窓の両脇の柱になり、屋根の中央は白。側面 3 枚窓・前後ドア・先頭の回り込み窓・後端の窓・左右のヘッドライト | 2 層の窓（下層 5 枚・上層 5 枚、船尾面にも回り込み）、上層の上を流れて操舵室の上へ持ち上がる緑の波ライン、操舵室の窓、船首の V 字に下がる緑の船底、両舷の前照灯、煙突の緑の頂部・前縁と樹木ロゴ |
+
+四面図との並べ比べ：`qa/v7/compare_train.jpg`、`qa/v7/compare_ship.jpg`。
+
+### 16.3 進捗 API
+
+```text
+https://script.google.com/macros/s/AKfycbxsONUT6yWRWFNE2KYs3tcagDWqtWEVcg-GDlFN5YJCOoDOolCMphfs0gXYDR1jW-le/exec
+```
+
+- **まず通常の fetch**（GET、カスタムヘッダなし＝プリフライトなしの単純リクエスト）。応答が取れない・JSON でない（CORS・ネットワーク・ログイン画面の HTML など）ときは **JSONP（`?callback=__dhtProgressCb…`）に自動で切り替え**ます。GAS の ContentService は通常 `Access-Control-Allow-Origin: *` を返すので、GitHub Pages では fetch で取得できる想定です。
+- `?apiMode=jsonp` / `?apiMode=fetch` で方式を固定、`?api=<URL>` で取得先を差し替え可能。
+- 解釈：`progress.currentKm` = 今日の終点、`progress.previousProgressKm` = 昨日までの始点（無ければ `progress.yesterdayKm`、それも無ければ 0）。数値は文字列（`"1,150.5"`）でも可。`todayDeltaKm` はパネルの表示用（移動量は常に `currentKm − 始点`）。
+- 取得は起動と同時に始め、地形の読み込みを待ちません。失敗時はパネルに「進捗データを取得できませんでした（0 km 表示）」と出し、列車は東京に置きます（`console.warn` のみ）。
+- **確認用の上書き**（API を呼ばない）：`?km=1500&prev=1450`。
+
+### 16.4 距離 → 列車・船
+
+| | 表示用距離 | 位置 |
+|---|---|---|
+| 列車（陸路） | start = min(prev, 1325.9)、end = min(cur, 1325.9) | `journey.rail.getPositionAtDistance(km)` |
+| 船（海路） | start = clamp(max(prev, 1325.9), 1325.9, 2060.9)、end = clamp(max(cur, 1325.9), 1325.9, 2060.9) | 累積 km → フェリー区間内 km → `journey.ferry.getPositionAtDistance()`（`getJourneyPosition` と同じ換算） |
+
+- cur ≤ 1325.9：列車が昨日 → 今日へ進み、船は**鹿児島新港で出航待ち**（停泊表示）。
+- cur > 1325.9：列車は**鹿児島中央（RAIL END）で停止**、船が海路上を昨日 → 今日へ。昨日が陸路・今日が海路のときは**列車（→ 鹿児島中央）→ 船（鹿児島新港 →）の順**に続けて再生。接続区間（鹿児島中央 → 新港）はアニメーション対象外。
+- 那覇（2060.9 km）以降は那覇で停止。距離はすべて既存の累積 km（v6）と同じ軸です。
+
+### 16.5 配置・向き・アニメーション
+
+- **向き**：ルート上の km ± 車体長の 4 割の 2 点から接線を求め、常に東京 → 那覇の進行方向を向く（後退データでも逆を向かない）。
+- **高さ**：列車はルート線と同じ規則（詳細地形の周囲最大標高 + 市街地の持ち上げ + 遠景での粗い地形・距離に応じた持ち上げ）を車体の前・中・後の 3 点で取った最大値の上に、車体長の 1.5% 浮かせて置く（坂・谷・市街地でめり込まない）。船は海面（Y = 0、港の近くで陸地にかかる場合は地表）の少し上。
+- **大きさ**：画面上で列車 約 64px・船 約 58px の長さになるよう、カメラ距離に応じて車体長を 0.4〜44 km（船 0.36〜40 km）で変える。近景ではほぼ実物大、遠景でも位置が分かる。さらに画面上で 34px 未満になる遠景では小さな札（「列車」「船」）を車体の上に出す（出航前で遠い船は出さない）。
+- **アニメーション**：ページ表示後に自動で 1 回再生（開始 1.2 秒後）。1 区間 4.5〜7 秒（増分に応じて）、陸路 → 海路をまたぐ日は合計 8 秒以内、easeInOutCubic。増分 0 km ならその場に静止。ループはせず、右上パネルの「▶ 再生」で何度でも再生。パネルには「昨日 → 今日」「増分」「現在 km（再生中は数字が進む）」「列車 / 船 / 列車 → 船」と取得方式（FETCH / JSONP / URL 指定）。
+- **カメラ**：既存のプリセット・初期視点は変更なし。パネルの「列車へ」「船へ」で今日の位置へ移動（進行方向の斜め後ろ、距離 14 km。既存の `goPreset()` を使用）。
+
+```js
+DHT.vehicles.plan;                 // { prev, cur, train:{from,to,moving}, ship:{from,to,moving,active,docked} }
+DHT.vehicles.play();               // 再生し直す
+DHT.vehicles.positionAt('ship', 1708.9); // 累積 km → 位置（名瀬）
+DHT.progress;                      // { progress, raw, source:'fetch'|'jsonp'|'url', plan }
+```
+
+### 16.6 パフォーマンス
+
+- 追加の draw call は **+2**（列車 1・船 1。全体俯瞰で 96 → 98）。三角形 +約 1.9 万（列車 8,292・船 11,114）。テクスチャは CanvasTexture 4 枚（2048×330 前後 ×2、256×256 ×2）。
+- 配信データの追加：GLB 2 つ 約 470KB、v7 の JS 約 41KB ＋ three.js 同梱の GLTFLoader 一式 約 170KB。ビルド不要・外部ライブラリなし。
+
+### 16.7 QA（ローカル HTTP サーバー + Chromium / Playwright・SwiftShader、サブパス `/dht-express-stage/`）
+
+API は Playwright で応答を差し替えて検証しました（このサンドボックスからは script.google.com に接続できないため。実 API の応答形式は §16.3 の想定に基づく）。結果は `qa/v7/browser_qa.json`。
+
+| シナリオ | 取得方式 | 列車 km | 船 km | 結果 |
+|---|---|---|---|---|
+| A 陸路（521.0 → 562.4） | fetch | 521 → 562.4 | 鹿児島新港で待機 | OK |
+| B 海路（1660.8 → 1702.3） | fetch | 鹿児島中央で停止 | 1660.8 → 1702.3 | OK |
+| B2 fetch が HTML を返す → JSONP | fetch → JSONP | 〃 | 1660.8 → 1702.3 | OK（自動切替） |
+| C 陸路 → 海路（1301.5 → 1361.0） | fetch | 1301.5 → 1325.9 | 1325.9 → 1361.0 | OK（列車 → 船の順） |
+| D 増分 0（800 → 800） | fetch | 800 で静止 | 待機 | OK |
+| E 那覇超え（2040 → 2075） | fetch | 停止 | 2040 → 2060.9（那覇で停止） | OK |
+| F previousProgressKm なし・文字列（yesterdayKm "1,120" → "1,150.5"） | fetch | 1120 → 1150.5 | 待機 | OK |
+| G 始点なし（→ 35） | fetch | 0 → 35 | 待機 | OK（仕様どおり 0 から） |
+| H 山間部（865 → 905、徳山付近） | fetch | 865 → 905 | 待機 | OK |
+| I `?apiMode=jsonp` | JSONP | 280 → 300 | 待機 | OK |
+
+- 全シナリオで **console error 0・HTTP 4xx/5xx 0**。進行方向と車体の向きの内積はすべて正（逆向きなし）。車体の底は地表・海面より上（めり込みなし）。
+- 既存機能：プリセット 21 件のまま・「東京都心」移動・`R` キー・EXPLORE VIEW ⇄ MAP VIEW を確認（`controls.js` / `camera.js` 未変更）。
+- 画像：`qa/v7/compare_*.jpg`（四面図との比較）、`close_*.jpg`（近景：列車・船・鹿児島）、`<シナリオ>_overview / focus_mid / focus_end.jpg`（全体・再生中・再生後）。
+
+### 16.8 既知の注意点
+
+- **実 API には未接続で検証**しています（開発環境から Google に接続できないため、同じ形式の JSON で fetch / JSONP の両経路を確認）。GitHub Pages 上で初回に「FETCH」または「JSONP」がパネル右上に出ることを確認してください。fetch が CORS で拒否される環境では、ブラウザが CORS エラーを 1 行コンソールに出したうえで JSONP に切り替わります（気になる場合は `progress.js` の既定 `mode` を `'jsonp'` に）。
+- 文字は端末のサンセリフ太字で描くため、OS によって字形がわずかに変わります（幅・位置は固定）。
+- 塗装は GLB の現在の形状に合わせた座標で描いています。GLB を作り直した場合は `js/livery.js` の座標（窓・ドア・デカールの範囲）を合わせ直してください。
+- RAIL END（鹿児島中央）で停止中の列車は、近景では RAIL END の発光ノードと重なって見えにくいことがあります。
+- 増分がマイナス（データ修正などで今日 < 昨日）の場合は後退して表示しますが、車体は進行方向を向いたままです。
