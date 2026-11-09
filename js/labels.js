@@ -7,6 +7,7 @@
  *   ・maxDist  … これより遠いと表示しない [km]（広域＝主要なものだけ、近づくほど詳細）
  *   ・prio     … 重なった時の優先度（大きいほど残る）
  *   ・nearDist / prioNear … 近距離（nearDist 以内）での優先度。駅・ランドマークを近くで優先するため
+ *   ・nearBoost … v6：近距離での追加優先度（近いほど最大 nearBoost 加算。同種の重なりで近いものを残す）
  *   ・getY(ground) … ラベルの高さ（ランドマークの頂部など）。省略時は 地表 + 0.4 + yOffset
  *   ・sub      … 2 行目の小さな補足（橋が結ぶ陸地など）
  *   ・minDist  … これより近いと表示しない [km]（v3：富士五湖のまとめラベルなど広域専用のもの）
@@ -19,6 +20,23 @@ import * as THREE from 'three';
 import { latLonToWorld } from './geo.js';
 
 const _v = new THREE.Vector3();
+
+/**
+ * v6: 近距離（各ラベルの nearDist 以内）での優先度の帯。東京都心・横浜・湾岸のような密集地は近距離で見るので、
+ * ここで種類の順位を固定する：DHT ROUTE 重要ノード > 新幹線駅 > ランドマーク > 都市 > 河川・湖沼。
+ * 同じ帯の中は重要度（imp）と近さ（nearBoost）で決まる（ランドマーク同士の重なり回避）。
+ * 遠距離（nearDist より遠い）は従来どおり prio を使う（全国俯瞰では都市名を優先）。
+ */
+export const PRIO_NEAR = {
+  routeend: 9.6, // DHT EXPRESS 0 km / RAIL END
+  port: 9.3, // 寄港地（累積 km）
+  routekm: 9.0, // 100km ノードの距離ラベル（新幹線・海路）
+  stationMajor: 8.6,
+  station: 8.2,
+  landmark: 7.0, // + 重要度 0〜0.6 + 近さ 0〜0.3
+  city: 6.0, // + 0〜0.5
+  // 湖沼・河川は nearDist を持たない（1.3〜1.75 / 0.8 のまま＝常に最下位）
+};
 const PRIORITY = { city: 2, island: 2.5, peak: 1, sea: 0 };
 
 export class PlaceLabels {
@@ -129,7 +147,7 @@ export class PlaceLabels {
       if (ok) {
         it.sx = (_v.x * 0.5 + 0.5) * width;
         it.sy = (-_v.y * 0.5 + 0.5) * height;
-        it.p = it.nearDist && it.dist < it.nearDist ? it.prioNear : it.prio;
+        it.p = it.nearDist && it.dist < it.nearDist ? it.prioNear + (it.nearBoost ? it.nearBoost * (1 - it.dist / it.nearDist) : 0) : it.prio;
         cand.push(it);
       } else this._set(it, false);
     }

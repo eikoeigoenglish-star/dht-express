@@ -119,6 +119,9 @@ body.mode-explore .crosshair { display: block; }
 /* v5: DHT EXPRESS ルート（川の青と区別：シアンの発光・暖色の始点/終点・アクアの寄港地） */
 .label--routekm { background: rgba(0, 40, 52, 0.62); color: #9ff6ff; font: 600 10px/1 var(--font); letter-spacing: 0.06em; padding: 2px 5px; box-shadow: 0 0 6px rgba(80, 230, 255, 0.55); }
 .label--routekm::after { background: rgba(127, 248, 255, 0.8); }
+/* v6: 海路の 100km ラベル（距離表記は新幹線と同じ「1400 km」。色だけアクア〜白寄り） */
+.label--routekm-sea { background: rgba(0, 46, 44, 0.62); color: #d4fff5; box-shadow: 0 0 6px rgba(150, 255, 230, 0.55); }
+.label--routekm-sea::after { background: rgba(200, 255, 240, 0.85); }
 .label--routeend { background: rgba(20, 16, 4, 0.84); color: #ffe27a; font-size: 12px; letter-spacing: 0.08em; box-shadow: 0 0 10px rgba(255, 210, 110, 0.45); }
 .label--route-end { color: #ffbf73; }
 .label--routeend small, .label--port small { display: block; font: 500 10px/1.3 var(--font); color: rgba(255, 255, 255, 0.8); margin-top: 2px; letter-spacing: 0; }

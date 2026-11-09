@@ -23,6 +23,7 @@
  */
 import * as THREE from 'three';
 import { latLonToWorld } from './geo.js';
+import { PRIO_NEAR } from './labels.js';
 
 const COLOR_MAJOR = new THREE.Color('#ffc24a');
 const COLOR_NORMAL = new THREE.Color('#3f8fe0');
@@ -153,7 +154,7 @@ export class StationSystem {
       maxDist: s.major ? 700 : 150,
       prio: s.major ? 3.9 : 1.9,
       nearDist: 70,
-      prioNear: s.major ? 6.5 : 5.2,
+      prioNear: s.major ? PRIO_NEAR.stationMajor : PRIO_NEAR.station, // v6: 近距離ではランドマークより上
       wExtra: 14,
       meta: s,
     }));

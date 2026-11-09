@@ -19,11 +19,22 @@
 import * as THREE from 'three';
 import { latLonToWorld, VERTICAL_EXAGGERATION } from './geo.js';
 import { GeoBuilder } from './meshkit.js';
+import { KANTO_BUILDERS } from './landmarks-kanto.js';
+import { PRIO_NEAR } from './labels.js';
 
 const M2Y = VERTICAL_EXAGGERATION / 1000;
 const D2R = Math.PI / 180;
-const DIST = { 1: 460, 2: 190 }; // モデルを表示する距離 [km]
+const DIST = { 1: 460, 2: 190 }; // モデルを表示する距離 [km]（landmarks.json の showKm があればそちら）
 const LABEL_DIST = { 1: 420, 2: 120 };
+/**
+ * v6: ランドマークの 3 段 LOD
+ *   近距離（fullKm 以内）  … 完全な形
+ *   中距離（〜showKm）     … 簡略形：同じビルダーを GeoBuilder({ minPart }) で作り直し、小さな部品（窓の帯・木・ゴンドラ・手すりなど）を省く
+ *   遠距離（showKm より先）… 非表示
+ * どちらの形も 1 ジオメトリ（draw call 1）。切り替えは mesh.geometry の差し替えだけ。
+ */
+const FULL_KM = 30; // 既定の「完全表示」距離
+const SIMPLE_MIN_PART = 0.03; // 簡略形で省く部品の大きさ [km]（30km 先で約 1px）
 
 const COL = {
   white: '#f4f2ec',
@@ -425,7 +436,7 @@ function fukuokaTower(b) {
   return { height: 234 * s, exclude: 0.3 };
 }
 
-const BUILDERS = { skytree, tokyoTower, temple, castleNagoya, castleHimeji, castleKumamoto, twinTowers, kyotoTower, kinkaku, ferrisWheel, kofun, itsukushima, kibitsu, fukuokaTower };
+const BUILDERS = { skytree, tokyoTower, temple, castleNagoya, castleHimeji, castleKumamoto, twinTowers, kyotoTower, kinkaku, ferrisWheel, kofun, itsukushima, kibitsu, fukuokaTower, ...KANTO_BUILDERS };
 
 /* ====================================================================== */
 /* 橋（海峡を跨ぐ構造物。path の両端が結ぶ陸地）                                */
@@ -445,9 +456,16 @@ function buildBridge(b, lm, groundY, o) {
     return { x: w.x - o.x, z: w.z - o.z, wx: w.x, wz: w.z, kind, deck: null };
   });
   const isSeto = lm.id === 'seto-ohashi';
-  const deckColor = lm.id === 'akashi-kaikyo-bridge' ? COL.akashi : COL.steel;
-  const W = isSeto ? 0.075 : 0.07; // 幅（実物の約2倍）
-  const T = isSeto ? 0.05 : 0.03; // 桁の厚さ（瀬戸大橋は道路鉄道併用の2層トラス）
+  const deckColor = lm.deckColor ?? (lm.id === 'akashi-kaikyo-bridge' ? COL.akashi : COL.steel);
+  const W = lm.deckW ?? (isSeto ? 0.075 : 0.07); // 幅（実物の約2倍）
+  const T = lm.deckT ?? (isSeto ? 0.05 : 0.03); // 桁の厚さ（瀬戸大橋は道路鉄道併用の2層トラス）
+  // v6: 'pad' の端点は埋立地の小さな基盤（1km 格子の地形では海になっている人工の陸地）
+  for (const p of P) {
+    if (p.kind !== 'pad') continue;
+    const r = 0.28;
+    b.plate([[p.x - r, p.z - r], [p.x + r, p.z - r], [p.x + r, p.z + r], [p.x - r, p.z + r]], 0.088, '#b9b5aa', -0.07);
+    p.deck = 0.035;
+  }
   const spans = lm.spans ?? [];
   for (const sp of spans) {
     const dy = sp.deckM * M2Y * BV;
@@ -492,6 +510,7 @@ function buildBridge(b, lm, groundY, o) {
         const t = k / cnt;
         if (sp?.type === 'suspension' && t > towers[0] && t < towers[1]) continue;
         if (sp?.type === 'stayed' && t > towers[0] + 0.04 && t < towers[1] - 0.04) continue;
+        if (sp?.type === 'gateTruss' && t > 0.04 && t < 0.96) continue; // 主橋脚はトラス側で描く
         const q = lerp(a, c, t);
         const g = groundY(q.x + o.x, q.z + o.z);
         const bottom = Math.min(g, 0) - 0.3;
@@ -552,6 +571,43 @@ function buildBridge(b, lm, groundY, o) {
               const oz = q.z + n.z * sg * W * 0.62;
               b.beam(ox, top - 0.02, oz, ox + ux * dir * dd, q.deck, oz + uz * dir * dd, 0.005, '#e6e9eb');
             }
+    } else if (sp.type === 'gateTruss') {
+      // v6: 東京ゲートブリッジ型のトラス。主橋脚の上で上下に大きく張り出し（上弦は桁の上、下弦は桁の下）、
+      //     中央と両端で細くなる —「向かい合う 2 頭の恐竜」のような輪郭。
+      const topY = (sp.topM ?? 88) * M2Y * BV;
+      const bump = (t) => Math.exp(-(((t - 0.27) / 0.14) ** 2)) + Math.exp(-(((t - 0.73) / 0.14) ** 2));
+      const N = 28;
+      const col = lm.trussColor ?? '#d9dee2';
+      const chord = (q, t, upper) => (upper ? q.deck + 0.02 + (topY - q.deck - 0.02) * Math.min(1, bump(t)) : q.deck - T - 0.03 - 0.13 * Math.min(1, bump(t)));
+      for (const sg of [-1, 1]) {
+        let prevT = null;
+        let prevB = null;
+        for (let k = 0; k <= N; k++) {
+          const t = k / N;
+          const q = lerp(a, c, t);
+          const px = q.x + n.x * sg * W * 0.52;
+          const pz = q.z + n.z * sg * W * 0.52;
+          const T1 = { x: px, y: chord(q, t, true), z: pz };
+          const B1 = { x: px, y: chord(q, t, false), z: pz };
+          if (prevT) {
+            b.beam(prevT.x, prevT.y, prevT.z, T1.x, T1.y, T1.z, 0.014, col);
+            b.beam(prevB.x, prevB.y, prevB.z, B1.x, B1.y, B1.z, 0.014, col);
+            if (k % 2) b.beam(prevB.x, prevB.y, prevB.z, T1.x, T1.y, T1.z, 0.008, col);
+            else b.beam(prevT.x, prevT.y, prevT.z, B1.x, B1.y, B1.z, 0.008, col);
+          }
+          b.beam(T1.x, T1.y, T1.z, B1.x, B1.y, B1.z, 0.007, col);
+          prevT = T1;
+          prevB = B1;
+        }
+      }
+      // 上弦の横つなぎと主橋脚
+      for (const tp of [0.27, 0.73]) {
+        const q = lerp(a, c, tp);
+        const yT = chord(q, tp, true);
+        b.beam(q.x - n.x * W * 0.52, yT, q.z - n.z * W * 0.52, q.x + n.x * W * 0.52, yT, q.z + n.z * W * 0.52, 0.012, col);
+        b.box(W * 1.3, chord(q, tp, false) + 0.3, 0.09, '#b8bcbf', q.x, -0.3, q.z, Math.atan2(c.x - a.x, c.z - a.z));
+        maxTop = Math.max(maxTop, yT);
+      }
     } else if (sp.type === 'truss') {
       // トラス：桁の上に上弦材と束
       const h = 0.045;
@@ -587,7 +643,7 @@ export class LandmarkSystem {
     this.byId = new Map();
     this.frame = 0;
     this.building = false;
-    this.stats = { built: 0, visible: 0 };
+    this.stats = { built: 0, visible: 0, simple: 0 };
   }
 
   async load(url) {
@@ -599,6 +655,18 @@ export class LandmarkSystem {
       it.exclusions = l.path
         ? l.path.map(([la, lo]) => ({ ...latLonToWorld(la, lo), r: 0.25 }))
         : [{ x: w.x, z: w.z, r: EXCLUDE_GUESS[l.kind] ?? 0.4 }];
+      // v6: landmarks.json の除外範囲（ローカル座標 km、heading で回転）。面積型は向きのある長方形
+      if (l.exclude || l.excludeRect) {
+        const h = (l.heading ?? 0) * D2R;
+        const toW = (lx, lz) => ({ x: w.x + lx * Math.cos(h) - lz * Math.sin(h), z: w.z + lx * Math.sin(h) + lz * Math.cos(h) });
+        it.exclusions = [
+          ...(l.exclude ?? []).map(([lx, lz, r]) => ({ ...toW(lx, lz), r })),
+          ...(l.excludeRect ?? []).map(([lx, lz, hw, hd]) => ({ ...toW(lx, lz), hw, hd, rot: -h })),
+        ];
+        if (l.path) it.exclusions.push(...l.path.map(([la, lo]) => ({ ...latLonToWorld(la, lo), r: 0.25 })));
+      }
+      // 地表データを先に読む範囲（面積型・長い橋はチャンク境界をまたぐことがある）
+      it.extentKm = l.extentKm ?? (l.path ? 0 : 1);
       if (l.kind === 'kofun') {
         // 前方後円墳は細長いので前方部・後円部の 2 点で覆う
         const h = (l.heading ?? 0) * D2R;
@@ -620,31 +688,45 @@ export class LandmarkSystem {
     return this.items.flatMap((it) => it.exclusions);
   }
 
-  _build(it) {
-    const b = new GeoBuilder();
+  /** ビルダーを実行して 1 ジオメトリを作る（minPart > 0 なら中距離用の簡略形） */
+  _geometry(it, y, minPart) {
+    const b = new GeoBuilder({ minPart });
     const t = this.terrain;
     let res;
-    let y = 0;
     if (it.kind === 'bridge') {
       res = buildBridge(b, it, (x, z) => t.getSurfaceY(x, z), it);
-      it.labelY = res.height + 0.1;
     } else {
-      // 足元：周囲の低い方の地表に合わせる（斜面でも浮かない）
-      y = this._groundY(it);
       const rot = -(it.heading ?? 0) * D2R;
       const cs = Math.cos(rot);
       const sn = Math.sin(rot);
-      // ローカル座標 (lx, lz) の地表高さ（モデル原点からの相対 Y）
-      const ctx = { ground: (lx, lz) => t.getSurfaceY(it.x + lx * cs + lz * sn, it.z - lx * sn + lz * cs) - y };
+      // ローカル座標 (lx, lz) の地表高さ（モデル原点からの相対 Y）。sea = 海面の相対 Y
+      const ctx = { ground: (lx, lz) => t.getSurfaceY(it.x + lx * cs + lz * sn, it.z - lx * sn + lz * cs) - y, sea: -y, it };
       res = BUILDERS[it.kind](b, ctx);
-      it.labelY = null;
     }
-    const geo = b.build();
+    const skipped = b.skipped;
+    return { geo: b.build(), res, skipped };
+  }
+
+  _build(it) {
+    let y = 0;
+    // 足元：周囲の低い方の地表に合わせる（斜面でも浮かない）
+    if (it.kind !== 'bridge') y = this._groundY(it);
+    const full = this._geometry(it, y, 0);
+    const res = full.res;
+    it.labelY = it.kind === 'bridge' ? res.height + 0.1 : null;
+    const simple = this._geometry(it, y, it.minPart ?? (it.group === 'kanto-v6' ? 0.045 : SIMPLE_MIN_PART));
+    // 省いた部品がなければ同じジオメトリを使う
+    if (!simple.skipped) simple.geo.dispose();
+    it.geoFull = full.geo;
+    it.geoSimple = simple.skipped ? simple.geo : full.geo;
+    it.tris = { full: full.geo.attributes.position.count / 3, simple: it.geoSimple.attributes.position.count / 3 };
+    it.lod = 'full';
+    const geo = full.geo;
     const mesh = new THREE.Mesh(geo, this.material);
     mesh.name = `landmark_${it.id}`;
     mesh.position.set(it.x, y, it.z);
     if (it.kind !== 'bridge') mesh.rotation.y = -(it.heading ?? 0) * D2R;
-    mesh.userData = { kind: 'landmark', id: it.id, name: it.name, type: 'landmark', lat: it.lat, lon: it.lon, region: it.region, connects: it.connects };
+    mesh.userData = { kind: 'landmark', id: it.id, name: it.name, type: 'landmark', lat: it.lat, lon: it.lon, region: it.region, connects: it.connects, group: it.group };
     mesh.updateMatrix();
     mesh.matrixAutoUpdate = false;
     it.mesh = mesh;
@@ -667,13 +749,26 @@ export class LandmarkSystem {
     this.frame++;
     const p = camera.position;
     let vis = 0;
+    let simple = 0;
     for (const it of this.items) {
       const d = Math.hypot(p.x - it.x, p.y, p.z - it.z);
-      const maxD = DIST[it.tier] ?? 200;
+      const maxD = it.showKm ?? DIST[it.tier] ?? 200;
       if (it.state === 'idle' && d < maxD + 40) {
         it.state = 'loading';
-        const c = this.terrain.chunkOf(it.x, it.z);
-        this.terrain.requestChunkData(c.cx, c.cz, d).then(() => (it.state = 'queued'));
+        // 原点と、面積型・橋なら範囲の四隅・経路の各点を含むチャンクの詳細地形を読んでから生成する
+        const pts = [[it.x, it.z]];
+        const e = it.extentKm ?? 0;
+        if (e > 0) for (const [dx, dz] of [[-e, -e], [e, -e], [e, e], [-e, e]]) pts.push([it.x + dx, it.z + dz]);
+        if (it.path) for (const [la, lo] of it.path) {
+          const q = latLonToWorld(la, lo);
+          pts.push([q.x, q.z]);
+        }
+        const keys = new Map();
+        for (const [x, z] of pts) {
+          const c = this.terrain.chunkOf(x, z);
+          keys.set(`${c.cx}_${c.cz}`, c);
+        }
+        Promise.all([...keys.values()].map((c) => this.terrain.requestChunkData(c.cx, c.cz, d))).then(() => (it.state = 'queued'));
       }
       if (it.state === 'queued' && !this.building) {
         this.building = true; // 1 フレーム 1 件まで
@@ -681,7 +776,16 @@ export class LandmarkSystem {
       }
       if (it.mesh) {
         it.mesh.visible = d < maxD;
-        if (it.mesh.visible) vis++;
+        if (it.mesh.visible) {
+          vis++;
+          // v6: 中距離は簡略形
+          const lod = d < (it.fullKm ?? FULL_KM) ? 'full' : 'simple';
+          if (lod !== it.lod) {
+            it.lod = lod;
+            it.mesh.geometry = lod === 'full' ? it.geoFull : it.geoSimple;
+          }
+          if (lod === 'simple') simple++;
+        }
         // 詳細地形の読み込みで地表が変わったら置き直す
         if (it.kind !== 'bridge' && this.frame % 60 === 0) {
           const y = this._groundY(it);
@@ -694,6 +798,7 @@ export class LandmarkSystem {
     }
     this.building = false;
     this.stats.visible = vis;
+    this.stats.simple = simple;
   }
 
   /** ラベル項目（labels.js の addItems 形式） */
@@ -707,10 +812,14 @@ export class LandmarkSystem {
       z: it.z,
       // ラベルはモデルの頂部の少し上
       getY: (ground) => (it.labelY != null ? it.labelY : ground + (it.mesh ? it.height : 0.3) + 0.06),
-      maxDist: LABEL_DIST[it.tier] ?? 120,
-      prio: it.tier === 1 ? 3.7 : 2.6,
-      nearDist: 40,
-      prioNear: 5.6,
+      maxDist: it.labelKm ?? LABEL_DIST[it.tier] ?? 120,
+      // v6: 優先度 = 「ROUTE 重要ノード > 駅 > ランドマーク > 都市 > 水系」（labels.js の PRIO_NEAR）。
+      //     近距離ではランドマーク帯（7.0〜7.9）の中で重要度 imp と近さで重なりを解く。
+      //     遠距離（新規 38 件）は駅（1.9〜）より下・湖沼（〜1.75）より上。既存 17 件の遠距離の値は従来どおり。
+      prio: it.group === 'kanto-v6' ? 1.8 + (it.imp ?? 0.5) * 0.08 : it.tier === 1 ? 3.7 : 2.6,
+      nearDist: it.nearKm ?? 40,
+      prioNear: PRIO_NEAR.landmark + (it.imp ?? (it.tier === 1 ? 0.6 : 0.4)),
+      nearBoost: 0.3,
       wExtra: 16,
       meta: it,
     }));

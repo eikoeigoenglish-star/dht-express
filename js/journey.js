@@ -8,7 +8,8 @@
  *   ・接続区間   : Line2 ×1（鹿児島中央 → 鹿児島新港。暖色の点線＝鉄道ではない）
  *   ・フェリー   : Line2 ×2（芯 = アクア〜白の破線 / 外側 = 淡い発光帯）
  *   ・ノード     : 1 つの InstancedMesh（カメラを向く板 + 自前シェーダ）に
- *                  新幹線 10km ノード 133 個・フェリー 10km 航路灯 74 個・寄港地 7・始点/終点 を全部入れる
+ *                  新幹線 10km ノード 133 個・フェリー 10km 航路灯 74 個（v6: 東京からの累積 1330〜2060km。うち 100km 節目 7 個）・
+ *                  寄港地 7・始点/終点 を全部入れる
  *                  → draw call 1。発光は加算合成（ポストプロセスなし）
  *
  * 高さ
@@ -26,11 +27,13 @@
  *   ・始点・終点 : 常時（大きめ、二重リング）
  *   ・航路灯     : 〜130km（白〜アクアの小さな光）
  *   ・寄港地     : 常時（アクアの球 + リング）
+ *   ・海路100km  : 常時（v6。航路灯より大きく発光が強いアクア〜白の球 + リング、近距離で「1400 km」などのラベル）
  *
  * データ参照（window.DHT.journey）
  *   journey.journey          … route.js の Journey（getJourneyPosition など）
  *   journey.railNodes        … 新幹線 10km ノード [{ km, tier:'minor'|'mid'|'major'|'start'|'rail-end', x, z, lat, lon }]
- *   journey.ferryNodes       … フェリー 10km 航路灯
+ *   journey.ferryNodes       … フェリー 10km 航路灯（v6: km = 東京からの累積 1330…2060、segmentKm = 区間内 km）
+ *   journey.ferryMajorNodes  … 海路 100km メジャーノード（1400…2000 km, tier 'ferry-major'）
  *   journey.nodeMesh.userData.items[instanceId] … Raycaster でノードのデータ
  */
 import * as THREE from 'three';
@@ -38,6 +41,11 @@ import { Line2 } from 'three/addons/lines/Line2.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { VERTICAL_EXAGGERATION, latLonToWorld } from './geo.js';
+import { displayKm } from './route.js';
+import { PRIO_NEAR } from './labels.js';
+
+// v6: 100km ラベル（新幹線・海路）の遠距離優先度。表示は 70km 以内だけなので、そこでは都市より上にする
+const ROUTE_KM_PRIO = 4.8;
 
 const M2Y = VERTICAL_EXAGGERATION / 1000;
 
@@ -50,6 +58,8 @@ const TIER = {
   'rail-end': { id: 4, color: '#ffb35c', r: 0.8, minPx: 7, maxPx: 46 }, // RAIL END（鹿児島中央）
   ferry: { id: 5, color: '#d6fff4', r: 0.24, minPx: 2.2, maxPx: 16 }, // 航路灯 10km
   port: { id: 6, color: '#6ff5d6', r: 0.62, minPx: 5.5, maxPx: 38 }, // 寄港地
+  // v6: 海路の 100km メジャーノード（東京からの累積 1400〜2000km）。新幹線の 100km と同じ「節目」だと分かる大きさ・リング、色はアクア〜白
+  'ferry-major': { id: 7, color: '#bdfff0', r: 0.55, minPx: 4.8, maxPx: 34 },
 };
 
 /* 共通 GLSL：カメラ距離に応じた高さの選択と持ち上げ */
@@ -120,7 +130,7 @@ const NODE_VERT = /* glsl */ `
     if ( t < 1.5 ) return 1.0 - smoothstep( 450.0, 700.0, d );           // 50km
     if ( t < 4.5 ) return 1.0;                                            // 100km・始点・終点
     if ( t < 5.5 ) return 0.85 * ( 1.0 - smoothstep( 130.0, 230.0, d ) ); // 航路灯
-    return 1.0;                                                           // 寄港地
+    return 1.0;                                                           // 寄港地・海路 100km（v6）
   }
 
   void main() {
@@ -170,9 +180,10 @@ const NODE_FRAG = /* glsl */ `
     vec3 coreCol = mix( vColor * lit, vec3( 1.0 ), 0.55 * pow( max( 0.0, dot( n, normalize( vec3( -0.4, 0.5, 0.75 ) ) ) ), 14.0 ) + 0.04 );
     // glow：外側へ柔らかく減衰
     float glow = exp( -r * r * 0.9 ) * 0.55 + exp( -r * 1.6 ) * 0.22;
+    if ( vTier > 6.5 ) glow *= 1.45; // v6: 海路 100km は航路灯より強く光らせる
     // リング（100km・始点・終点・寄港地。近くで大きく見えている時だけ）
     float ring = 0.0;
-    bool ringed = vTier > 1.5 && vTier < 4.5 || vTier > 5.5;
+    bool ringed = vTier > 1.5 && vTier < 4.5 || vTier > 5.5; // 100km・始点・終点・寄港地・海路 100km
     if ( ringed ) {
       float near = smoothstep( 7.0, 14.0, vPx );
       ring = ( 1.0 - smoothstep( 0.0, 0.11, abs( r - 1.75 ) ) ) * 0.85 * near;
@@ -229,18 +240,41 @@ export class JourneyLayer {
     const end = rail.getPositionAtDistance(rail.totalKm);
     this.railNodes.push({ km: rail.totalKm, tier: 'rail-end', x: end.x, z: end.z, lat: end.lat, lon: end.lon, station: rail.endStation });
     this.railNodes.forEach((n) => (n.route = 'rail'));
-    // フェリー：10km ごとの航路灯（寄港地と重なるものは省く）
-    this.ferryNodes = ferry
-      .makeNodes(10, () => 'ferry')
-      .filter((n) => !ferry.ports.some((p) => Math.abs(p.km - n.km) < 3));
-    this.ferryNodes.forEach((n) => (n.route = 'ferry'));
+    this.railNodes.forEach((n) => (n.journeyKm = n.km));
+    // v6: フェリーの航路灯も「東京からの累積 km」の 10km 刻み（1330, 1340 … 2060）。鹿児島で 0 に戻さない。
+    //     100km の節目（1400〜2000）は海路メジャーノード（tier 'ferry-major'）。
+    this.ferryNodes = this._ferryNodes(journey, 10);
+    this.ferryMajorNodes = this.ferryNodes.filter((n) => n.tier === 'ferry-major');
     this.portNodes = ferry.ports.map((p) => {
       const q = ferry.getPositionAtDistance(p.km);
-      return { km: p.km, tier: 'port', x: q.x, z: q.z, lat: q.lat, lon: q.lon, port: p, route: 'ferry' };
+      return { km: p.journeyKm, journeyKm: p.journeyKm, segmentKm: p.km, tier: 'port', x: q.x, z: q.z, lat: q.lat, lon: q.lon, port: p, route: 'ferry' };
     });
     this.allNodes = [...this.railNodes, ...this.ferryNodes, ...this.portNodes];
+    this.stats.ferryNodes = this.ferryNodes.length;
+    this.stats.ferryMajorNodes = this.ferryMajorNodes.length;
     this._buildNodes();
     this.refreshHeights(true);
+  }
+
+  /**
+   * v6: フェリー区間の距離ノード。km は東京からの累積（journey km）、segmentKm はフェリー区間の内部 km。
+   * 最初は 1325.9 より大きい最初の 10 の倍数（1330）、最後は 2060.9 以下の最大の 10 の倍数（2060）。
+   */
+  _ferryNodes(journey, interval) {
+    const seg = journey.segments.find((s) => s.type === 'ferry');
+    const ferry = seg.route;
+    const k = (seg.toKm - seg.fromKm) / ferry.totalKm;
+    const nodes = [];
+    const first = Math.floor(seg.fromKm / interval + 1e-9) * interval + interval;
+    for (let jk = first; jk <= seg.toKm + 1e-9; jk += interval) {
+      const local = (jk - seg.fromKm) / k;
+      const p = ferry.getPositionAtDistance(local);
+      nodes.push({
+        km: jk, journeyKm: jk, segmentKm: Math.round(local * 1000) / 1000, tier: jk % 100 === 0 ? 'ferry-major' : 'ferry',
+        x: p.x, z: p.z, lat: p.lat, lon: p.lon, headingRad: p.headingRad, route: 'ferry',
+      });
+    }
+    return nodes;
   }
 
   /** ルートを論理 km ではなく幾何長で細かく刻んだ点列（線の形を保つため、元の折れ線の頂点も含める） */
@@ -454,28 +488,40 @@ export class JourneyLayer {
       if (n.tier !== 'major') continue;
       items.push({
         id: `km-${n.km}`, name: `${n.km} km`, type: 'routekm', x: n.x, z: n.z,
-        getY: () => (n.y ?? 0) + 0.55, maxDist: 70, prio: 1.4, nearDist: 25, prioNear: 3.0, meta: n,
+        getY: () => (n.y ?? 0) + 0.55, maxDist: 70, prio: ROUTE_KM_PRIO, nearDist: 25, prioNear: PRIO_NEAR.routekm, meta: n,
       });
     }
     const s = J.rail.startStation;
     const sp = latLonToWorld(s.routeLat ?? s.lat, s.routeLon ?? s.lon);
     items.push({
       id: 'dht-start', name: 'DHT EXPRESS 0 km', sub: '東京 START', type: 'routeend', cls: 'label--route-start',
-      x: sp.x, z: sp.z, getY: (g) => g + 1.2, maxDist: 420, prio: 3.6, nearDist: 60, prioNear: 6.8, meta: s,
+      x: sp.x, z: sp.z, getY: (g) => g + 1.2, maxDist: 420, prio: 3.6, nearDist: 60, prioNear: PRIO_NEAR.routeend, meta: s,
     });
     const e = J.rail.endStation;
     const ep = latLonToWorld(e.routeLat ?? e.lat, e.routeLon ?? e.lon);
     items.push({
       id: 'dht-rail-end', name: 'RAIL END', sub: `鹿児島中央 ${J.rail.totalKm} km`, type: 'routeend', cls: 'label--route-end',
-      x: ep.x, z: ep.z, getY: (g) => g + 1.2, maxDist: 420, prio: 3.6, nearDist: 60, prioNear: 6.8, meta: e,
+      x: ep.x, z: ep.z, getY: (g) => g + 1.2, maxDist: 420, prio: 3.6, nearDist: 60, prioNear: PRIO_NEAR.routeend, meta: e,
     });
+    // v6: 海路 100km メジャーノード（1400〜2000 km）。新幹線と同じ「累積 km」の書式（FERRY 100km のような別距離表記はしない）
+    for (const n of this.ferryMajorNodes) {
+      items.push({
+        id: `km-${n.km}`, name: `${n.km} km`, type: 'routekm', cls: 'label--routekm-sea', x: n.x, z: n.z,
+        getY: () => (n.y ?? 0) + 0.55, maxDist: 70, prio: ROUTE_KM_PRIO, nearDist: 25, prioNear: PRIO_NEAR.routekm, meta: n,
+      });
+    }
+    // 寄港地：東京からの累積 km（表示は整数に丸める：鹿児島新港 1326 km … 那覇 2061 km）
     for (const p of J.ferry.ports) {
       const w = latLonToWorld(p.stageLat ?? p.lat, p.stageLon ?? p.lon);
-      const jk = J.segments.find((sg) => sg.type === 'ferry').fromKm + p.km;
+      const jk = p.journeyKm;
+      const role = p.role === 'ferry-start' ? ' · FERRY START' : p.journeyRole === 'journey-end' ? ' · JOURNEY END' : '';
+      const edge = p.role === 'ferry-start' || p.journeyRole === 'journey-end';
+      // 鹿児島新港は RAIL END（鹿児島中央・3.5km 先）と画面上で重なりやすいので、島名を省いて短くし、少し高い位置に出す
+      const start = p.role === 'ferry-start';
       items.push({
-        id: `port-${p.id}`, name: `${p.name}港`.replace('港港', '港'), sub: `${p.island} · 航路 ${p.km} km`, type: 'port',
-        x: w.x, z: w.z, getY: () => 0.5, maxDist: p.km === 0 || p.km === 735 ? 380 : 300, minDist: 1.5,
-        prio: 2.6, nearDist: 80, prioNear: 5.5, meta: { ...p, journeyKm: jk },
+        id: `port-${p.id}`, name: `${p.name}港`.replace('港港', '港'), sub: start ? `${displayKm(jk)} km${role}` : `${p.island} · ${displayKm(jk)} km${role}`, type: 'port',
+        x: w.x, z: w.z, getY: () => (start ? 2.2 : 0.5), maxDist: edge ? 380 : 300, minDist: 1.5,
+        prio: 2.6, nearDist: 80, prioNear: PRIO_NEAR.port, meta: { ...p, journeyKm: jk, displayKm: displayKm(jk) },
       });
     }
     return items;

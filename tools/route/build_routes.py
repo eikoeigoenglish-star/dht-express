@@ -489,19 +489,28 @@ def main():
     fixed = shin.pop("_fixedStations")
     land = ferry.pop("_landCheck")
 
+    # v6: 東京 0 km から那覇まで 1 本の累積距離軸。鹿児島中央→鹿児島新港の接続区間は乗換演出（DHT 距離 0）
+    rail_end = shin["totalKm"]
     journey = {
-        "_comment": "DHT EXPRESS 全行程（1 DHT = 1 km）。区間を順につなぎ、累積 km（論理距離）で位置を引く。js/route.js の Journey が読む。",
+        "_comment": "DHT EXPRESS 全行程（1 DHT = 1 km）。東京 0 km から那覇 2060.9 km まで距離を一度もリセットしない 1 本の累積距離軸。js/route.js の Journey が読む。",
         "unit": "km",
+        "distancePolicy": {
+            "axis": "tokyo-cumulative",
+            "note": "v6: 鹿児島中央→鹿児島新港の接続区間は RAIL → FERRY の乗換演出区間（見た目のみ）。DHT 累積距離には加算しない（fromKm = toKm = 1325.9）。",
+            "displayRounding": "Math.round（1325.9 → 1326 km）",
+        },
         "segments": [
-            {"id": shin["id"], "type": "rail", "file": "shinkansen.json", "fromKm": 0.0, "toKm": shin["totalKm"]},
-            {"id": conn["id"], "type": "connector", "file": "connector-kagoshima.json", "fromKm": shin["totalKm"],
-             "toKm": round(shin["totalKm"] + conn["totalKm"], 1)},
+            {"id": shin["id"], "type": "rail", "file": "shinkansen.json", "fromKm": 0.0, "toKm": rail_end},
+            {"id": conn["id"], "type": "connector", "file": "connector-kagoshima.json", "fromKm": rail_end,
+             "toKm": rail_end, "dhtKm": 0.0, "visualKm": conn["totalKm"], "role": "transfer"},
             {"id": ferry["id"], "type": "ferry", "file": "ferry-kagoshima-naha.json",
-             "fromKm": round(shin["totalKm"] + conn["totalKm"], 1),
-             "toKm": round(shin["totalKm"] + conn["totalKm"] + ferry["totalKm"], 1)},
+             "fromKm": rail_end, "toKm": round(rail_end + ferry["totalKm"], 1)},
         ],
-        "totalKm": round(shin["totalKm"] + conn["totalKm"] + ferry["totalKm"], 1),
-        "nodes": {"railIntervalKm": 10, "railMajorKm": 100, "railMidKm": 50, "ferryIntervalKm": 10},
+        "totalKm": round(rail_end + ferry["totalKm"], 1),
+        "journeyEnd": {"portId": "naha", "journeyKm": round(rail_end + ferry["totalKm"], 1),
+                       "displayKm": round(rail_end + ferry["totalKm"]), "role": "journey-end"},
+        "nodes": {"railIntervalKm": 10, "railMajorKm": 100, "railMidKm": 50, "ferryIntervalKm": 10,
+                  "ferryMajorKm": 100, "ferryNodeBasis": "tokyo-cumulative"},
     }
 
     def dump(name, obj, compact_key="points"):

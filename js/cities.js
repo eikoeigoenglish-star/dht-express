@@ -32,6 +32,7 @@
 import * as THREE from 'three';
 import { latLonToWorld, VERTICAL_EXAGGERATION } from './geo.js';
 import { hash2i, hashString, valueNoise } from './meshkit.js';
+import { PRIO_NEAR } from './labels.js';
 
 const M2Y = VERTICAL_EXAGGERATION / 1000;
 const CELL = 0.37; // km  建物格子
@@ -241,14 +242,40 @@ export class CitySystem {
     this.waterMask = fn;
   }
 
-  /** ランドマーク・駅の周囲には建てない。{x, z, r} の配列 */
+  /**
+   * ランドマーク・駅の周囲には建てない。{x, z, r} の配列
+   * v6: 向きのある長方形 {x, z, hw, hd, rot}（滑走路・競技場などの面積型ランドマーク）も受け付ける。
+   *     r は外接円（チャンクとの交差判定用）を自動で入れる。
+   */
   addExclusions(list) {
-    this.exclusions.push(...list);
+    for (const e of list) {
+      if (e.hw != null) {
+        const c = Math.cos(e.rot ?? 0);
+        const sn = Math.sin(e.rot ?? 0);
+        this.exclusions.push({ ...e, c, s: sn, r: Math.hypot(e.hw, e.hd) });
+      } else this.exclusions.push(e);
+    }
   }
 
   setVisible(v) {
     this.visible = v;
     this.group.visible = v;
+  }
+
+  /** (x, z) が除外範囲（円・向きのある長方形）に入っているか */
+  _inExclusion(x, z, list) {
+    for (const e of list) {
+      const dx = x - e.x;
+      const dz = z - e.z;
+      if (dx * dx + dz * dz >= e.r * e.r) continue;
+      if (e.hw != null) {
+        const u = dx * e.c - dz * e.s;
+        const v = dx * e.s + dz * e.c;
+        if (Math.abs(u) > e.hw || Math.abs(v) > e.hd) continue;
+      }
+      return true;
+    }
+    return false;
   }
 
   /* ------------------------------------------------------------------ */
@@ -425,6 +452,12 @@ export class CitySystem {
             const ddx = cx - x.x;
             const ddz = cz - x.z;
             if (ddx * ddx + ddz * ddz < x.r * x.r) {
+              if (x.hw != null) {
+                // v6: 向きのある長方形（ローカル u = 東西, v = 南北 を rot だけ回したもの）
+                const u = ddx * x.c - ddz * x.s;
+                const v = ddx * x.s + ddz * x.c;
+                if (Math.abs(u) > x.hw || Math.abs(v) > x.hd) continue;
+              }
               skip = true;
               break;
             }
@@ -447,6 +480,8 @@ export class CitySystem {
             const oz = (rb - 0.5) * CELL * 0.35;
             const x = cx + ox * cosA - oz * sinA;
             const z = cz + ox * sinA + oz * cosA;
+            // v6: セル中心だけでなく、ずらした後の建物の中心でも除外範囲を確かめる（ランドマークの縁に建物が食い込まないように）
+            if (excl.length && this._inExclusion(x, z, excl)) continue;
 
             // 高さ [m]
             let hm = c.baseM * (0.55 + 0.9 * rc);
@@ -549,6 +584,9 @@ export class CitySystem {
         z: c.z,
         maxDist: c.rank === 'city' ? (big ? 300 : rk.labelDist) : rk.labelDist,
         prio: rk.prio + (big ? 0.4 : 0),
+        // v6: 近距離では「駅・ランドマークより下、河川・湖沼より上」の帯に入れる（labels.js の PRIO_NEAR）
+        nearDist: 45,
+        prioNear: PRIO_NEAR.city + Math.min(0.5, (rk.prio + (big ? 0.4 : 0)) * 0.1),
         meta: c,
       };
     });

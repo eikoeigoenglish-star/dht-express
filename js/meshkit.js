@@ -19,10 +19,17 @@ const _s = new THREE.Vector3();
 const _c = new THREE.Color();
 
 export class GeoBuilder {
-  constructor() {
+  /**
+   * @param {{ minPart?: number }} [opts]
+   *   minPart … v6: これより小さい部品（変換後の外接箱の最大辺 [km]）は追加しない。
+   *             同じビルダー関数をもう一度 minPart 付きで実行すると、ランドマークの「中距離用の簡略形」になる。
+   */
+  constructor(opts = {}) {
     this.pos = [];
     this.nor = [];
     this.col = [];
+    this.minPart = opts.minPart ?? 0;
+    this.skipped = 0;
   }
 
   /**
@@ -34,6 +41,16 @@ export class GeoBuilder {
   add(g, color, matrix) {
     let geo = g.index ? g.toNonIndexed() : g;
     if (matrix) geo.applyMatrix4(matrix);
+    if (this.minPart > 0) {
+      geo.computeBoundingBox();
+      const bb = geo.boundingBox;
+      if (Math.max(bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z) < this.minPart) {
+        this.skipped++;
+        if (geo !== g) geo.dispose();
+        g.dispose();
+        return this;
+      }
+    }
     if (!geo.attributes.normal) geo.computeVertexNormals();
     const p = geo.attributes.position.array;
     const n = geo.attributes.normal.array;

@@ -7,8 +7,8 @@
  *   const journey = await loadJourney(asset('data/routes/journey.json'));
  *   const rail = journey.rail;                         // 新幹線（論理 km = 実キロ 1325.9）
  *   rail.getPositionAtDistance(500)                    // → { x, z, lat, lon, headingRad, ... }
- *   journey.ferry.getPositionAtDistance(383)           // → 名瀬港
- *   journey.getJourneyPosition(totalDht)               // → どの区間の何 km か + 位置
+ *   journey.ferry.getPositionAtDistance(383)           // → 名瀬港（フェリー区間の内部 km）
+ *   journey.getJourneyPosition(totalDht)               // → 東京からの累積 km（v6: 0〜2060.9、リセットなし）→ 区間 + 位置
  *
  * ---------------------------------------------------------------------------
  * 以下は v2 の説明（GeoPolyline は互換のため残している）
@@ -376,9 +376,20 @@ export class FerryRoute extends DistanceRoute {
   }
 }
 
+/** 表示用の km（1325.9 → 1326。UI・ラベルはすべてこれで丸める） */
+export function displayKm(km) {
+  return Math.round(_num(km));
+}
+
 /**
- * 全行程：区間（新幹線 → 接続 → フェリー）を論理 km で直列につなぐ。
- *   totalDht（= 累積 km）→ どの区間の何 km 地点か → 3D 位置
+ * 全行程：区間（新幹線 → 接続 → フェリー）を 1 本の累積距離軸（東京 = 0 km）でつなぐ。
+ *   totalDht（= 東京からの累積 km）→ どの区間の何 km か → 3D 位置
+ *
+ * v6: 距離は東京 0 km から那覇 2060.9 km まで一度もリセットしない。
+ *   ・鹿児島中央→鹿児島新港の接続区間は「RAIL → FERRY の乗換演出区間」で、DHT 距離は 0
+ *     （journey.json で fromKm = toKm = 1325.9）。線は見た目として残し、位置は getTransferPosition(t) で引ける。
+ *   ・鹿児島中央 = 鹿児島新港 = 1325.9 km。名瀬 1708.9 … 那覇 2060.9 km。
+ *   ・区間の中の距離（segmentKm）は内部用。ユーザー向けは totalKm / displayKm。
  */
 export class Journey {
   /**
@@ -387,48 +398,96 @@ export class Journey {
    */
   constructor(meta, routes) {
     this.meta = meta;
-    this.segments = meta.segments.map((s, i) => ({ ...s, route: routes[i] }));
-    this.totalKm = this.segments[this.segments.length - 1].toKm;
+    const r3 = (v) => Math.round(v * 1000) / 1000;
+    this.segments = meta.segments.map((s, i) => ({ ...s, fromKm: r3(s.fromKm), toKm: r3(s.toKm), route: routes[i] }));
+    // DHT 距離を持つ区間（長さ 0 の乗換演出区間は位置の検索から外す）
+    this.dhtSegments = this.segments.filter((s) => s.toKm > s.fromKm);
+    this.totalKm = r3(meta.totalKm ?? this.segments[this.segments.length - 1].toKm);
     this.rail = routes.find((r) => r.type === 'rail');
     this.connector = routes.find((r) => r.type === 'connector');
     this.ferry = routes.find((r) => r.type === 'ferry');
-    // 全停車地（駅・港）を全行程 km 付きで
+    this.transferSegment = this.segments.find((s) => s.type === 'connector') ?? null;
+    this.transferKm = this.transferSegment ? this.transferSegment.fromKm : null;
+    // 全停車地（駅・港）を東京からの累積 km（journeyKm）付きで。同じ km の別の停車地（鹿児島中央・鹿児島新港）は両方残す
     this.stops = [];
-    for (const seg of this.segments)
+    for (const seg of this.segments) {
+      const k = seg.toKm > seg.fromKm && seg.route.totalKm > 0 ? (seg.toKm - seg.fromKm) / seg.route.totalKm : 0;
       for (const s of seg.route.stops) {
-        const jk = Math.round((seg.fromKm + s.km) * 1000) / 1000;
-        if (this.stops.length && Math.abs(this.stops[this.stops.length - 1].journeyKm - jk) < 1e-6) continue;
-        this.stops.push({ ...s, journeyKm: jk, segmentId: seg.id, segmentType: seg.type });
+        const jk = r3(seg.fromKm + s.km * k);
+        s.journeyKm = jk; // 区間側の停車地にも累積 km を持たせる（ラベル・UI 用）
+        s.displayKm = displayKm(jk);
+        if (this.stops.some((t) => t.id === s.id)) continue;
+        this.stops.push({ ...s, journeyKm: jk, displayKm: displayKm(jk), segmentId: seg.id, segmentType: seg.type });
       }
+    }
+    this.stops.sort((a, b) => a.journeyKm - b.journeyKm || (a.segmentType === 'rail' ? -1 : 1));
+    const endId = meta.journeyEnd?.portId;
+    this.endStop = (endId && this.stops.find((s) => s.id === endId)) || this.stops[this.stops.length - 1];
+    if (this.endStop) this.endStop.journeyRole = 'journey-end';
+    const ep = this.ferry?.stops.find((s) => s.id === this.endStop?.id);
+    if (ep) ep.journeyRole = 'journey-end';
   }
 
-  /** 全行程 km → 区間 */
+  /** 区間の内部距離 → 東京からの累積 km */
+  toJourneyKm(segmentId, segmentKm) {
+    const seg = this.segments.find((s) => s.id === segmentId);
+    if (!seg) return null;
+    const k = seg.toKm > seg.fromKm && seg.route.totalKm > 0 ? (seg.toKm - seg.fromKm) / seg.route.totalKm : 0;
+    return Math.round((seg.fromKm + _num(segmentKm) * k) * 1000) / 1000;
+  }
+
+  /** 累積 km → 区間（長さ 0 の乗換区間は返さない） */
   segmentAt(totalKm) {
-    for (const s of this.segments) if (totalKm < s.toKm) return s;
-    return this.segments[this.segments.length - 1];
+    for (const s of this.dhtSegments) if (totalKm < s.toKm) return s;
+    return this.dhtSegments[this.dhtSegments.length - 1];
   }
 
   /**
-   * ★ 累積 DHT（1 DHT = 1 km）→ 区間と 3D 位置
-   * 区間境界ちょうど（例：1325.9 km）は「前の区間の終点」ではなく次の区間の 0 km として扱う
-   *（位置は同じ点。区間の種類だけが切り替わる）。全行程の終点は最後の区間に含める。
+   * ★ 累積 DHT（東京からの km。1 DHT = 1 km）→ 区間と 3D 位置
+   * 区間の境界ちょうど（1325.9 km）は次の区間（フェリー）の 0 km = 鹿児島新港として扱い、
+   * atTransfer: true を付ける（鹿児島中央→新港の乗換は距離 0。見た目の移動は getTransferPosition）。
+   * 終点（2060.9）は那覇・finished: true。範囲外は始点・終点へクランプ（inRange: false）。
    */
   getJourneyPosition(totalDht, out = {}) {
     const req = _num(totalDht);
     const k = Math.max(0, Math.min(this.totalKm, req));
     const seg = this.segmentAt(k);
-    const local = Math.min(seg.route.totalKm, Math.max(0, k - seg.fromKm));
+    const k2 = seg.route.totalKm > 0 ? seg.route.totalKm / (seg.toKm - seg.fromKm) : 1;
+    const local = Math.min(seg.route.totalKm, Math.max(0, (k - seg.fromKm) * k2));
     seg.route.getPositionAtDistance(local, out);
+    out.km = k; // 区間の km ではなく累積 km（v6）
     out.totalKm = k;
+    out.journeyKm = k;
+    out.displayKm = displayKm(k);
     out.requestedKm = req;
     out.inRange = Number.isFinite(totalDht) && req >= 0 && req <= this.totalKm;
     out.finished = req >= this.totalKm;
     out.segmentId = seg.id;
-    out.segmentType = seg.type; // 'rail' | 'connector' | 'ferry'
-    out.segmentKm = local;
+    out.segmentType = seg.type; // 'rail' | 'ferry'（接続区間は距離 0 なのでここには来ない）
+    out.segmentKm = local; // 内部用：区間の中の km
+    out.atTransfer = this.transferKm != null && Math.abs(k - this.transferKm) < 1e-9;
     out.journeyProgress = this.totalKm > 0 ? k / this.totalKm : 0;
     out.nextStop = this.getNextStop(k);
     out.previousStop = this.getPreviousStop(k);
+    out.journeyRole = out.finished ? 'journey-end' : null;
+    return out;
+  }
+
+  /**
+   * 乗換演出区間（鹿児島中央 → 鹿児島新港）上の位置。t = 0..1。DHT 距離は 1325.9 km のまま。
+   * 将来の「列車 → フェリー」乗換アニメーション用（今回は使っていない）。
+   */
+  getTransferPosition(t, out = {}) {
+    const c = this.connector;
+    if (!c) return this.getJourneyPosition(this.transferKm ?? 0, out);
+    const u = Math.max(0, Math.min(1, _num(t)));
+    c.getPositionAtDistance(u * c.totalKm, out);
+    out.km = out.totalKm = out.journeyKm = this.transferKm;
+    out.displayKm = displayKm(this.transferKm);
+    out.segmentId = this.transferSegment.id;
+    out.segmentType = 'connector';
+    out.transferProgress = u;
+    out.atTransfer = true;
     return out;
   }
 
@@ -445,9 +504,9 @@ export class Journey {
   }
   getDistanceToNextStop(totalKm) {
     const s = this.getNextStop(totalKm);
-    return s ? s.journeyKm - totalKm : null;
+    return s ? Math.round((s.journeyKm - totalKm) * 1000) / 1000 : null;
   }
-  /** (prevKm, curKm] の間に到着した駅・港（将来の到着イベント用） */
+  /** (prevKm, curKm] の間に到着した駅・港（将来の到着イベント用。1325.9 では鹿児島中央・鹿児島新港の順に両方） */
   stopsBetween(prevKm, curKm) {
     return this.stops.filter((s) => s.journeyKm > prevKm && s.journeyKm <= curKm);
   }
