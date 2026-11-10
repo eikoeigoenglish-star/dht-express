@@ -1,0 +1,210 @@
+{
+ "version": 1,
+ "_comment": "v10 詳細地形パッチ（tools/terrain_detail/build_detail.py）。Int16 LE メートル、(nz+2)×(nx+2) 縁 1 サンプル付き。x = x0 + i*step（i=0 が縁の内側の最初の頂点）",
+ "source": "Copernicus DEM GLO-90 (land/sea mask: DEM sea = 0 m), synthetic sea floor, 1.2 km blend into the 1 km terrain",
+ "blendKm": 1.2,
+ "patches": [
+  {
+   "id": "tokyo-bay",
+   "name": "東京湾岸（品川〜台場〜有明〜豊洲〜若洲〜中央防波堤〜葛西〜舞浜・羽田）",
+   "lat": [
+    35.525,
+    35.715
+   ],
+   "lon": [
+    139.7,
+    139.955
+   ],
+   "x0": 650.0,
+   "z0": -524.3,
+   "step": 0.1,
+   "nx": 248,
+   "nz": 212,
+   "file": "tokyo-bay.bin",
+   "suppressLakes": [],
+   "stats": {
+    "landRatio": 0.574,
+    "maxM": 49,
+    "riverCarvedVertices": 1033,
+    "demLandRatioInWindow": 0.597
+   }
+  },
+  {
+   "id": "yonago",
+   "name": "米子・境港・中海・弓ヶ浜半島・島根半島東部",
+   "lat": [
+    35.395,
+    35.605
+   ],
+   "lon": [
+    133.07,
+    133.4
+   ],
+   "x0": 51.45,
+   "z0": -512.1,
+   "step": 0.15,
+   "nx": 202,
+   "nz": 157,
+   "file": "yonago.bin",
+   "suppressLakes": [
+    "lake-nakaumi"
+   ],
+   "stats": {
+    "landRatio": 0.524,
+    "maxM": 505,
+    "riverCarvedVertices": 0,
+    "demLandRatioInWindow": 0.516
+   }
+  },
+  {
+   "id": "naruto",
+   "name": "鳴門海峡（大鳴門橋）",
+   "lat": [
+    34.18,
+    34.3
+   ],
+   "lon": [
+    134.56,
+    134.72
+   ],
+   "x0": 189.2,
+   "z0": -367.0,
+   "step": 0.1,
+   "nx": 151,
+   "nz": 135,
+   "file": "naruto.bin",
+   "suppressLakes": [],
+   "stats": {
+    "landRatio": 0.359,
+    "maxM": 255,
+    "riverCarvedVertices": 0,
+    "demLandRatioInWindow": 0.403
+   }
+  },
+  {
+   "id": "seto",
+   "name": "瀬戸大橋（児島〜櫃石島〜岩黒島〜羽佐島〜与島〜三つ子島〜坂出）",
+   "lat": [
+    34.32,
+    34.48
+   ],
+   "lon": [
+    133.74,
+    133.88
+   ],
+   "x0": 113.6,
+   "z0": -387.0,
+   "step": 0.1,
+   "nx": 132,
+   "nz": 179,
+   "file": "seto.bin",
+   "suppressLakes": [],
+   "stats": {
+    "landRatio": 0.211,
+    "maxM": 163,
+    "riverCarvedVertices": 0,
+    "demLandRatioInWindow": 0.4
+   }
+  },
+  {
+   "id": "shimanami",
+   "name": "しまなみ海道（尾道〜向島〜因島〜生口島〜大三島〜伯方島〜大島〜今治）",
+   "lat": [
+    34.06,
+    34.43
+   ],
+   "lon": [
+    132.94,
+    133.26
+   ],
+   "x0": 40.35,
+   "z0": -381.45,
+   "step": 0.15,
+   "nx": 199,
+   "nz": 276,
+   "file": "shimanami.bin",
+   "suppressLakes": [],
+   "stats": {
+    "landRatio": 0.402,
+    "maxM": 418,
+    "riverCarvedVertices": 0,
+    "demLandRatioInWindow": 0.431
+   }
+  },
+  {
+   "id": "kanmon",
+   "name": "関門海峡（関門橋）",
+   "lat": [
+    33.915,
+    34.0
+   ],
+   "lon": [
+    130.885,
+    131.0
+   ],
+   "x0": -149.04,
+   "z0": -333.6,
+   "step": 0.08,
+   "nx": 136,
+   "nz": 119,
+   "file": "kanmon.bin",
+   "suppressLakes": [],
+   "stats": {
+    "landRatio": 0.65,
+    "maxM": 310,
+    "riverCarvedVertices": 0,
+    "demLandRatioInWindow": 0.499
+   }
+  },
+  {
+   "id": "ogasawara-chichi",
+   "name": "小笠原諸島・父島（兄島・弟島を含む）。1km 地形の範囲外なので DEM から作る",
+   "lat": [
+    27.02,
+    27.15
+   ],
+   "lon": [
+    142.14,
+    142.25
+   ],
+   "x0": 953.8,
+   "z0": 428.1,
+   "step": 0.1,
+   "nx": 121,
+   "nz": 146,
+   "file": "ogasawara-chichi.bin",
+   "suppressLakes": [],
+   "stats": {
+    "landRatio": 0.178,
+    "maxM": 281,
+    "riverCarvedVertices": 0,
+    "demLandRatioInWindow": 0.085
+   }
+  },
+  {
+   "id": "ogasawara-haha",
+   "name": "小笠原諸島・母島。1km 地形の範囲外なので DEM から作る",
+   "lat": [
+    26.58,
+    26.72
+   ],
+   "lon": [
+    142.12,
+    142.19
+   ],
+   "x0": 955.4,
+   "z0": 475.9,
+   "step": 0.1,
+   "nx": 83,
+   "nz": 157,
+   "file": "ogasawara-haha.bin",
+   "suppressLakes": [],
+   "stats": {
+    "landRatio": 0.155,
+    "maxM": 389,
+    "riverCarvedVertices": 0,
+    "demLandRatioInWindow": 0.066
+   }
+  }
+ ]
+}
