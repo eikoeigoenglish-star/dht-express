@@ -34,7 +34,7 @@
  *    └─ fx          ← 将来：演出・パーティクル
  */
 import * as THREE from 'three';
-import { ASSETS, CAMERA_PRESETS } from './config.js';
+import { ASSETS, CAMERA_PRESETS, HUD_PRESET_IDS } from './config.js';
 import { TerrainSystem, setUrbanField } from './terrain.js';
 import { CitySystem } from './cities.js';
 import { StationSystem } from './stations.js';
@@ -110,8 +110,10 @@ let mode = 'vehicle'; // v8: 初期表示は VEHICLE VIEW（列車・船の準�
 let vehicleReady = false;
 
 const ui = new UI({
-  presets: CAMERA_PRESETS,
+  // v9: 通常 UI の CAMERA は 6 件だけ（全プリセットは DHT.presets に残す）
+  presets: HUD_PRESET_IDS.map((id) => CAMERA_PRESETS.find((p) => p.id === id)).filter(Boolean),
   onMode: (m) => setMode(m),
+  onVehicle: (kind) => followVehicle(kind),
   onPreset: (p) => goPreset(p),
   onToggleLabels: () => {
     labels.setVisible(!labels.visible);
@@ -176,6 +178,25 @@ function setMode(next) {
     mode = 'map';
     ui.setMode(mode);
     mapCtl.enable(groundPointAhead());
+  }
+}
+
+/**
+ * v9: 左上の新幹線・船アイコン。VEHICLE VIEW に切り替えてその乗り物を追跡する。
+ * VEHICLE VIEW 中に遠くの乗り物へ切り替えるときは、ワープせず既存の滑らか移動で後ろへ飛ぶ。
+ */
+function followVehicle(kind) {
+  if (rig.animating) return;
+  vehicles.followOverride = kind;
+  ui.setVehicleKind(kind);
+  if (mode !== 'vehicle') {
+    setMode('vehicle');
+    return;
+  }
+  const v = follow.desiredPose();
+  if (vehicleReady && v && camera.position.distanceTo(v.pos) > 6) {
+    follow.disable();
+    enterVehicleView();
   }
 }
 
@@ -318,12 +339,6 @@ async function setupJourney() {
 /** v7: 列車・船の GLB を読み込み、進捗 API の結果で「昨日 → 今日」を再生する */
 const hud = new ProgressHud(document.getElementById('dht-progress'), {
   onReplay: () => vehicles.play(0.2),
-  onFocus: (kind) => {
-    if (!vehicles.plan) return;
-    // v8: VEHICLE VIEW 中は追跡対象の切り替え、それ以外は従来どおりその位置へ移動
-    if (mode === 'vehicle') vehicles.followOverride = kind;
-    else goPreset(vehicles.focusPreset(kind));
-  },
 });
 hud.setLoading();
 vehicles.onLive = (km) => hud.setLive(km);
@@ -332,7 +347,8 @@ tod.onChange((m, t) => {
   const el = document.querySelector('.dht-hud__tod');
   if (!el) return;
   const d = t.describe();
-  el.textContent = m.toUpperCase();
+  el.textContent = `${m.toUpperCase()} (${d.forced ? 'forced by URL' : 'auto'})`; // v9: ?debug=1 のときだけ見える
+  console.info(`[timeofday] ${m.toUpperCase()}（明石市 日出 ${d.sunrise} / 日没 ${d.sunset}${d.forced ? '・URL で固定' : ''}）`);
   el.dataset.mode = m;
   el.title = `明石市 日出 ${d.sunrise} / 日没 ${d.sunset}（夕方 ${d.eveningStart}〜）${d.forced ? '・URL で固定' : ''}`;
 });
@@ -358,6 +374,7 @@ async function setupVehicles() {
     p = r.progress;
     const plan = vehicles.setProgress(p);
     hud.setProgress(p, plan, r.source);
+    console.info(`[progress] ${r.source.toUpperCase()} 昨日 ${p.previousKm} km（${p.previousFrom}）→ 今日 ${p.currentKm} km`, plan);
     app.progress = { ...r, plan };
   }
   hud.setLive(p.previousKm);
@@ -434,6 +451,10 @@ async function start() {
     const vdt = Math.min(0.25, rawDt);
     vehicles.update(camera, vdt, innerHeight, innerWidth); // v7
     if (mode === 'vehicle' && !rig.animating) follow.update(vdt); // v8
+    if (mode === 'vehicle' && vehicleReady) {
+      const k = vehicles.followTarget()?.kind;
+      ui.setVehicleKind(k === 'transfer' ? 'ship' : k); // v9: 左上の新幹線／船アイコン
+    }
     const p = camera.position;
     tod.update(dt); // v8
     env.update(camera, dt, p.y - terrain.getSurfaceY(p.x, p.z));

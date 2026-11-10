@@ -88,6 +88,8 @@ Node.js がある場合は `npx serve .` などでも構いません。**これ�
 > - **夜景**：夕方は決定的な 50%、夜は 100% の都市ブロックが窓で光る。遠景は街明かりの光点。**灯台 13 件**が夕方・夜に点灯
 > - **全国ランドマーク 195 件**（東京・神奈川・千葉以外、北緯 37°40′23″ 以南、3 段 LOD）と、**沖永良部島以南のエメラルドの浅瀬**
 
+> **v9（HUD の整理）**：機能はそのまま、画面に出す情報だけを減らしました。左上はアイコン 4 つ、CAMERA / CONTROLS は折りたたみ、右上は「昨日 → 今日（大きく）▶」だけ。API・時間帯・数値は `?debug=1`（[§18](#18-hud-の整理v9)）。
+
 ---
 
 ## 3. ファイル構成
@@ -2301,3 +2303,65 @@ v8 の途中経過では、地形の市街地全体に一様な emissive を乗�
 - ランドマークの座標は公開地図から読んだ概略値（数百 m の誤差を含む）。地形格子の都合で海・湖・川に掛かったものは近くの陸へ寄せた（天鏡閣・アオーレ長岡・犬山城・豊田スタジアム・和歌山城など 0.1〜0.6 km）。
 - 小さな施設（山頂の目印・小さな橋・像）は、広域では目立たないよう実物比で控えめな大きさ。
 - ソフトウェア描画（SwiftShader）では FPS が低く、夜の近景は窓の計算で重くなるが、実 GPU では v7 と同程度の負荷（draw call・三角形は §17.10）。
+
+---
+
+## 18. HUD の整理（v9）
+
+v8 の機能（VEHICLE / MAP / EXPLORE VIEW、列車・船、昨日 → 今日のアニメーション、列車 → 船、API の fetch → JSONP、時間帯、夜景、灯台、全国ランドマーク、エメラルドの海、DHT ROUTE、距離ノード、URL パラメータ）はそのままに、**画面に出す情報だけを減らしました**。3D の世界（地形・列車と船・ルート・ランドマーク・夜景）が主役で、HUD は小さく、必要なときだけ開きます。
+
+### 18.1 変更ファイル
+
+| ファイル | 内容 |
+|---|---|
+| `index.html` | 4 か所の HUD を作り直し（アイコンのモード切替・折りたたみの CAMERA / CONTROLS・距離だけの進捗パネル）。数値パネルは既定で非表示 |
+| `css/style.css` | 軽い HUD のスタイル（小さく・余白を減らし・半透明は維持）、小画面での配置 |
+| `js/ui.js` | アイコンの動作、折りたたみ、表示中の乗り物アイコンの強調、`?debug=1` |
+| `js/progress.js` | `ProgressHud`：昨日 → 今日と再生だけ（詳細は `?debug=1`） |
+| `js/main.js` | 新幹線 / 船アイコン → VEHICLE VIEW でその乗り物を追跡（遠ければ滑らかに移動）、CAMERA を 6 件に、API・時間帯の情報を console へ |
+| `js/config.js` | `HUD_PRESET_IDS`（CAMERA に出す 6 件）と福岡のプリセット（一覧の末尾に追加。既存のプリセットは内部データとして全件残す） |
+| `js/timeofday.js` | コメントのみ（`?timeMode=` の仕様を明記。動作は v8 と同じ） |
+
+### 18.2 各部
+
+- **左上**：アイコン 4 つだけ（新幹線 = 列車を追跡する VEHICLE VIEW / 船 = 船を追跡する VEHICLE VIEW / 地図 = MAP VIEW / 目玉 = EXPLORE VIEW）と、ごく小さな `DHT EXPRESS`。選択中のアイコンだけ明るい黄色。VEHICLE VIEW では**今追っている乗り物**（再生中は列車 → 船と自動で切り替わる）のアイコンが光る。VEHICLE VIEW 中に遠くの乗り物へ切り替えるときは、ワープせず既存の滑らか移動で後ろへ飛ぶ。キー `1` 地図 / `2` 探索 / `3` 追跡はそのまま。
+- **CAMERA**：通常は `CAMERA ▼` だけ。開くと（`CAMERA ▲`）全体俯瞰・東京都心・関西・福岡・鹿児島・沖縄の 6 件。選ぶとその視点へ移動して自動で閉じる。他の 16 件のプリセットは `config.js` の `CAMERA_PRESETS`（`DHT.presets`）に残している。
+- **CONTROLS**：通常は `CONTROLS ▼` だけ。開くと今のモードの操作説明（VEHICLE：ドラッグで追跡の向き・ホイールで距離・列車 / 船アイコンで切替、MAP：左ドラッグ回転・右ドラッグでパン・ホイールでズーム、EXPLORE：WASD / 矢印・Q / E・Shift・マウス視点）とキー一覧。`H` キーでも開閉。
+- **右上の進捗**：`昨日 12 km → 今日 36 km` と `▶`（再生）だけ。**今日の累積距離をいちばん大きく**（34px、昨日は 13px）。通常表示から `FOREST SCHOOL TODAY`・`FETCH / JSONP`・時間帯・増分・区間・「列車へ / 船へ」をなくした（乗り物の切り替えは左上のアイコン）。取得に失敗したときだけ小さな赤字。
+- **数値パネル**（FPS・DRAW など）：既定で非表示。
+
+### 18.3 デバッグ情報の移動先
+
+| 情報 | 移動先 |
+|---|---|
+| API の取得方式（FETCH / JSONP / URL）・増分・区間・再生中の km | `?debug=1` のとき右上パネルの下に小さく表示。console にも `[progress] FETCH 昨日 … → 今日 …` |
+| 時間帯 | `?debug=1` のとき `NIGHT (forced by URL)` / `DAY (auto)` の形で表示。console に `[timeofday] …（明石市 日出 … / 日没 …）` |
+| FPS・DRAW・TRIS・TILES・CITY・POS・ALT | `?debug=1` または `I` キー |
+
+### 18.4 時間帯の URL 指定（`?timeMode=`）
+
+- 優先順位：①有効な `timeMode` → ②JST + 明石市の日出・日没による自動判定。
+- `morning` / `day` / `evening` / `night`。大文字・小文字は区別しない（`night` / `NIGHT` / `Night`）。
+- 不正な値（`?timeMode=abc`）はエラーにせず無視して自動判定。
+- `?km=600&prev=580&timeMode=night`、`?timeMode=evening&debug=1` のように他のパラメータと併用できる。URL だけ変えれば同じ地点を 4 つの時間帯で比較撮影できる。
+- 通常の HUD には時間帯の文字を出さない（空・光・都市の灯り・灯台・海の色で分かる）。
+
+### 18.5 QA
+
+`qa/v9/`（スクリーンショット・`ui_qa.json`・`timemode_qa.json`）。
+
+| 確認 | 結果 |
+|---|---|
+| VEHICLE VIEW 列車走行中（昨日 12 → 今日 36 km） | 新幹線アイコンが点灯・列車を追跡（`1_vehicle_train_running.jpg`） |
+| 船アイコン → 列車アイコン | 船へ滑らかに移動して追跡 → 列車へ戻る（`2_vehicle_ship_icon.jpg`） |
+| VEHICLE VIEW 船走行中（1661 → 1702 km） | 船アイコンが自動で点灯（`11_vehicle_ship_running.jpg`） |
+| 地図アイコン / 目玉アイコン / キー `3` | MAP / EXPLORE / VEHICLE へ切り替わる |
+| CAMERA | 通常は 1 行（77×28px）。開くと 6 件、選ぶと移動して閉じる。2 回押すと閉じる |
+| CONTROLS | 通常は 1 行。開くとモードごとの説明（MAP / EXPLORE / VEHICLE）、閉じる |
+| 右上 | 今日 34px・昨日 13px。表示は「昨日 今日 12 → 36km ▶」だけ |
+| `?debug=1` | 数値パネルと「FETCH NIGHT (forced by URL) 列車 +24 km now 36 km」 |
+| fetch / JSONP | `?apiMode=jsonp` → JSONP、fetch が HTML を返す → JSONP、通常 → FETCH（`api_qa.txt`） |
+| `?timeMode=` | morning / day / evening / night / NIGHT / Evening は固定、なし・`invalid` は自動判定（`timemode_qa.json`、`contact_timemode.jpg`） |
+| 併用 | `?km=600&prev=580&timeMode=night`、`?timeMode=evening&debug=1&km=600&prev=580` とも正常 |
+| 小画面（390×780） | 左上アイコン・CAMERA・右上の距離・CONTROLS が重ならない（`13_mobile.jpg`） |
+| console error / HTTP 4xx | 0 / 0 |

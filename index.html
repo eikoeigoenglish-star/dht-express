@@ -22,58 +22,69 @@
     <canvas id="scene" tabindex="0" aria-label="3D stage"></canvas>
     <div id="labels-layer" aria-hidden="true"></div>
 
-    <header class="panel panel--top">
-      <div class="brand">
-        <span class="brand__mark">DHT EXPRESS</span>
-        <span class="brand__sub">STAGE · N37°40′23″ 以南</span>
+    <!-- v9: 左上はアイコンだけ（新幹線 = 列車を追跡 / 船 = 船を追跡 / 地図 = MAP VIEW / 目玉 = EXPLORE VIEW） -->
+    <header class="panel panel--top" aria-label="DHT EXPRESS 表示モード">
+      <div class="modes" role="tablist" aria-label="表示モード">
+        <button class="mode" data-mode="vehicle" data-vehicle="train" role="tab" title="列車を追跡（VEHICLE VIEW）  3" aria-label="列車を追跡">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 15.6V10c0-1 .8-1.8 1.8-1.8h9.6c3.3 0 6.4 2.2 8.1 5.2.4.8-.1 1.8-1 1.8z" fill="currentColor"/><path d="M14.6 9.6c2 .4 3.7 1.6 4.8 3.2h-4.8z" fill="var(--icon-cut)"/><path d="M4 10.2h2.6v2.4H4zM7.6 10.2h2.6v2.4H7.6zM11.2 10.2h2.3v2.4h-2.3z" fill="var(--icon-cut)"/><path d="M2 14.1h19.4" stroke="var(--icon-cut)" stroke-width=".9"/><path d="M1.5 18.4h21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="6" cy="16.9" r=".9" fill="currentColor"/><circle cx="15.5" cy="16.9" r=".9" fill="currentColor"/></svg>
+        </button>
+        <button class="mode" data-mode="vehicle" data-vehicle="ship" role="tab" title="船を追跡（VEHICLE VIEW）" aria-label="船を追跡">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 13h19l-2.4 4.1c-.3.5-.8.8-1.4.8H6.3c-.6 0-1.1-.3-1.4-.8z" fill="currentColor"/><path d="M6 12.6V9.4c0-.6.4-1 1-1h7.6c1.9 0 3.5 1.8 4 4.2z" fill="currentColor"/><path d="M7.5 9.9h1.9v1.5H7.5zM10.4 9.9h1.9v1.5h-1.9zM13.3 9.9h1.9v1.5h-1.9z" fill="var(--icon-cut)"/><path d="M8.6 8.3V5.6c0-.4.3-.7.7-.7h1.5c.4 0 .7.3.7.7v2.7z" fill="currentColor"/><path d="M1.8 21c1.4 0 1.4-.9 2.8-.9s1.4.9 2.8.9 1.4-.9 2.8-.9 1.4.9 2.8.9 1.4-.9 2.8-.9 1.4.9 2.8.9 1.4-.9 2.8-.9" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg>
+        </button>
+        <button class="mode" data-mode="map" role="tab" title="MAP VIEW  1" aria-label="MAP VIEW">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.2 9 4l6 2.2 5.5-2.2v13.8L15 20l-6-2.2-5.5 2.2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 4v13.8M15 6.2V20" stroke="currentColor" stroke-width="1.7"/></svg>
+        </button>
+        <button class="mode" data-mode="explore" role="tab" title="EXPLORE VIEW  2" aria-label="EXPLORE VIEW">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.3" fill="currentColor"/></svg>
+        </button>
       </div>
-      <div class="modes" role="tablist" aria-label="操作モード">
-        <button class="mode" data-mode="map" role="tab"><kbd>1</kbd>MAP VIEW</button>
-        <button class="mode" data-mode="explore" role="tab"><kbd>2</kbd>EXPLORE VIEW</button>
-        <button class="mode" data-mode="vehicle" role="tab"><kbd>3</kbd>VEHICLE VIEW</button>
-      </div>
+      <span class="brand__mark" aria-hidden="true">DHT EXPRESS</span>
     </header>
 
-    <nav class="panel panel--presets" aria-label="カメラプリセット">
-      <div class="panel__title">CAMERA</div>
-      <div id="preset-list" class="presets"></div>
-      <select id="preset-select" class="presets-select" aria-label="カメラプリセット"></select>
+    <!-- v9: CAMERA は折りたたみ（通常は「CAMERA ▼」だけ） -->
+    <nav class="panel panel--presets fold" id="presets" aria-label="カメラプリセット">
+      <button class="fold__head" id="presets-toggle" aria-expanded="false" aria-controls="preset-list">CAMERA <span class="fold__arrow">▼</span></button>
+      <div id="preset-list" class="presets fold__body"></div>
     </nav>
 
-    <section class="panel panel--help" id="help">
-      <div class="panel__title">CONTROLS <button class="link" id="help-toggle" title="H">隠す</button></div>
-      <div class="help help--map">
-        <p><b>左ドラッグ</b> 回転　<b>右ドラッグ</b> パン</p>
-        <p><b>ホイール</b> ズーム（カーソル位置へ）</p>
-        <p><b>中ドラッグ</b> ズーム　<b>矢印キー</b> パン</p>
-      </div>
-      <div class="help help--explore">
-        <p><b>W / ↑</b> 前進　<b>S / ↓</b> 後退</p>
-        <p><b>A / ←</b> 左旋回　<b>D / →</b> 右旋回</p>
-        <p><b>Q</b> 下降　<b>E</b> 上昇　<b>Shift</b> 高速飛行</p>
-        <p><b>クリック</b> マウス視点ON　<b>Esc</b> 解除</p>
-      </div>
-      <div class="help help--vehicle">
-        <p><b>FOREST SCHOOL</b> の列車・船を斜め後方から追跡</p>
-        <p><b>ドラッグ</b> 追跡の向きをずらす　<b>ホイール</b> 距離</p>
-        <p>右上の <b>列車へ / 船へ</b> で追跡対象を切替</p>
-      </div>
-      <p class="help__keys"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> モード　<kbd>L</kbd> 地名　<kbd>B</kbd> 都市　<kbd>R</kbd> ルート　<kbd>I</kbd> 情報　<kbd>H</kbd> 操作説明</p>
-    </section>
-
-    <!-- v7: FOREST SCHOOL の進捗（昨日 → 今日） -->
-    <section class="panel panel--dht" id="dht-progress" aria-live="polite">
-      <div class="panel__title"><span>FOREST SCHOOL · TODAY <span class="dht-hud__tod" title=""></span></span><span class="dht-hud__src"></span></div>
-      <div class="dht-hud__route">–</div>
-      <div class="dht-hud__row"><b class="dht-hud__live">–</b><span class="dht-hud__delta"></span><span class="dht-hud__mode"></span></div>
-      <div class="dht-hud__btns">
-        <button class="dht-btn" data-act="replay" title="昨日 → 今日 をもう一度再生">▶ 再生</button>
-        <button class="dht-btn" data-focus="train">列車へ</button>
-        <button class="dht-btn" data-focus="ship">船へ</button>
+    <!-- v9: CONTROLS も折りたたみ。開くと今のモードの操作説明 -->
+    <section class="panel panel--help fold" id="help">
+      <button class="fold__head" id="help-toggle" aria-expanded="false" title="H">CONTROLS <span class="fold__arrow">▼</span></button>
+      <div class="fold__body">
+        <div class="help help--map">
+          <p><b>左ドラッグ</b> 回転　<b>右ドラッグ</b> パン</p>
+          <p><b>ホイール</b> ズーム（カーソル位置へ）</p>
+          <p><b>中ドラッグ</b> ズーム　<b>矢印キー</b> パン</p>
+        </div>
+        <div class="help help--explore">
+          <p><b>W / ↑</b> 前進　<b>S / ↓</b> 後退</p>
+          <p><b>A / ←</b> 左旋回　<b>D / →</b> 右旋回</p>
+          <p><b>Q</b> 下降　<b>E</b> 上昇　<b>Shift</b> 高速飛行</p>
+          <p><b>クリック</b> マウス視点ON　<b>Esc</b> 解除</p>
+        </div>
+        <div class="help help--vehicle">
+          <p><b>ドラッグ</b> 追跡の向きを調整</p>
+          <p><b>ホイール</b> 追跡の距離</p>
+          <p><b>列車 / 船</b>（左上のアイコン） 追跡対象を切替</p>
+        </div>
+        <p class="help__keys"><kbd>1</kbd>地図 <kbd>2</kbd>探索 <kbd>3</kbd>追跡　<kbd>L</kbd>地名 <kbd>B</kbd>都市 <kbd>R</kbd>ルート <kbd>H</kbd>操作説明</p>
       </div>
     </section>
 
-    <section class="panel panel--info" id="info">
+    <!-- v9: FOREST SCHOOL の進捗。昨日 → 今日（今日をいちばん大きく）と再生ボタンだけ -->
+    <section class="panel panel--dht" id="dht-progress" aria-live="polite" aria-label="FOREST SCHOOL の進捗">
+      <div class="dht-hud__grid">
+        <span class="dht-hud__cap">昨日</span><span></span><span class="dht-hud__cap dht-hud__cap--today">今日</span>
+        <span class="dht-hud__prev">–</span><span class="dht-hud__arrow">→</span><span class="dht-hud__today"><b>–</b><small>km</small></span>
+      </div>
+      <button class="dht-play" data-act="replay" title="昨日 → 今日 を再生" aria-label="昨日から今日を再生">▶</button>
+      <div class="dht-hud__msg"></div>
+      <!-- ?debug=1 のときだけ表示（API の取得方式・時間帯・区間・現在 km） -->
+      <div class="dht-hud__debug"><span class="dht-hud__src"></span> <span class="dht-hud__tod"></span> <span class="dht-hud__mode"></span> <span class="dht-hud__delta"></span> <span class="dht-hud__live"></span></div>
+    </section>
+
+    <!-- 開発者向けの数値（通常は非表示。?debug=1 または I キーで表示） -->
+    <section class="panel panel--info is-hidden" id="info">
       <div class="readout">
         <span>FPS</span><b id="r-fps">–</b>
         <span>DRAW</span><b id="r-draw">–</b>

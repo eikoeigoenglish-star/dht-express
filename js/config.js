@@ -37,6 +37,9 @@ export const ASSETS = {
  *  polar    : 俯瞰角（真上=0°, 水平=90°）
  *  azimuth  : 方位（0° = 南から北を見る, 90° = 東から西を見る）
  */
+/** v9: 通常 UI の CAMERA に出す 6 件（他のプリセットは内部データとして残す。DHT.presets・URL からは使える） */
+export const HUD_PRESET_IDS = ['all', 'tokyo-center', 'kansai', 'fukuoka', 'kagoshima', 'okinawa'];
+
 export const CAMERA_PRESETS = [
   { id: 'all', label: '全体俯瞰', lat: 30.9, lon: 132.4, dist: 1800, polar: 30, azimuth: 0 },
   // v5: 東京 → 鹿児島中央 → 那覇（DHT EXPRESS 全行程）を一望
@@ -62,6 +65,8 @@ export const CAMERA_PRESETS = [
   { id: 'boso', label: '房総半島南部', lat: 35.10, lon: 139.98, dist: 42, polar: 68, azimuth: 200 },
   { id: 'miura', label: '三浦半島', lat: 35.24, lon: 139.64, dist: 32, polar: 64, azimuth: 180 },
   { id: 'tanzawa-hakone', label: '丹沢・箱根', lat: 35.36, lon: 139.08, dist: 70, polar: 62, azimuth: 110 },
+  // v9: 折りたたみ CAMERA 用（福岡市街。一覧の末尾に追加したので既存の番号・順序は変わらない）
+  { id: 'fukuoka', label: '福岡', lat: 33.59, lon: 130.40, dist: 40, polar: 60, azimuth: 200 },
 ];
 
 export const WORLD_BOUNDS = { minX: -1100, maxX: 1000, minZ: -900, maxZ: 900 };

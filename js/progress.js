@@ -128,8 +128,10 @@ const fmt = (km) => displayKm(km).toLocaleString('ja-JP');
 
 export class ProgressHud {
   /**
+   * v9: 通常表示は「昨日 → 今日（いちばん大きく）」と再生ボタンだけ。
+   * API の取得方式・区間・増分・再生中の km は ?debug=1 のときだけ（.dht-hud__debug）。
    * @param {HTMLElement} el
-   * @param {{ onReplay:()=>void, onFocus:(kind:'train'|'ship')=>void }} opts
+   * @param {{ onReplay:()=>void }} opts
    */
   constructor(el, opts) {
     this.el = el;
@@ -138,38 +140,34 @@ export class ProgressHud {
       e.currentTarget.blur();
       opts.onReplay();
     });
-    el.querySelectorAll('[data-focus]').forEach((b) =>
-      b.addEventListener('click', () => {
-        b.blur();
-        opts.onFocus(b.dataset.focus);
-      }),
-    );
   }
 
   setLoading() {
     this.el.classList.remove('is-error');
-    this.$('.dht-hud__route').textContent = '進捗データを取得中…';
+    this.$('.dht-hud__today b').textContent = '…';
   }
 
   setError(msg) {
     this.el.classList.add('is-error');
-    this.$('.dht-hud__route').textContent = msg;
+    this.$('.dht-hud__msg').textContent = msg;
+    this.el.title = msg;
   }
 
   /** @param {object} p parseProgress の結果 @param {object} plan VehicleSystem の plan */
   setProgress(p, plan, source) {
     this.el.classList.remove('is-error');
+    this.el.title = '';
+    this.$('.dht-hud__prev').textContent = fmt(p.previousKm);
+    this.$('.dht-hud__today b').textContent = fmt(p.currentKm);
+    // 以下はデバッグ表示（?debug=1）
     const delta = p.currentKm - p.previousKm;
-    this.$('.dht-hud__route').innerHTML = `昨日 <b>${fmt(p.previousKm)}</b> km → 今日 <b>${fmt(p.currentKm)}</b> km`;
     this.$('.dht-hud__delta').textContent = `${delta >= 0 ? '+' : '−'}${Math.abs(Math.round(delta * 10) / 10).toLocaleString('ja-JP')} km`;
-    const mode = plan.ship.active ? (plan.train.moving ? '列車 → 船' : '船（海路）') : '列車（新幹線）';
-    this.$('.dht-hud__mode').textContent = mode;
-    this.$('.dht-hud__src').textContent = source === 'url' ? 'URL 指定' : source.toUpperCase();
-    this.$('[data-focus=ship]').disabled = false;
+    this.$('.dht-hud__mode').textContent = plan.ship.active ? (plan.train.moving ? '列車→船' : '船') : '列車';
+    this.$('.dht-hud__src').textContent = source === 'url' ? 'URL' : source.toUpperCase();
   }
 
-  /** アニメーション中の現在 km */
+  /** アニメーション中の現在 km（デバッグ表示） */
   setLive(km) {
-    this.$('.dht-hud__live').textContent = `${fmt(km)} km`;
+    this.$('.dht-hud__live').textContent = `now ${fmt(km)} km`;
   }
 }

@@ -1,6 +1,11 @@
 /**
  * ui.js — 最小限の HUD（モード切替・プリセット・操作説明・情報表示）
  * 3D 側のロジックは持たず、main.js から渡されたコールバックを呼ぶだけ。
+ *
+ * v9: 3D 世界を主役にするため、通常時の表示を最小限に。
+ *   ・左上はアイコンだけ（新幹線 = 列車を追跡 / 船 = 船を追跡 / 地図 = MAP VIEW / 目玉 = EXPLORE VIEW）
+ *   ・CAMERA（6 件）と CONTROLS は折りたたみ（通常は閉じる）
+ *   ・開発者向けの数値パネルは ?debug=1 または I キーのときだけ
  */
 import { formatLatLon, worldToLatLon } from './geo.js';
 
@@ -15,42 +20,47 @@ export class UI {
     this.fpsTime = 0;
     this.fps = 0;
 
+    this.mode = null;
+    this.vehicleKind = 'train';
     document.querySelectorAll('.mode').forEach((b) =>
       b.addEventListener('click', () => {
         b.blur();
-        opts.onMode(b.dataset.mode);
+        // 新幹線・船のアイコン → VEHICLE VIEW でその乗り物を追跡
+        if (b.dataset.vehicle) opts.onVehicle?.(b.dataset.vehicle);
+        else opts.onMode(b.dataset.mode);
       }),
     );
 
+    // CAMERA：通常は「CAMERA ▼」だけ。開くと 6 件（opts.presets は表示する分だけ渡される）
     const list = this.$('preset-list');
-    const sel = this.$('preset-select');
-    opts.presets.forEach((p, i) => {
+    opts.presets.forEach((p) => {
       const b = document.createElement('button');
       b.className = 'preset';
       b.dataset.id = p.id;
-      b.innerHTML = `<span>${p.label}</span><small>${String(i + 1).padStart(2, '0')}</small>`;
+      b.textContent = p.label;
       b.addEventListener('click', () => {
         b.blur();
         opts.onPreset(p);
+        this.setFold('presets', false); // 選んだら閉じて景色を広く
       });
       list.appendChild(b);
-      const o = document.createElement('option');
-      o.value = p.id;
-      o.textContent = p.label;
-      sel.appendChild(o);
     });
-    sel.addEventListener('change', () => {
-      const p = opts.presets.find((x) => x.id === sel.value);
-      if (p) opts.onPreset(p);
-      sel.blur();
+    this.$('presets-toggle').addEventListener('click', (e) => {
+      e.currentTarget.blur();
+      this.setFold('presets');
     });
 
-    const help = this.$('help');
-    const toggleHelp = () => {
-      help.classList.toggle('is-collapsed');
-      this.$('help-toggle').textContent = help.classList.contains('is-collapsed') ? '表示' : '隠す';
-    };
-    this.$('help-toggle').addEventListener('click', toggleHelp);
+    // CONTROLS：通常は「CONTROLS ▼」だけ。開くと今のモードの操作説明
+    const toggleHelp = () => this.setFold('help');
+    this.$('help-toggle').addEventListener('click', (e) => {
+      e.currentTarget.blur();
+      toggleHelp();
+    });
+
+    // 開発者向け：?debug=1 で数値パネルと進捗パネルの詳細（API 方式・時間帯など）を表示
+    this.debug = new URLSearchParams(location.search).get('debug') === '1';
+    document.body.classList.toggle('debug', this.debug);
+    if (this.debug) this.$('info').classList.remove('is-hidden');
 
     addEventListener('keydown', (e) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
@@ -87,12 +97,34 @@ export class UI {
     });
   }
 
+  /** 折りたたみ（id: 'presets' | 'help'）。open を省略すると切り替え */
+  setFold(id, open) {
+    const el = this.$(id);
+    const on = open ?? !el.classList.contains('is-open');
+    el.classList.toggle('is-open', on);
+    const head = el.querySelector('.fold__head');
+    head.setAttribute('aria-expanded', on);
+    head.querySelector('.fold__arrow').textContent = on ? '▲' : '▼';
+  }
+
   setMode(mode) {
+    this.mode = mode;
     document.body.classList.toggle('mode-explore', mode === 'explore');
     document.body.classList.toggle('mode-map', mode === 'map');
     document.body.classList.toggle('mode-vehicle', mode === 'vehicle'); // v8
+    this._paintModes();
+  }
+
+  /** v9: VEHICLE VIEW で今追っている乗り物（'train' | 'ship'）。左上のアイコンの明るさに反映 */
+  setVehicleKind(kind) {
+    if (!kind || kind === this.vehicleKind) return;
+    this.vehicleKind = kind;
+    this._paintModes();
+  }
+
+  _paintModes() {
     document.querySelectorAll('.mode').forEach((b) => {
-      const on = b.dataset.mode === mode;
+      const on = b.dataset.mode === this.mode && (!b.dataset.vehicle || b.dataset.vehicle === this.vehicleKind);
       b.classList.toggle('is-active', on);
       b.setAttribute('aria-selected', on);
     });
@@ -104,7 +136,6 @@ export class UI {
 
   setActivePreset(id) {
     document.querySelectorAll('.preset').forEach((b) => b.classList.toggle('is-active', b.dataset.id === id));
-    this.$('preset-select').value = id ?? '';
   }
 
   loaded() {
