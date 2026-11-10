@@ -47,8 +47,8 @@ const STYLE = {
 
 /** v10: 浮遊感（振幅は車体長に対する比、角度は rad、周期は秒） */
 const FLOAT = {
-  train: { bob: 0.005, bobT: 2.4, pitch: 0.0035, pitchT: 3.1, roll: 0.0, rollT: 1 },
-  ship: { bob: 0.0055, bobT: 3.6, pitch: 0.016, pitchT: 4.3, roll: 0.024, rollT: 5.6 },
+  train: { bob: 0.018, bobT: 2.0, pitch: 0.008, pitchT: 3.1, roll: 0.006, rollT: 3.7 },
+  ship:  { bob: 0.014, bobT: 3.2, pitch: 0.032, pitchT: 4.3, roll: 0.045, rollT: 5.6 },
 };
 
 /* ---------------------------------------------------------------------- */
