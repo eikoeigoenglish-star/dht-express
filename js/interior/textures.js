@@ -333,10 +333,14 @@ export function plateTexture(text = 'Room 1') {
   g.lineWidth = 6;
   g.strokeRect(5, 5, W - 10, H - 10);
   g.fillStyle = '#ecd69a';
-  g.font = '600 46px Georgia, "Times New Roman", serif';
+  // 長い文字列（Dining & Lounge・CREW ROOM など）は幅に合わせて小さく
+  let fs = 46;
+  const fnt = (n) => `600 ${n}px Georgia, "Times New Roman", "Hiragino Mincho ProN", serif`;
+  g.font = fnt(fs);
+  while (fs > 18 && g.measureText(text).width > W - 84) g.font = fnt(--fs);
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.fillText(text, W / 2 + 12, H / 2 + 3);
+  g.fillText(text, W / 2 + 14, H / 2 + 3);
   // 小さな葉
   g.save();
   g.translate(38, H / 2);
@@ -513,4 +517,79 @@ export function softRectTexture() {
   }
   g.putImageData(img, 0, 0);
   return tex(c, 1, { repeat: false, srgb: false });
+}
+
+
+/** 葉の紋章（金）を描く共通関数 */
+function drawLeafEmblem(g, x, y, s, col = '#d9b864') {
+  g.save();
+  g.translate(x, y);
+  g.fillStyle = col;
+  g.strokeStyle = col;
+  for (const [a, k] of [[0, 1], [-0.72, 0.72], [0.72, 0.72], [-1.3, 0.5], [1.3, 0.5]]) {
+    g.save();
+    g.rotate(a);
+    g.beginPath();
+    g.ellipse(0, -s * 0.48 * k, s * 0.17 * k, s * 0.46 * k, 0, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+  }
+  g.lineWidth = Math.max(1.5, s * 0.06);
+  g.beginPath();
+  g.moveTo(0, 0);
+  g.lineTo(0, s * 0.5);
+  g.stroke();
+  g.restore();
+}
+
+/** 食堂のテーブルランナー（深緑 + 金の縁 + 葉の紋章）。UV 0..1 */
+export function runnerLeafTexture() {
+  const W = 512;
+  const H = 96;
+  const [c, g] = canvas(W, H);
+  g.fillStyle = '#2f5a3a';
+  g.fillRect(0, 0, W, H);
+  g.strokeStyle = '#d9b864';
+  g.lineWidth = 3;
+  g.strokeRect(6, 6, W - 12, H - 12);
+  g.lineWidth = 1.2;
+  g.strokeRect(13, 13, W - 26, H - 26);
+  for (const x of [W * 0.15, W * 0.5, W * 0.85]) drawLeafEmblem(g, x, H / 2 + 4, 34);
+  noise(g, W, H, 0.06, 121, 2);
+  return tex(c, 1, { repeat: false });
+}
+
+/** 壁のバナー（深緑の布に金の葉の紋章、下が燕尾）。UV 0..1・透明部分あり */
+export function bannerTexture() {
+  const W = 128;
+  const H = 192;
+  const [c, g] = canvas(W, H);
+  g.clearRect(0, 0, W, H);
+  g.fillStyle = '#2c5236';
+  g.beginPath();
+  g.moveTo(8, 6);
+  g.lineTo(W - 8, 6);
+  g.lineTo(W - 8, H - 10);
+  g.lineTo(W / 2, H - 40);
+  g.lineTo(8, H - 10);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = '#d9b864';
+  g.lineWidth = 3;
+  g.stroke();
+  drawLeafEmblem(g, W / 2, 84, 46);
+  g.beginPath();
+  g.arc(W / 2, 80, 40, 0, Math.PI * 2);
+  g.lineWidth = 2;
+  g.stroke();
+  return tex(c, 1, { repeat: false });
+}
+
+/** 葉の紋章だけ（透明地）。UV 0..1 */
+export function emblemTexture() {
+  const S = 128;
+  const [c, g] = canvas(S);
+  g.clearRect(0, 0, S, S);
+  drawLeafEmblem(g, S / 2, S / 2 + 10, 60, '#e2c071');
+  return tex(c, 1, { repeat: false });
 }

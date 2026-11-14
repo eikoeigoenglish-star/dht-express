@@ -279,3 +279,30 @@ body.is-interior #scene:active { cursor: grabbing; }
   .room-hud__plate b { font-size: 19px; }
   .room-hud__keys { left: 12px; right: 12px; justify-content: center; }
 }
+
+/* v12: 操作ガイドの調整・ホログラムの情報 UI */
+.room-hud__keys { max-width: min(760px, calc(100vw - 32px)); justify-content: flex-end; }
+.room-hud__plate b { min-width: 7.5em; }
+.holo-panel {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -46%); width: min(460px, calc(100vw - 32px)); display: none;
+  padding: 18px 22px 16px; border-radius: 18px; color: #dffaf3; background: linear-gradient(180deg, rgba(14, 40, 36, 0.92), rgba(10, 26, 24, 0.94));
+  border: 1px solid rgba(166, 243, 226, 0.55); box-shadow: 0 0 0 4px rgba(201, 163, 90, 0.35), 0 0 40px rgba(120, 230, 210, 0.25), 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+.holo-panel.is-on { display: block; animation: holo-in 0.28s ease-out; }
+@keyframes holo-in { from { opacity: 0; transform: translate(-50%, -42%) scale(0.98); } to { opacity: 1; transform: translate(-50%, -46%); } }
+.holo-panel__brand { margin: 0; font: 700 10px/1 var(--mono); letter-spacing: 0.2em; color: #f3d58c; }
+.holo-panel__title { margin: 6px 0 2px; font: 700 22px/1.2 var(--fs-serif); color: #a6f3e2; }
+.holo-panel__sub { margin: 0 0 12px; font: 500 12px/1.5 var(--font); color: #9fd8e8; }
+.holo-panel__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.holo-panel__list li { display: grid; grid-template-columns: 1.6em 6.5em 1fr 2.6em; align-items: center; gap: 8px; font: 600 13px/1.3 var(--font); }
+.holo-panel__list .rk { color: #f3d58c; font-family: var(--mono); text-align: right; }
+.holo-panel__list li:first-child .nm, .holo-panel__list li:first-child .ct { color: #f3d58c; }
+.holo-panel__list .bar { height: 10px; border-radius: 6px; background: rgba(166, 243, 226, 0.12); overflow: hidden; }
+.holo-panel__list .bar i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, #6fd8c4, #a6f3e2); }
+.holo-panel__list li:first-child .bar i { background: linear-gradient(90deg, #d9b864, #f3d58c); }
+.holo-panel__list .ct { text-align: right; font-family: var(--mono); }
+.holo-panel__meta { margin: 12px 0 10px; font: 500 10px/1.4 var(--mono); color: #7fb8b0; }
+.holo-panel__close { appearance: none; cursor: pointer; padding: 7px 14px; border-radius: 999px; border: 1px solid rgba(166, 243, 226, 0.6); background: transparent; color: #a6f3e2; font: 700 12px/1 var(--font); }
+.holo-panel__close:hover { background: rgba(166, 243, 226, 0.15); }
+.room-hud__stats { position: absolute; top: 64px; right: 16px; padding: 4px 10px; border-radius: 8px; background: rgba(20, 26, 20, 0.7); color: #d9f2c8; font: 600 11px/1.3 var(--mono); pointer-events: none; }
+.room-hud__stats[hidden] { display: none; }

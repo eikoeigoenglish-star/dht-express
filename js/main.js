@@ -20,7 +20,7 @@
  *   livery.js      v7: FOREST SCHOOL の列車・船の塗装（GLB 読み込み後にマテリアルを差し替え）
  *   vehicles.js    v7: 列車・船の配置と「昨日 → 今日」の移動アニメーション
  *   progress.js    v7: DHT 進捗 API（GAS。fetch → 失敗時 JSONP）と進捗パネル
- *   boarding.js    v11: 列車クリック → 乗車確認 → FOREST SCHOOL EXPRESS / Room 1（interior/*）⇔ MAP
+ *   boarding.js    v11/v12: 列車クリック → 乗車確認 → FOREST SCHOOL EXPRESS の車内（interior/*）⇔ MAP
  *
  * シーングラフ
  *   scene
@@ -144,7 +144,8 @@ const boarding = new Boarding({
   camera,
   vehicles,
   canBoard: () => vehicleReady && !rig.animating && (mode === 'map' || mode === 'vehicle'),
-  timeMode: () => tod.mode, // v11: Room 1 は day のみ実装（他は day で表示。interior/looks.js）
+  timeMode: () => tod.mode, // v12: 車窓・室内照明は morning / day / evening / night に対応（interior/looks.js）
+  refreshTime: () => tod._check(), // v12: 車内にいる間も 30 秒ごとに時刻から時間帯を判定（MAP の更新は止めたまま）
   suspendMap: () => {
     mapPaused = { map: mapCtl.controls.enabled, follow: follow.enabled };
     mapCtl.disable();
@@ -503,7 +504,7 @@ addEventListener('resize', () => {
 });
 
 // 将来の拡張・デバッグ用ハンドル（コンソールから window.DHT で触れる）
-export const app = { renderer, scene, camera, terrain, env, rig, mapCtl, exploreCtl, labels, cities, stations, landmarks, water, journeyLayer, journey: null, route: null, vehicles, follow, beacons, progress: null, tod, boarding, get room1() { return boarding.room; }, mode: () => mode, layers: { actors, fx }, geo, presets: CAMERA_PRESETS, setMode, goPreset };
+export const app = { renderer, scene, camera, terrain, env, rig, mapCtl, exploreCtl, labels, cities, stations, landmarks, water, journeyLayer, journey: null, route: null, vehicles, follow, beacons, progress: null, tod, boarding, get interior() { return boarding.room; }, get room1() { return boarding.room; }, mode: () => mode, layers: { actors, fx }, geo, presets: CAMERA_PRESETS, setMode, goPreset };
 window.DHT = app;
 
 start();

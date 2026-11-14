@@ -1,11 +1,11 @@
 /**
- * boarding.js — 【v11】MAP ⇔ FOREST SCHOOL EXPRESS / Room 1 の乗車・降車
+ * boarding.js — 【v11/v12】MAP ⇔ FOREST SCHOOL EXPRESS（車内）の乗車・降車
  * ---------------------------------------------------------------------------
  * 1) MAP VIEW / VEHICLE VIEW で列車（vehicles.train）をクリック
  *      → 画面中央に「FOREST SCHOOL EXPRESS に乗車しますか？ はい / いいえ」
  *      判定：列車の先頭・後尾を画面へ投影した線分からの距離（車体は画面上で約 64px に保たれる）
  *            または遠景で出る「列車」の札の矩形。ドラッグ（5px 以上）やカメラ移動中は無視。
- * 2) 「はい」→ フェードしてから Room 1 へ（初回だけ interior/room1.js を動的 import して構築）
+ * 2) 「はい」→ フェードしてから車内（Room 2 から）へ（初回だけ interior/train.js を動的 import して構築）
  *    「いいえ」/ Esc → ダイアログだけ閉じる（MAP はそのまま）
  * 3) Room 1 の「← MAPへ戻る」→ フェードして MAP へ
  *
@@ -150,8 +150,8 @@ export class Boarding {
     await this._fade(true, this.room ? '' : '車内へ移動中…');
     try {
       if (!this.room) {
-        const { Room1 } = await import('./interior/room1.js');
-        this.room = new Room1({ renderer: this.o.renderer, canvas: this.o.canvas, hud: this.$hud });
+        const { TrainInterior } = await import('./interior/train.js');
+        this.room = new TrainInterior({ renderer: this.o.renderer, canvas: this.o.canvas, hud: this.$hud });
         await new Promise((r) => requestAnimationFrame(r)); // 「移動中…」を一度描画してから構築
         this.room.build();
       }
@@ -191,6 +191,14 @@ export class Boarding {
    */
   frame(dt) {
     if (!this.room || (this.state !== 'room' && this.state !== 'leaving')) return false;
+    // v12: 乗車中に MAP の時間帯（timeMode）が変わったら車窓・照明も切り替える
+    this._todT = (this._todT ?? 0) + dt;
+    if (this._todT > 30) {
+      this._todT = 0;
+      this.o.refreshTime?.();
+    }
+    const tm = this.o.timeMode();
+    if (tm !== this.room.timeMode) this.room.setTimeMode(tm);
     this.room.update(dt);
     this.room.render();
     return true;

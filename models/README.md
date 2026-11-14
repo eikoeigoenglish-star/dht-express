@@ -8,9 +8,11 @@
 | `characters/squirrel.glb` | 【v11】リス |
 | `characters/duck.glb` | 【v11】アヒル |
 | `characters/dog.glb` | 【v11】柴犬 |
+| `characters/rin.glb` | 【v12】リンさん（Room 1。アニメーション無し → 骨を回して立ち姿に） |
 
 GLB は 1 メッシュ・UV なしのまま配置し、外観（白・緑帯・窓・ロゴ・文字）は `js/livery.js` が読み込み後に適用します（README §16.2）。
 パスは `js/config.js` の `ASSETS.models` に相対パスで登録しています。将来のキャラクター GLB も同じ形で追加してください（例：`characters/squirrel.glb`）。
 
 
 【v11】Room 1 の動物は `js/interior/characters.js` の `ROOM1_CHARACTERS[id].model` で指定（README §20.4）。
+【v12】住人は `js/interior/characters.js` の `ROOM_CHARACTERS[部屋][id].model`（README §21.2）。

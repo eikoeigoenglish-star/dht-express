@@ -51,18 +51,96 @@ function canvasTex(w, h, draw, { repeat = true, tile = 1 } = {}) {
   return t;
 }
 
-/** 建物の壁（1 タイル = 幅 3m × 1 階 3m）。白地 → 頂点カラーで色付け */
+/** 建物の壁：1 タイル = 24 m 角（窓 8 × 8、1 窓 = 幅 3 m × 1 階 3 m）。白地 → 頂点カラーで色付け */
+const WIN_TILE = 24;
 function windowsTexture() {
-  return canvasTex(64, 64, (g, S) => {
+  return canvasTex(256, 256, (g, S) => {
     g.fillStyle = '#ffffff';
     g.fillRect(0, 0, S, S);
-    g.fillStyle = '#7d98ad';
-    g.fillRect(10, 18, 44, 28);
-    g.fillStyle = 'rgba(255,255,255,0.35)';
-    g.fillRect(12, 20, 10, 24);
-    g.fillStyle = 'rgba(0,0,0,0.16)';
-    g.fillRect(0, 52, S, 5); // ベランダの影
-  }, { tile: 3 });
+    for (let j = 0; j < 8; j++) {
+      for (let i = 0; i < 8; i++) {
+        const x = i * 32;
+        const y = j * 32;
+        g.fillStyle = '#7d98ad';
+        g.fillRect(x + 6, y + 8, 20, 15);
+        g.fillStyle = 'rgba(255,255,255,0.32)';
+        g.fillRect(x + 7, y + 9, 5, 13);
+        g.fillStyle = 'rgba(0,0,0,0.14)';
+        g.fillRect(x, y + 26, 32, 3); // ベランダの影
+      }
+    }
+  }, { tile: WIN_TILE });
+}
+
+/**
+ * 窓明かり（発光マップ）。黒地に点いている窓だけ明るく。density = 点灯している割合
+ * 同じ窓の配置（windowsTexture と同じ 8 × 8）。色は暖色〜白で少しずつ変える。
+ */
+function litWindowsTexture(density, seed) {
+  return canvasTex(256, 256, (g, S) => {
+    g.fillStyle = '#000000';
+    g.fillRect(0, 0, S, S);
+    const r = rng(seed);
+    const cols = ['#ffe2a6', '#fff0c8', '#ffd890', '#f4f2ea', '#ffc978', '#e8f0ff'];
+    for (let j = 0; j < 8; j++) {
+      for (let i = 0; i < 8; i++) {
+        // 階ごとに少しまとまって点く（オフィスの 1 フロアなど）
+        const floorBias = r() < 0.18 ? 0.35 : 0;
+        if (r() > density + floorBias * density) continue;
+        const x = i * 32;
+        const y = j * 32;
+        g.fillStyle = cols[Math.floor(r() * cols.length)];
+        g.globalAlpha = 0.65 + r() * 0.35;
+        g.fillRect(x + 6, y + 8, 20, 15);
+        if (r() < 0.3) {
+          g.fillStyle = '#000000';
+          g.globalAlpha = 0.5;
+          g.fillRect(x + 6 + r() * 12, y + 8, 6, 15); // カーテンの影
+        }
+        g.globalAlpha = 1;
+      }
+    }
+  }, { tile: WIN_TILE });
+}
+
+/** 地面の夜の光（道路の街路灯・まばらな窓）。cityGroundTexture と同じ配置・同じ tile */
+function cityLightsTexture() {
+  return canvasTex(512, 512, (g, S) => {
+    g.fillStyle = '#000000';
+    g.fillRect(0, 0, S, S);
+    const r = rng(611);
+    // 道路（64 px ごと）に沿って街路灯
+    for (let k = 0; k < S; k += 64) {
+      for (let t = 0; t < S; t += 8) {
+        g.fillStyle = r() < 0.75 ? '#ffd28a' : '#f2f4ff';
+        g.globalAlpha = 0.6 + r() * 0.4;
+        g.fillRect(k, t, 3, 3);
+        g.fillRect(t, k, 3, 3);
+      }
+    }
+    // 家々の明かり（小さな点）
+    g.globalAlpha = 1;
+    for (let i = 0; i < 2600; i++) {
+      g.fillStyle = ['#ffcf88', '#fff0c8', '#ffe0a0'][Math.floor(r() * 3)];
+      g.globalAlpha = 0.25 + r() * 0.6;
+      g.fillRect(r() * S, r() * S, 1.6, 1.6);
+    }
+    g.globalAlpha = 1;
+  }, { tile: 320 });
+}
+
+/** 太陽・月のにじみ / 遠くの光の点 */
+function glowTexture() {
+  const t = canvasTex(128, 128, (g, S) => {
+    const gr = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+    gr.addColorStop(0, 'rgba(255,255,255,1)');
+    gr.addColorStop(0.12, 'rgba(255,255,255,0.85)');
+    gr.addColorStop(0.35, 'rgba(255,255,255,0.25)');
+    gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, S, S);
+  }, { repeat: false });
+  return t;
 }
 
 /** 地面：上から見た街（屋根・道路）。tile 320 m */
@@ -128,23 +206,29 @@ function cloudTexture() {
   }, { repeat: false });
 }
 
-/** ループする 1 層（同じ内容のチャンク × 2） */
+/**
+ * ループする 1 層（同じ内容のチャンクを copies 枚並べて入れ替える）
+ *   2 枚で xc ± W/2 を常に覆う。reach [m] を指定すると最後部のパノラマ車窓から見える
+ *   後方（+X）の reach m 先までを覆うよう枚数を増やす（見えない分は視錐台カリングで描かれない）。
+ */
 class LoopLayer {
-  constructor(geometry, material, W, name) {
+  constructor(geometry, material, W, name, { reach = 0, Ctor = THREE.Mesh } = {}) {
     this.W = W;
-    this.a = new THREE.Mesh(geometry, material);
-    this.b = new THREE.Mesh(geometry, material);
-    this.a.name = `${name}-a`;
-    this.b.name = `${name}-b`;
+    this.n = 2 + Math.ceil(Math.max(0, reach - W / 2) / W);
+    this.parts = [];
     this.group = new THREE.Group();
-    this.group.add(this.a, this.b);
+    for (let i = 0; i < this.n; i++) {
+      const m = new Ctor(geometry, material);
+      m.name = `${name}-${i}`;
+      this.parts.push(m);
+      this.group.add(m);
+    }
   }
-  /** offset [m]（累積の流れ）。xc の周り ±W/2 を常に覆う */
+  /** offset [m]（累積の流れ）。xc の周り ±W/2（+ reach）を覆う */
   set(offset, xc) {
     const W = this.W;
     const ph = ((((offset + W / 2) % W) + W) % W) - W / 2; // [-W/2, W/2)
-    this.a.position.x = xc - W + ph;
-    this.b.position.x = xc + ph;
+    for (let i = 0; i < this.n; i++) this.parts[i].position.x = xc - W + ph + i * W;
   }
 }
 
@@ -165,6 +249,7 @@ export class WindowScenery {
     this.cityY = opts.cityY ?? SCENERY.cityY;
     this.offset = 0;
     this.speed = 24;
+    this.reach = opts.reach ?? 0; // 最後部のパノラマ車窓から見える後方の距離 [m]
     this.group = new THREE.Group();
     this.group.name = 'window-scenery';
     this.layers = [];
@@ -172,14 +257,18 @@ export class WindowScenery {
 
     // ---- マテリアル（屋外は Lambert で軽く。かすみは scene.fog） ----
     this.mats = {
-      building: new THREE.MeshLambertMaterial({ vertexColors: true, map: windowsTexture() }),
+      building: new THREE.MeshLambertMaterial({ vertexColors: true, map: windowsTexture(), emissive: new THREE.Color('#ffe2a8'), emissiveIntensity: 0 }),
       solid: new THREE.MeshLambertMaterial({ vertexColors: true }),
       foliage: new THREE.MeshLambertMaterial({ vertexColors: true }),
       mountain: new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }),
       ridge: new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }),
       pole: new THREE.MeshLambertMaterial({ color: '#8d9399' }),
       concrete: new THREE.MeshLambertMaterial({ color: '#b9b7b0' }),
-      ground: new THREE.MeshLambertMaterial({ color: '#ffffff', map: cityGroundTexture() }),
+      ground: new THREE.MeshLambertMaterial({ color: '#ffffff', map: cityGroundTexture(), emissiveMap: cityLightsTexture(), emissive: new THREE.Color('#ffd9a0'), emissiveIntensity: 0 }),
+      beacon: new THREE.MeshBasicMaterial({ color: '#ff2a1a', fog: false }),
+      farLights: new THREE.PointsMaterial({ size: 2.2, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0, depthWrite: false, fog: false }),
+      stars: new THREE.PointsMaterial({ size: 1.6, sizeAttenuation: false, color: '#ffffff', transparent: true, opacity: 0, depthWrite: false, fog: false }),
+      glow: new THREE.SpriteMaterial({ map: glowTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0 }),
       cloud: new THREE.MeshBasicMaterial({ map: cloudTexture(), transparent: true, depthWrite: false, fog: false }),
       sky: new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, depthWrite: false, fog: false }),
     };
@@ -204,18 +293,56 @@ export class WindowScenery {
     this.ground.name = 'city-ground';
     this.group.add(this.ground);
 
+    // 窓明かりの密度ごとの発光マップ（0：なし〜3：多い）。building の emissiveMap を差し替える
+    this.litMaps = [litWindowsTexture(0, 1), litWindowsTexture(0.12, 2), litWindowsTexture(0.3, 3), litWindowsTexture(0.55, 4)];
+    this.mats.building.emissiveMap = this.litMaps[0];
+
+    // ---- 星（夜） ----
+    {
+      const r = rng(777);
+      const n = 700;
+      const pos = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        const a = r() * Math.PI * 2;
+        const el = Math.asin(0.08 + r() * 0.92);
+        const R = SCENERY.skyR * 0.92;
+        pos.set([Math.cos(el) * Math.cos(a) * R, Math.sin(el) * R, Math.cos(el) * Math.sin(a) * R], i * 3);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      this.stars = new THREE.Points(g, this.mats.stars);
+      this.stars.frustumCulled = false;
+      this.stars.renderOrder = -9;
+      this.group.add(this.stars);
+    }
+    // ---- 太陽・月のにじみ ----
+    this.glow = new THREE.Sprite(this.mats.glow);
+    this.glow.renderOrder = -8;
+    this.group.add(this.glow);
+
+    // ---- 自分の線路の高架（最後部のパノラマ車窓から後ろへ続いて見える。固定） ----
+    {
+      const own = new PartBin();
+      const zc = opts.trackZ ?? 2.15;
+      const ty = this.trackY;
+      own.add('concrete', box(9000, 1.0, 6.4), trs(2500, ty - 0.85, zc));
+      for (const dz of [-0.53, 0.53]) own.add('pole', box(9000, 0.1, 0.08), trs(2500, ty - 0.3, zc + dz));
+      for (const dz of [-3.1, 3.1]) own.add('concrete', box(9000, 0.8, 0.18), trs(2500, ty - 0.05, zc + dz));
+      this.group.add(own.build(this.mats, 'own-viaduct'));
+    }
+
     for (const s of opts.sides) this._buildSide(s, opts.seed ?? 1);
   }
 
   _W(dmax, s) {
     // 窓から見える横の範囲（カメラが窓に近い廊下側は広めに）
-    return Math.round(2 * (s.lite ? 12 + 2.6 * dmax : 8 + 1.6 * dmax));
+    return Math.round(2 * (s.lite ? 12 + 2.0 * dmax : 8 + 1.6 * dmax));
   }
 
-  _addLayer(bin, W, name, xc) {
+  _addLayer(bin, W, name, xc, reach = this.reach) {
     const grp = bin.build(this.mats, name);
     for (const m of [...grp.children]) {
-      const L = new LoopLayer(m.geometry, m.material, W, `${name}:${m.name}`);
+      const L = new LoopLayer(m.geometry, m.material, W, `${name}:${m.name}`, { reach });
       this.layers.push({ layer: L, xc });
       this.group.add(L.group);
     }
@@ -250,12 +377,13 @@ export class WindowScenery {
     }
 
     // ---- 街（近い） ----
-    this._city(s, r, { d0: 18, d1: 260, W: this._W(260, s), density: s.lite ? 0.5 : 1, near: true }, z, cy, xc);
-    // ---- 街（遠い）・緑の山（廊下側は省略して軽く） ----
-    if (!s.lite) {
-      this._city(s, r, { d0: 260, d1: 1000, W: this._W(1000, s), density: 1, near: false }, z, cy, xc);
-      this._mountains(z, cy, xc, seed);
-    }
+    this._city(s, r, { d0: 18, d1: 260, W: this._W(260, s), density: s.lite ? 0.8 : 1, near: true }, z, cy, xc);
+    // ---- 街（遠い）。左舷（廊下・ラウンジの左舷の窓）は少しまばらに ----
+    this._city(s, r, { d0: 260, d1: 1000, W: this._W(1000, s), density: s.lite ? 0.55 : 1, near: false }, z, cy, xc);
+    // ---- 緑の山（右舷だけ） ----
+    if (!s.lite) this._mountains(z, cy, xc, seed);
+    // ---- 遠くの街の光（夜・夕方。点の集まり） ----
+    this._farLights(s, z, cy, xc, seed);
     // ---- 遠い山並み（両側） ----
     this._ridge(s, z, cy, xc, seed);
 
@@ -315,6 +443,11 @@ export class WindowScenery {
             bin.add('solid', box(w + 0.6, 0.7, dep + 0.6), trs(x + w / 2, cy + h + 0.35, z(dd)), roofs[Math.floor(r() * roofs.length)]);
           } else if (floors >= 6 && r() < 0.6) {
             bin.add('solid', box(w * 0.3, 2.4, dep * 0.3), trs(x + w / 2 + (r() - 0.5) * w * 0.4, cy + h + 1.2, z(dd)), 0xb8b6b0); // 屋上の塔屋
+          }
+          if (floors >= 12) {
+            // 航空障害灯（屋上の四隅の赤い灯。夕方・夜だけ見える）
+            const bs = o.near ? 0.5 : 1.4;
+            for (const [ox, oz] of [[-1, -1], [1, 1], [-1, 1], [1, -1]].slice(0, o.near ? 2 : 4)) bin.add('beacon', box(bs, bs, bs), trs(x + w / 2 + ox * (w / 2 - 0.5), cy + h + bs / 2 + 0.2, z(dd) + oz * (dep / 2 - 0.5)));
           }
         } else if (o.near && r() < 0.35) {
           // 公園・屋敷林の緑
@@ -386,7 +519,31 @@ export class WindowScenery {
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     g.computeVertexNormals();
-    const L = new LoopLayer(g, this.mats.mountain, W, 'mountains');
+    const L = new LoopLayer(g, this.mats.mountain, W, 'mountains', { reach: this.reach });
+    this.layers.push({ layer: L, xc });
+    this.group.add(L.group);
+  }
+
+  /** 遠くの街の光（d 1000〜6000 m の地面に散らばる点）。夜・夕方だけ見える */
+  _farLights(s, z, cy, xc, seed) {
+    const W = this._W(6000, s);
+    const r = rng(seed * 31 + (s.facing > 0 ? 3 : 0));
+    const n = s.lite ? 3500 : 6000;
+    const pos = new Float32Array(n * 3);
+    const col = new Float32Array(n * 3);
+    const cs = [new THREE.Color('#ffd08a'), new THREE.Color('#fff2d0'), new THREE.Color('#ffb870'), new THREE.Color('#dfe8ff')];
+    for (let i = 0; i < n; i++) {
+      const d = 1000 + Math.pow(r(), 0.8) * 5000;
+      pos.set([r() * W, cy + 1 + r() * 6, z(d)], i * 3);
+      const c = cs[Math.floor(r() * cs.length)];
+      const k = 0.55 + r() * 0.45;
+      col.set([c.r * k, c.g * k, c.b * k], i * 3);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    g.computeBoundingSphere();
+    const L = new LoopLayer(g, this.mats.farLights, W, 'far-lights', { reach: this.reach, Ctor: THREE.Points });
     this.layers.push({ layer: L, xc });
     this.group.add(L.group);
   }
@@ -417,25 +574,50 @@ export class WindowScenery {
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     g.computeVertexNormals();
-    const L = new LoopLayer(g, this.mats.ridge, W, 'ridge');
+    const L = new LoopLayer(g, this.mats.ridge, W, 'ridge', { reach: this.reach });
     this.layers.push({ layer: L, xc });
     this.group.add(L.group);
   }
 
   /** 見た目（looks.js）を反映 */
   applyLook(L) {
+    // 空：地平 → 中ほど → 天頂の 3 段のグラデーション
     const pos = this.sky.geometry.attributes.position;
     const col = this.sky.geometry.attributes.color;
     const c = new THREE.Color();
     for (let i = 0; i < pos.count; i++) {
       const h = Math.max(0, pos.getY(i) / SCENERY.skyR);
-      c.copy(L.skyHorizon).lerp(L.skyZenith, Math.pow(h, 0.5));
+      if (h < 0.16) c.copy(L.skyHorizon).lerp(L.skyMid, Math.pow(h / 0.16, 0.8));
+      else c.copy(L.skyMid).lerp(L.skyZenith, Math.pow((h - 0.16) / 0.84, 0.7));
       col.setXYZ(i, c.r, c.g, c.b);
     }
     col.needsUpdate = true;
-    this.mats.ground.color.copy(L.cityGround);
-    this.mats.mountain.color.copy(L.mountainTint);
-    this.mats.ridge.color.copy(L.ridgeTint);
+    const M = this.mats;
+    M.ground.color.copy(L.cityGround);
+    M.ground.emissiveIntensity = L.streetGlow;
+    M.building.color.copy(L.buildingTint);
+    M.solid.color.copy(L.buildingTint);
+    M.building.emissive.copy(L.windowColor);
+    M.building.emissiveIntensity = L.windowGlow;
+    M.building.emissiveMap = this.litMaps[Math.max(0, Math.min(3, L.windowLit | 0))];
+    M.foliage.color.copy(L.buildingTint).lerp(new THREE.Color(1, 1, 1), 0.3);
+    M.concrete.color.set('#b9b7b0').multiply(L.buildingTint);
+    M.pole.color.set('#8d9399').multiply(L.buildingTint);
+    M.mountain.color.copy(L.mountainTint);
+    M.ridge.color.copy(L.ridgeTint);
+    M.beacon.visible = !!L.beacons;
+    this.beaconsOn = !!L.beacons;
+    M.farLights.opacity = Math.min(1, L.streetGlow * 1.1);
+    M.farLights.visible = L.streetGlow > 0.02;
+    M.stars.opacity = L.stars;
+    this.stars.visible = L.stars > 0.01;
+    // 太陽（朝日・夕日）・月のにじみ
+    const sg = L.sunGlow;
+    M.glow.color.copy(sg.color);
+    M.glow.opacity = sg.opacity;
+    this.glow.visible = sg.opacity > 0.01;
+    this.glow.position.copy(sg.dir).multiplyScalar(SCENERY.skyR * 0.85);
+    this.glow.scale.setScalar(sg.size);
     for (const cl of this.clouds) {
       cl.mesh.material.color.copy(L.cloud);
       cl.mesh.material.opacity = L.cloudOpacity;
@@ -455,6 +637,10 @@ export class WindowScenery {
     // 地面：テクスチャのオフセット（+X へ流れる → offset.x を減らす）
     const gt = this.mats.ground.map;
     gt.offset.x = (((-this.offset / gt.userData.tile) % 1) + 1) % 1;
+    this.mats.ground.emissiveMap.offset.x = gt.offset.x;
+    // 航空障害灯はゆっくり点滅
+    this._bt = (this._bt ?? 0) + dt;
+    if (this.beaconsOn) this.mats.beacon.visible = this._bt % 1.6 < 1.0;
     for (const cl of this.clouds) {
       const t = cl.mesh.material.map;
       // 板の向きで UV の向きが反転する（facing +1 は 180° 回している）
@@ -470,6 +656,8 @@ export class WindowScenery {
       m.map?.dispose();
       m.dispose();
     }
+    this.litMaps.forEach((t) => t.dispose());
+    this.mats.ground.emissiveMap?.dispose();
     for (const cl of this.clouds) {
       cl.mesh.material.map.dispose();
       cl.mesh.material.dispose();
