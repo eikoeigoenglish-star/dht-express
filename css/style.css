@@ -185,3 +185,97 @@ body.mode-explore .crosshair { display: block; }
   .panel--help { max-width: calc(100vw - 24px); }
   .panel--info { display: none; }
 }
+
+/* ======================================================================
+   v11: FOREST SCHOOL EXPRESS — 乗車確認・Room 1 の HUD・シーン切替のフェード
+   ====================================================================== */
+:root {
+  --fs-ivory: #f7f1e1;
+  --fs-ivory-2: #efe6cf;
+  --fs-green: #2f5a37;
+  --fs-green-ink: #23422a;
+  --fs-brass: #c9a35a;
+  --fs-serif: Georgia, "Times New Roman", "Hiragino Mincho ProN", "Yu Mincho", serif;
+}
+
+/* 乗車確認（画面中央の小さなダイアログ） */
+.board-dialog { position: absolute; inset: 0; display: grid; place-items: center; z-index: 20; background: rgba(8, 16, 12, 0); transition: background 0.2s; }
+.board-dialog[hidden] { display: none; }
+.board-dialog.is-on { background: rgba(8, 16, 12, 0.22); }
+.board-dialog__card {
+  min-width: 300px; max-width: calc(100vw - 32px); padding: 18px 22px 16px; text-align: center; border-radius: 16px;
+  background: var(--fs-ivory); color: var(--fs-green-ink); border: 1px solid rgba(201, 163, 90, 0.7);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35), inset 0 0 0 4px rgba(255, 255, 255, 0.5);
+  transform: translateY(6px) scale(0.98); opacity: 0; transition: transform 0.2s, opacity 0.2s;
+}
+.board-dialog.is-on .board-dialog__card { transform: none; opacity: 1; }
+.board-dialog__brand { margin: 0 0 6px; font: 700 10px/1 var(--mono); letter-spacing: 0.22em; color: #8a6d36; }
+.board-dialog__title { margin: 0 0 14px; font: 700 15px/1.5 var(--font); }
+.board-dialog__actions { display: flex; gap: 10px; justify-content: center; }
+.board-btn {
+  appearance: none; min-width: 96px; padding: 9px 16px; border-radius: 999px; cursor: pointer;
+  font: 700 13px/1 var(--font); color: var(--fs-green-ink); background: #fff; border: 1px solid rgba(47, 90, 55, 0.35);
+}
+.board-btn:hover { background: var(--fs-ivory-2); }
+.board-btn--yes { background: var(--fs-green); color: #fff; border-color: var(--fs-green); }
+.board-btn--yes:hover { background: #3a6d43; }
+.board-btn:focus-visible { outline: 2px solid var(--fs-brass); outline-offset: 2px; }
+
+/* シーン切替のフェード */
+.scene-fade { position: absolute; inset: 0; z-index: 30; pointer-events: none; display: grid; place-items: center; background: #1d2a20; opacity: 0; transition: opacity 0.32s ease; }
+.scene-fade.is-on { opacity: 1; pointer-events: auto; }
+.scene-fade p { margin: 0; color: var(--fs-ivory); font: 600 13px/1 var(--font); letter-spacing: 0.12em; }
+
+/* Room 1 表示中は MAP の HUD・ラベルを隠す */
+body.is-interior #app > .panel, body.is-interior #labels-layer, body.is-interior .lock-hint, body.is-interior .crosshair { display: none !important; }
+body.is-interior #scene { cursor: grab; }
+body.is-interior #scene:active { cursor: grabbing; }
+
+/* Room 1 の HUD（アイボリー × 深緑 × 真鍮） */
+.room-hud { position: absolute; inset: 0; pointer-events: none; z-index: 10; color: var(--fs-green-ink); }
+.room-hud[hidden] { display: none; }
+.room-hud > * { pointer-events: auto; }
+.room-hud__plate {
+  position: absolute; top: 14px; left: 14px; display: flex; align-items: center; gap: 10px; padding: 10px 18px 10px 12px;
+  background: rgba(247, 241, 225, 0.94); border-radius: 16px; box-shadow: 0 4px 18px rgba(30, 20, 10, 0.25); user-select: none;
+}
+.room-hud__plate svg { width: 34px; height: 34px; color: var(--fs-green); }
+.room-hud__plate small { display: block; font: 700 9px/1.2 var(--mono); letter-spacing: 0.2em; color: #5b6b52; }
+.room-hud__plate b { display: block; font: 700 24px/1.15 var(--fs-serif); color: var(--fs-green-ink); }
+.room-hud__back {
+  position: absolute; top: 18px; right: 16px; appearance: none; cursor: pointer; padding: 10px 18px; border-radius: 999px;
+  background: rgba(247, 241, 225, 0.94); color: var(--fs-green-ink); border: 1px solid rgba(201, 163, 90, 0.75);
+  font: 700 13px/1 var(--font); box-shadow: 0 4px 14px rgba(30, 20, 10, 0.25);
+}
+.room-hud__back:hover { background: var(--fs-green); color: #fff; border-color: var(--fs-green); }
+.room-hud__back:focus-visible { outline: 2px solid var(--fs-brass); outline-offset: 2px; }
+.room-hud__keys {
+  position: absolute; right: 16px; bottom: 16px; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 8px 14px;
+  border-radius: 999px; background: rgba(20, 26, 20, 0.62); color: #f1ecdc; font: 600 11px/1 var(--font); pointer-events: none;
+}
+.room-hud__keys kbd { display: inline-block; min-width: 18px; padding: 3px 4px; margin-right: 2px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.55); font: 700 10px/1 var(--mono); text-align: center; }
+.room-hud__prompt {
+  position: absolute; left: 0; top: 0; pointer-events: none; white-space: nowrap; display: none;
+  padding: 7px 14px; border-radius: 999px; background: rgba(36, 66, 44, 0.92); color: #f6efd8; font: 700 13px/1 var(--font);
+  border: 2px solid rgba(201, 242, 122, 0.85); box-shadow: 0 0 14px rgba(201, 242, 122, 0.45);
+}
+.room-hud__prompt.is-on { display: block; }
+.room-hud__talk {
+  position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); width: min(560px, calc(100vw - 32px)); display: none; cursor: pointer;
+  padding: 14px 20px 12px; border-radius: 16px; background: rgba(247, 241, 225, 0.97); border: 1px solid rgba(201, 163, 90, 0.8);
+  box-shadow: 0 10px 30px rgba(20, 14, 6, 0.35);
+}
+.room-hud__talk.is-on { display: block; }
+.room-hud__talk b { display: inline-block; margin-bottom: 4px; padding: 3px 10px; border-radius: 999px; background: var(--fs-green); color: #fff; font: 700 12px/1.2 var(--font); }
+.room-hud__talk p { margin: 4px 0 6px; font: 600 15px/1.6 var(--font); }
+.room-hud__talk small { display: block; text-align: right; color: #7b7a66; font-size: 10px; }
+.room-hud__toast {
+  position: absolute; left: 50%; top: 22%; transform: translate(-50%, -6px); opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+  padding: 9px 16px; border-radius: 999px; background: rgba(36, 66, 44, 0.92); color: #f6efd8; font: 700 13px/1 var(--font);
+}
+.room-hud__toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 760px) {
+  .room-hud__plate b { font-size: 19px; }
+  .room-hud__keys { left: 12px; right: 12px; justify-content: center; }
+}

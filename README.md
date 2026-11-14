@@ -97,6 +97,12 @@ Node.js がある場合は `npx serve .` などでも構いません。**これ�
 > - 街 24 地域（箱根・伊東・下田…・伊豆諸島・小笠原諸島）、ランドマーク 4 件（ラグーナテンボス・神戸空港・福岡空港・那覇空港）
 > - 地名ラベルをカメラの高度で制限（見通し距離 3.57√h km）。低い視点で地平線に遠方の地名が並ばない
 
+> **v11（FOREST SCHOOL EXPRESS / Room 1）**：v10 の MAP・列車・UI・時間帯はそのままに（詳細は [§20](#20-forest-school-express--room-1v11)）
+> - MAP VIEW / VEHICLE VIEW で**列車をクリック → 「乗車しますか？ はい / いいえ」→ Room 1（個室）**。「← MAPへ戻る」で直前の MAP（カメラ・VIEW・timeMode・列車位置）へ
+> - Room 1 は別シーン（初回乗車時に動的 import・構築）。表示中は MAP の更新・描画を止める
+> - プレイヤー「葉っぱ」（WASD / 矢印・当たり判定・三人称カメラ）、4 匹（赤ちゃん猿・リス・アヒル・柴犬の GLB）に E で話しかける、閉じた引き戸と片側廊下
+> - 車窓（DAY）：高架から見下ろす街並み・地平線の山並み・ときどき迫る緑の山。無限スクロールの軽量な視差
+
 ---
 
 ## 3. ファイル構成
@@ -2531,3 +2537,93 @@ python3 tools/terrain_detail/fit_bridges.py --write       # → data/landmarks-v
 - ラベルの見通し距離はワールドの Y（km）をそのまま高さとして計算します（地形の高さの 3 倍強調は考慮しません）。VEHICLE VIEW で海上を進む区間では、近くに地名がないとラベルが 1 つも出ないことがあります（意図どおり）。
 - 硫黄島・母島・父島は DHT ROUTE から遠く、CAMERA のプリセットはありません（MAP / EXPLORE VIEW で移動して見られます）。硫黄島は 1km 地形のままです。
 - 福岡空港の滑走路の向き・那覇空港の 2 本目の滑走路の位置は概略です。
+
+
+---
+
+## 20. FOREST SCHOOL EXPRESS / Room 1（v11）
+
+### 20.1 操作
+
+| 場所 | 操作 |
+|---|---|
+| MAP VIEW / VEHICLE VIEW | 列車（または遠景の「列車」札）を**クリック** → 確認ダイアログ。**はい**（Enter）で乗車、**いいえ**（Esc）で閉じる。ドラッグは対象外 |
+| Room 1 | **W A S D / 矢印** 移動、**Shift** 走る、**E** 話しかける・ドアの開閉・調べる（会話中は E / Enter / Space で次へ、Esc で閉じる） |
+| | **ドラッグ** 視点の向き、**ホイール** 距離、**V** 部屋を見渡す視点の ON/OFF |
+| | 右上 **← MAPへ戻る** |
+
+EXPLORE VIEW（飛空艇）はクリックがマウス視点に使われるため、乗車の対象外です。
+
+### 20.2 しくみ（既存への追加は最小限）
+
+```text
+js/boarding.js            列車のクリック判定（先頭・後尾を画面へ投影した線分との距離）・確認ダイアログ・フェード・MAP 入力の停止/復帰
+js/interior/room1.js      Room 1（別の THREE.Scene）。部屋・家具・引き戸・廊下・葉っぱ・当たり判定・カメラ・話しかける
+js/interior/scenery.js    車窓（高架から見下ろす街・緑の山・地平線の山並み・雲・空。チャンク 2 枚の入れ替えで無限スクロール）
+js/interior/characters.js ROOM1_CHARACTERS（4 匹の GLB・座る位置・セリフ）と読み込み（座りポーズで測って座面に置く）
+js/interior/looks.js      ROOM1_LOOKS（timeMode ごとの車窓・照明。v11 は day のみ）
+js/interior/kit.js        角丸箱・部品の結合（PartBin）・当たり判定の箱
+js/interior/textures.js   木目・布・絨毯・腰壁などの Canvas テクスチャ
+models/characters/*.glb   赤ちゃん猿・リス・アヒル・柴犬
+```
+
+- `main.js` の変更は 4 か所だけ：`Boarding` の生成（MAP 入力の停止・復帰のコールバック）、ループ先頭の `if (boarding.frame(dt)) return;`、resize、`window.DHT.boarding / DHT.room1`。`ui.js` は Room 1 表示中・確認中に MAP のショートカット（1/2/3/H/L/B/R/I）を無視するだけ。
+- Room 1 表示中は MAP の地形・都市・ラベル・列車の再生を**更新も描画もしない**（MAP の状態に触れないので、戻ると同じカメラ・VIEW・timeMode・列車位置のまま。再生途中だった「昨日 → 今日」も続きから）。
+- Room 1 は初回乗車時に `import()` → 構築（約 0.6〜0.8 秒、フェード中）。2 回目以降は再利用（葉っぱは扉の前、扉は閉じた状態から）。MAP の初期読み込みは増えない。
+- 室内だけ `NeutralToneMapping` を使い、戻るときに元へ戻す。影は使わない（接地影は板 1 枚）。
+
+### 20.3 部屋の構造
+
+- 車窓側（z = 0）に大きな窓、反対側（z = 3.0）は**天井まで届く壁**と**引き戸（初期状態で閉）**。左右も天井までの仕切り壁で、完全な個室。
+- 引き戸の外は列車の長手方向に続く**片側廊下**（x = -8〜+8）。反対側の窓・手すり・壁ランプ。廊下には将来用の扉「Room 2」（+X 側）と端の「Dining & Lounge」（-X 端）があり、E で「準備中です」。
+- 当たり判定は XZ の箱（壁・ベンチ・テーブル・本棚・植物・扉）。葉っぱは半径 0.15 m の円で、4 cm ごとに分割して押し出す（低 FPS でも壁をすり抜けない）。テーブルの下にも入れない（カメラから隠れない）。
+- カメラ：葉っぱの後方・上方。後ろの壁で距離が取れないときは「近づく」より「上がる」（最大 1.6 m。窓の外が見える高さ）。家具で葉っぱが隠れると更に上げる → 近づく。
+
+### 20.4 4 匹（`js/interior/characters.js` の `ROOM1_CHARACTERS`）
+
+| id | 名前 | モデル | 座る位置 |
+|---|---|---|---|
+| monkey | 赤ちゃん猿 | models/characters/monkey.glb | 左ベンチ・通路側 |
+| squirrel | リス | models/characters/squirrel.glb | 左ベンチ・窓側 |
+| duck | アヒル | models/characters/duck.glb | 右ベンチ・窓側 |
+| dog | 柴犬 | models/characters/dog.glb | 右ベンチ・通路側 |
+
+- `model` を差し替えれば別の GLB になる（`null` なら仮置きのカプセル）。`height` は**座った姿勢での高さ [m]**。読み込み時に `SitIdle → Sit → Idle` の順でクリップを選んでループ、`Expr_Blink` があれば数秒おきにまばたき。座りポーズを当てた形（スキニング後）を測って座面に置く。`yaw` / `offset` で微調整。
+- 実行中の差し替え：`DHT.room1.setCharacterModel('dog', 'models/characters/dog.glb')`
+- 会話：`lines`（配列）を書き換えるだけ。E で 1 行ずつ進む。長い会話・選択肢は `room1.js` の `_openTalk / _advanceTalk` を拡張。
+- 4 体で約 17.8 MB・約 20 万三角形（Room 1 に入ったときだけ読み込む）。
+
+### 20.5 車窓（`js/interior/scenery.js`）
+
+高架（街より 45 m 上）から見下ろす景色。すべての層が同じ実速度（24 m/s ≒ 86 km/h）で +X へ流れ、距離の差で自然な視差になる。
+
+| 層 | 距離 | 内容 |
+|---|---|---|
+| 架線柱 | 3.4 m | 40 m おき（速く流れる）。架線・隣の高架橋は固定 |
+| 近い街 | 18〜260 m | 2〜4 階の住宅（色付きの屋根）・ところどころ中層マンション・公園の木 |
+| 遠い街 | 260〜1000 m | 建物の塊・遠くにぽつぽつ塔状のマンション |
+| 緑の山 | 1.5〜3.8 km | 9 km ごとに 2 か所（約 3 分おきに街の向こうへ山が迫る区間と、平野が続く区間） |
+| 山並み | 7 km | 地平線の青くかすんだ稜線（常に見える） |
+| 雲・空・地面 | — | 雲は板 1 枚、空はドーム、地面は屋根の並ぶテクスチャ |
+
+各層は「長さ W のチャンク（1 ジオメトリ）× 2 枚」を入れ替えるだけで、毎フレームの更新は position.x のみ。確認用：`DHT.room1.scenery.seek(7020)`（山の区間）、`seek(4950)`（平野）。
+
+### 20.6 timeMode（将来の拡張）
+
+`js/interior/looks.js` の `ROOM1_LOOKS` に `morning / day / evening / night` の枠があり、v11 は `day` のみ（他は `null` → day で表示し、コンソールに 1 度だけ案内）。乗車時に MAP の `tod.mode` を `Room1.setTimeMode()` へ渡しているので、`ROOM1_LOOKS.night = { ...ROOM1_LOOKS.day, skyZenith: …, lamp: … }` のように埋めるだけで車窓・照明に反映される（夜の街明かりは scenery.js の建物マテリアルに emissive を足す）。
+
+### 20.7 Room 2 / Dining & Lounge を追加するとき
+
+1. `js/interior/room1.js` の構造（`_buildShell` の壁・`_buildFurniture`・当たり判定）を参考に `room2.js` を作る（同じ `kit.js` / `textures.js` / `scenery.js` を使う）。座標は列車の長手方向 X に並べ、Room 1 の +X 側（x = 2.2〜6.4、扉 x ≈ 4.9）を想定。
+2. 廊下の `CORRIDOR_DOORS` の `note`（「準備中」）を、部屋を切り替える処理に置き換える（例：`onInteract: () => boarding.goto('room2')`）。
+3. `boarding.js` の `this.room` を「部屋 id → インスタンス」の表にし、`frame()` は今の部屋を描く。Dining & Lounge は廊下の -X 端の扉から。
+4. 車両を 1 シーンにまとめる場合は、廊下（x = -8〜+8）を延ばし、部屋ごとに `active` を切り替えて見えない部屋の更新を止める。
+
+### 20.8 QA（v11）
+
+ヘッドレス Chrome（SwiftShader・1280×720）で確認。
+- MAP：従来どおり表示・列車の再生・時間帯（NIGHT 自動判定）・VEHICLE / MAP VIEW。列車クリックでダイアログ、空き地のクリックでは出ない、ドラッグでは出ない。
+- いいえ → MAP のまま。はい → Room 1（初回構築 約 0.7 秒）。
+- Room 1：歩行・走行・矢印キー、ベンチ・テーブル・壁への侵入 0 件（100 ms ごとに検査）、会話（4 匹とも）・会話中は移動しない、扉は初期状態で閉・閉じた扉は室内／廊下の両側から通れない・開ければ廊下を端まで歩ける、Room 2 の扉で「準備中」、MAP のショートカット無効。
+- Room 1 → MAP：カメラ位置・回転・注視点・VIEW・列車 km・timeMode が入る前と**完全に一致**。MAP → Room 1 → MAP を 5 往復（VEHICLE VIEW 4 回・MAP VIEW 1 回）してエラーなし、再入室ごとに扉は閉・葉っぱは扉の前。
+- Room 1 の描画：draw call 約 45〜60、約 34〜47 万三角形（うち動物 4 体で約 20 万）。SwiftShader（ソフトウェア描画）のため FPS は参考外。デスクトップ GPU での 60fps 確認は実機でお願いします。
