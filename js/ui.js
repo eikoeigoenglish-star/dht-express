@@ -8,6 +8,7 @@
  *   ・開発者向けの数値パネルは ?debug=1 または I キーのときだけ
  */
 import { formatLatLon, worldToLatLon } from './geo.js';
+import { isTouchUI, onTouchUIChange } from './device.js';
 
 export class UI {
   /**
@@ -22,6 +23,12 @@ export class UI {
 
     this.mode = null;
     this.vehicleKind = 'train';
+    // 【v13】タッチ端末では EXPLORE VIEW（キーボード + マウス前提の飛空艇操作）を選択肢に出さない。
+    //   無効化ではなく、ボタンそのものを VIEW メニューから取り除く（PC では従来どおり）。
+    this.$explore = document.querySelector('.mode[data-mode="explore"]');
+    this.$modes = this.$explore?.parentElement;
+    this._applyTouchUI(isTouchUI());
+    onTouchUIChange((t) => this._applyTouchUI(t));
     document.querySelectorAll('.mode').forEach((b) =>
       b.addEventListener('click', () => {
         b.blur();
@@ -74,7 +81,7 @@ export class UI {
           break;
         case 'Digit2':
         case 'Numpad2':
-          opts.onMode('explore');
+          if (!this.touch) opts.onMode('explore'); // v13: タッチ UI には EXPLORE VIEW が無い
           break;
         case 'Digit3': // v8: VEHICLE VIEW
         case 'Numpad3':
@@ -97,6 +104,15 @@ export class UI {
           break;
       }
     });
+  }
+
+  /** 【v13】タッチ UI：EXPLORE VIEW のボタンを VIEW メニューから取り除く（PC の UI へ戻ったら元の位置へ） */
+  _applyTouchUI(touch) {
+    this.touch = touch;
+    if (!this.$explore || !this.$modes) return;
+    if (touch) this.$explore.remove();
+    else if (!this.$explore.isConnected) this.$modes.appendChild(this.$explore);
+    this.opts.onTouchUI?.(touch);
   }
 
   /** 折りたたみ（id: 'presets' | 'help'）。open を省略すると切り替え */

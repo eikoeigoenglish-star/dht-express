@@ -105,8 +105,12 @@ export class Hologram {
     this._draw();
   }
 
-  /** @param {THREE.Camera} camera */
-  update(dt, camera) {
+  /**
+   * @param {THREE.Camera} camera
+   * @param {boolean} [visible] 【v13】false（ラウンジが見えていない）なら時刻・スライドだけ進め、
+   *   Canvas の描き直しとテクスチャの転送（0.5 秒ごと）はしない。見えるようになった時点で描き直す。
+   */
+  update(dt, camera, visible = true) {
     this.t += dt;
     if (this.mode === 'signage') {
       this.slideT += dt;
@@ -114,11 +118,16 @@ export class Hologram {
         this.slideT = 0;
         this.slide = (this.slide + 1) % SIGNAGE.slides.length;
         this.fade = 0;
-        this._draw();
+        this._dirty = true;
       } else if (Math.floor(this.t * 2) !== this._tick) {
         this._tick = Math.floor(this.t * 2);
-        this._draw(); // 時計・進行バー
+        this._dirty = true; // 時計・進行バー
       }
+    }
+    if (!visible) return;
+    if (this._dirty) {
+      this._dirty = false;
+      this._draw();
     }
     // 切替時のやわらかいフェード + ゆらぎ
     this.fade = Math.min(1, this.fade + dt * 2.5);

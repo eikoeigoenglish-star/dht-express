@@ -593,3 +593,88 @@ export function emblemTexture() {
   drawLeafEmblem(g, S / 2, S / 2 + 10, 60, '#e2c071');
   return tex(c, 1, { repeat: false });
 }
+
+/**
+ * 【v13】リンさんのひざ掛け（深緑 × アイボリーの落ち着いたチェック + 小さな葉の模様）。UV 0..1（1 枚の布）
+ * 両端（v = 0 / 1）にアイボリーの帯と房（フリンジ）風の縁取り。
+ */
+export function lapBlanketTexture() {
+  const S = 512;
+  const [c, g] = canvas(S);
+  g.fillStyle = '#2f5a3a';
+  g.fillRect(0, 0, S, S);
+  const N = 6; // チェックの数
+  const cell = S / N;
+  // 太い濃淡の帯（縦・横が重なる所が少し濃くなる）
+  g.fillStyle = 'rgba(18,40,24,0.34)';
+  for (let i = 0; i < N; i++) {
+    g.fillRect(i * cell + cell * 0.5, 0, cell * 0.3, S);
+    g.fillRect(0, i * cell + cell * 0.5, S, cell * 0.3);
+  }
+  g.fillStyle = 'rgba(120,160,110,0.20)';
+  for (let i = 0; i < N; i++) {
+    g.fillRect(i * cell + cell * 0.06, 0, cell * 0.16, S);
+    g.fillRect(0, i * cell + cell * 0.06, S, cell * 0.16);
+  }
+  // アイボリーの細い二重線・真鍮色の細線
+  for (let i = 0; i < N; i++) {
+    const p = i * cell;
+    g.fillStyle = 'rgba(244,236,214,0.86)';
+    for (const o of [0.33, 0.39]) {
+      g.fillRect(p + cell * o, 0, 2.2, S);
+      g.fillRect(0, p + cell * o, S, 2.2);
+    }
+    g.fillStyle = 'rgba(214,178,98,0.7)';
+    g.fillRect(p + cell * 0.9, 0, 1.4, S);
+    g.fillRect(0, p + cell * 0.9, S, 1.4);
+  }
+  // 小さな葉（升目のひとつおき）
+  const leaf = (x, y, s, rot) => {
+    g.save();
+    g.translate(x, y);
+    g.rotate(rot);
+    g.fillStyle = 'rgba(236,228,200,0.88)';
+    g.beginPath();
+    g.moveTo(0, -s);
+    g.bezierCurveTo(s * 0.75, -s * 0.4, s * 0.75, s * 0.5, 0, s);
+    g.bezierCurveTo(-s * 0.75, s * 0.5, -s * 0.75, -s * 0.4, 0, -s);
+    g.fill();
+    g.strokeStyle = 'rgba(47,90,58,0.9)';
+    g.lineWidth = 1.2;
+    g.beginPath();
+    g.moveTo(0, -s * 0.8);
+    g.lineTo(0, s * 1.25);
+    g.stroke();
+    g.restore();
+  };
+  const r = rng(913);
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) if ((i + j) % 2 === 0) leaf(i * cell + cell * 0.66, j * cell + cell * 0.2, 7.5, 0.5 + (r() - 0.5) * 0.5);
+  // 織り目
+  g.globalAlpha = 0.1;
+  for (let y = 0; y < S; y += 3) {
+    g.fillStyle = y % 6 ? '#000' : '#fff';
+    g.fillRect(0, y, S, 1);
+  }
+  g.globalAlpha = 1;
+  noise(g, S, S, 0.07, 914, 2);
+  // 両端の帯と房
+  for (const y0 of [0, S - 26]) {
+    g.fillStyle = '#efe6cf';
+    g.fillRect(0, y0, S, 26);
+    g.fillStyle = 'rgba(47,90,58,0.85)';
+    g.fillRect(0, y0 === 0 ? 20 : y0 + 2, S, 4);
+    g.strokeStyle = 'rgba(150,132,92,0.55)';
+    g.lineWidth = 1;
+    for (let x = 2; x < S; x += 5) {
+      g.beginPath();
+      g.moveTo(x, y0 === 0 ? 0 : y0 + 8);
+      g.lineTo(x, y0 === 0 ? 18 : S);
+      g.stroke();
+    }
+  }
+  // 左右の縁（かがり縫い）
+  g.fillStyle = 'rgba(239,230,207,0.9)';
+  g.fillRect(0, 0, 5, S);
+  g.fillRect(S - 5, 0, 5, S);
+  return tex(c, 1, { repeat: false, aniso: 8 });
+}

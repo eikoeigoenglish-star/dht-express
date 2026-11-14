@@ -42,15 +42,18 @@ export class Boarding {
     // capture: OrbitControls などより先に位置を記録（伝播は止めない）
     c.addEventListener('pointerdown', (e) => {
       if (e.button !== 0 || this.state !== 'map') return;
-      this._down = { x: e.clientX, y: e.clientY, t: performance.now() };
+      // 【v13】時刻は入力そのものの時刻（e.timeStamp）。描画が重い端末でも、短いタップを長押しと取り違えない
+      this._down = { x: e.clientX, y: e.clientY, t: e.timeStamp };
     }, true);
     c.addEventListener('pointerup', (e) => {
       const d = this._down;
       this._down = null;
       if (!d || e.button !== 0 || this.state !== 'map') return;
-      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 5 || performance.now() - d.t > 600) return; // ドラッグは対象外
+      const touch = e.pointerType === 'touch';
+      // ドラッグは対象外（指は少しぶれるので、タッチは 10px まで・当たり判定も指の太さぶん広げる）
+      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > (touch ? 10 : 5) || e.timeStamp - d.t > 600) return;
       if (!this.o.canBoard()) return;
-      if (this.hitTrain(e.clientX, e.clientY)) this.openDialog();
+      if (this.hitTrain(e.clientX, e.clientY, touch ? 14 : 0)) this.openDialog();
     }, true);
     c.addEventListener('pointermove', (e) => {
       if (this.state !== 'map' || e.buttons) return;
@@ -82,8 +85,8 @@ export class Boarding {
     });
   }
 
-  /** 画面座標 (clientX, clientY) が列車に当たるか */
-  hitTrain(cx, cy) {
+  /** 画面座標 (clientX, clientY) が列車に当たるか。pad：当たり判定を広げる量 [px]（タッチ用） */
+  hitTrain(cx, cy, pad = 0) {
     const t = this.o.vehicles.train;
     if (!t || !t.visible) return false;
     const rect = this.o.canvas.getBoundingClientRect();
@@ -93,7 +96,7 @@ export class Boarding {
     const tag = this.o.vehicles.tags?.train;
     if (tag && tag.style.display !== 'none') {
       const r = tag.getBoundingClientRect();
-      if (cx >= r.left - 6 && cx <= r.right + 6 && cy >= r.top - 6 && cy <= r.bottom + 10) return true;
+      if (cx >= r.left - 6 - pad && cx <= r.right + 6 + pad && cy >= r.top - 6 - pad && cy <= r.bottom + 10 + pad) return true;
     }
     const cam = this.o.camera;
     t.updateMatrixWorld();
@@ -111,7 +114,7 @@ export class Boarding {
     const L2 = dx * dx + dy * dy;
     const u = L2 > 1e-6 ? THREE.MathUtils.clamp(((x - ax) * dx + (y - ay) * dy) / L2, 0, 1) : 0;
     const d = Math.hypot(x - (ax + dx * u), y - (ay + dy * u));
-    return d < Math.max(16, Math.sqrt(L2) * 0.14);
+    return d < Math.max(16, Math.sqrt(L2) * 0.14) + pad;
   }
 
   openDialog() {

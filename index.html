@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>DHT EXPRESS — Stage</title>
   <meta name="description" content="DHT EXPRESS 用 広域3Dステージ（北緯37°40'23''以南の日本）" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 rx=%273%27 fill=%27%23ffc24a%27/%3E%3C/svg%3E" />
@@ -56,6 +56,12 @@
           <p><b>ホイール</b> ズーム（カーソル位置へ）</p>
           <p><b>中ドラッグ</b> ズーム　<b>矢印キー</b> パン</p>
         </div>
+        <!-- v13: タッチ端末の MAP VIEW -->
+        <div class="help help--map-touch">
+          <p><b>1 本指ドラッグ</b> 回転</p>
+          <p><b>2 本指ドラッグ</b> 移動　<b>ピンチ</b> ズーム</p>
+          <p><b>列車をタップ</b> 乗車</p>
+        </div>
         <div class="help help--explore">
           <p><b>W / ↑</b> 前進　<b>S / ↓</b> 後退</p>
           <p><b>A / ←</b> 左旋回　<b>D / →</b> 右旋回</p>
@@ -64,10 +70,11 @@
         </div>
         <div class="help help--vehicle">
           <p><b>ドラッグ</b> 追跡の向きを調整</p>
-          <p><b>ホイール</b> 追跡の距離</p>
+          <p class="only-pc"><b>ホイール</b> 追跡の距離</p>
+          <p class="only-touch"><b>列車をタップ</b> 乗車</p>
           <p><b>列車 / 船</b>（左上のアイコン） 追跡対象を切替</p>
         </div>
-        <p class="help__keys"><kbd>1</kbd>地図 <kbd>2</kbd>探索 <kbd>3</kbd>追跡　<kbd>L</kbd>地名 <kbd>B</kbd>都市 <kbd>R</kbd>ルート <kbd>H</kbd>操作説明</p>
+        <p class="help__keys only-pc"><kbd>1</kbd>地図 <kbd>2</kbd>探索 <kbd>3</kbd>追跡　<kbd>L</kbd>地名 <kbd>B</kbd>都市 <kbd>R</kbd>ルート <kbd>H</kbd>操作説明</p>
       </div>
     </section>
 
@@ -133,10 +140,28 @@
       <div class="room-hud__talk" data-room1="talk" role="dialog" aria-live="polite">
         <b data-room1="talk-name"></b>
         <p data-room1="talk-text"></p>
-        <small>E / Enter で次へ　Esc で閉じる</small>
+        <small><span class="only-pc">E / Enter で次へ　Esc で閉じる</span><span class="only-touch">タップで次へ</span></small>
       </div>
       <div class="room-hud__toast" data-room1="toast" aria-live="polite"></div>
       <div class="room-hud__stats" data-room1="stats" hidden></div>
+      <!-- v13: タッチ端末用の操作（body.is-touch のときだけ表示。js/interior/touch.js） -->
+      <button type="button" class="room-hud__help" data-room1="help" aria-label="操作ガイド">?</button>
+      <div class="room-hud__guide" data-room1="guide" aria-live="polite">
+        <span><b>左スティック</b>移動・旋回</span>
+        <span><b>ドラッグ</b>視点</span>
+        <span><b>タップ</b>話す / 調べる</span>
+        <span><b>右上</b>MAPへ戻る</span>
+        <span class="room-hud__guide-rot">横向きにすると広く見えます</span>
+      </div>
+      <div class="room-stick" data-room1="stick" role="application" aria-label="移動スティック（上：前進　下：後退　左右：旋回）">
+        <i class="room-stick__mark room-stick__mark--u"></i><i class="room-stick__mark room-stick__mark--d"></i>
+        <i class="room-stick__mark room-stick__mark--l"></i><i class="room-stick__mark room-stick__mark--r"></i>
+        <i class="room-stick__knob" data-room1="knob"></i>
+      </div>
+      <button type="button" class="room-hud__view" data-room1="view" aria-label="見渡す" title="見渡す">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.1" fill="currentColor"/></svg>
+      </button>
+      <button type="button" class="room-hud__act" data-room1="act" hidden></button>
       <!-- v12: ホログラム投影機の情報 UI（ド変態カウンター）。データは js/interior/data/dohentai.js -->
       <div class="holo-panel" data-room1="holo" role="dialog" aria-label="DOHENTAI Ranking">
         <p class="holo-panel__brand">FOREST SCHOOL EXPRESS · HOLOGRAM</p>
@@ -144,7 +169,7 @@
         <p class="holo-panel__sub">各動物が<span data-holo="target">リンさん</span>へ「ド変態」と言った回数</p>
         <ol class="holo-panel__list" data-holo="list"></ol>
         <p class="holo-panel__meta" data-holo="meta"></p>
-        <button type="button" class="holo-panel__close" data-act="close">閉じる（E / Esc）</button>
+        <button type="button" class="holo-panel__close" data-act="close">閉じる<span class="only-pc">（E / Esc）</span></button>
       </div>
     </div>
 

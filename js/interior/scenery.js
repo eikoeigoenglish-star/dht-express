@@ -223,6 +223,9 @@ class LoopLayer {
       this.parts.push(m);
       this.group.add(m);
     }
+    // 【v13】チャンクごとの可視判定（WindowScenery.cull）に使う箱
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    this.box = geometry.boundingBox;
   }
   /** offset [m]（累積の流れ）。xc の周り ±W/2（+ reach）を覆う */
   set(offset, xc) {
@@ -238,6 +241,11 @@ function periodicNoise(W, seed, terms) {
   const t = terms.map(([k, a]) => ({ k, a, ph: r() * Math.PI * 2 }));
   return (x) => t.reduce((s, { k, a, ph }) => s + a * Math.sin((x / W) * Math.PI * 2 * k + ph), 0);
 }
+
+const _pm = new THREE.Matrix4();
+const _frustum = new THREE.Frustum();
+const _box = new THREE.Box3();
+const PORTAL_MARGIN = 0.12; // 窓枠の左右の余裕 [m]（窓枠の厚み・カメラの near のぶん）
 
 export class WindowScenery {
   /**
@@ -331,7 +339,91 @@ export class WindowScenery {
       this.group.add(own.build(this.mats, 'own-viaduct'));
     }
 
-    for (const s of opts.sides) this._buildSide(s, opts.seed ?? 1);
+    // 【v13】舷（右舷 = facing -1 / 左舷 = +1）ごとにグループを分ける。
+    //   閉じた個室からは左舷（廊下側）の景色は見えない、など「見えない側」を丸ごと描かないため（setVisibleSides）
+    this.sides = [];
+    const root = this.group;
+    for (const s of opts.sides) {
+      const sg = new THREE.Group();
+      sg.name = s.facing < 0 ? 'side-starboard' : 'side-port';
+      const first = this.layers.length;
+      this.group = sg; // _buildSide / _addLayer は this.group へ追加する
+      this._buildSide(s, opts.seed ?? 1);
+      this.group = root;
+      root.add(sg);
+      this.sides.push({ facing: s.facing, group: sg, layers: this.layers.slice(first) });
+    }
+    this.cullStats = { parts: 0, shown: 0 };
+  }
+
+  /** 【v13】見える舷だけを描く（train.js が扉の開閉・いる場所から決める） */
+  setVisibleSides(starboard, port) {
+    for (const s of this.sides) s.group.visible = s.facing < 0 ? starboard : port;
+  }
+
+  /** 【v13】切り分け用：チャンクの可視判定を使わない（v12 と同じく three.js 標準の外接球カリングだけ） */
+  showAll() {
+    if (!this._culled) return;
+    this._culled = false;
+    let n = 0;
+    for (const { layer } of this.layers) {
+      for (const m of layer.parts) {
+        m.visible = true;
+        n++;
+      }
+    }
+    this.cullStats.parts = this.cullStats.shown = n;
+  }
+
+  /**
+   * 【v13】チャンク単位の可視判定。three.js 標準の視錐台カリングは「外接球」で判定するため、
+   * 細長いチャンク（長さ 850〜4000 m）は視野の外でも描かれやすい。ここでは
+   *   1) 視錐台 × チャンクの箱（AABB）
+   *   2) portal（閉じた個室の車窓）があれば、カメラから窓枠を通して見える範囲（XZ 平面のくさび形）× 箱
+   * で判定し、見えないチャンクの draw call・頂点処理を省く。見た目は変わらない（見える範囲はすべて描く）。
+   * @param {THREE.Camera} camera
+   * @param {{ x0: number, x1: number, z: number } | null} portal 個室の車窓（その部屋しか見えていないとき）
+   */
+  cull(camera, portal = null) {
+    camera.updateMatrixWorld();
+    camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
+    _pm.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    _frustum.setFromProjectionMatrix(_pm, camera.coordinateSystem, camera.reversedDepth);
+    const cp = camera.position;
+    const depth = portal ? cp.z - portal.z : 0; // カメラから窓の面までの距離（室内側が正）
+    const usePortal = portal && depth > 0.05;
+    let parts = 0;
+    let shown = 0;
+    for (const side of this.sides) {
+      if (!side.group.visible) continue;
+      for (const { layer } of side.layers) {
+        const b = layer.box;
+        for (const m of layer.parts) {
+          parts++;
+          const dx = m.position.x;
+          _box.min.set(b.min.x + dx, b.min.y, b.min.z);
+          _box.max.set(b.max.x + dx, b.max.y, b.max.z);
+          let vis = _frustum.intersectsBox(_box);
+          if (vis && usePortal) {
+            // 窓の面より外側（z < portal.z）の奥行きの範囲 → 窓枠の左右の端を通る視線が届く x の範囲
+            const zFar = Math.min(_box.min.z, portal.z);
+            const zNear = Math.min(_box.max.z, portal.z);
+            const tFar = (cp.z - zFar) / depth;
+            const tNear = Math.max(1, (cp.z - zNear) / depth);
+            const l0 = portal.x0 - PORTAL_MARGIN - cp.x;
+            const l1 = portal.x1 + PORTAL_MARGIN - cp.x;
+            const lo = cp.x + Math.min(l0 * tNear, l0 * tFar);
+            const hi = cp.x + Math.max(l1 * tNear, l1 * tFar);
+            vis = _box.max.x >= lo && _box.min.x <= hi;
+          }
+          m.visible = vis;
+          if (vis) shown++;
+        }
+      }
+    }
+    this.cullStats.parts = parts;
+    this.cullStats.shown = shown;
+    this._culled = true;
   }
 
   _W(dmax, s) {

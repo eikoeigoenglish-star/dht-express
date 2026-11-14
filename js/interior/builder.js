@@ -1,7 +1,10 @@
 /**
  * interior/builder.js — 【v12】車内の組み立て道具（個室・廊下・ラウンジで共通）
  * ---------------------------------------------------------------------------
- * ・部品はすべて 1 つの PartBin に入れ、最後にマテリアルごとに 1 メッシュへ結合（draw call を抑える）
+ * ・部品は「区画（section）」ごとの PartBin に入れ、最後に区画 × マテリアルごとに 1 メッシュへ結合する
+ *   【v13】区画 = 'shell'（仕切り壁など常に見える部分）/ 'room1'〜'room3' / 'corridor' / 'lounge'。
+ *   train.js が「いま見える区画」だけを描く（閉じた扉の向こうの部屋は描かない）ための単位。
+ *   b.section('room2') で以降の add() の入れ先を切り替える。
  * ・当たり判定は Collider（XZ の箱 + 高さ）。用途のフラグ：
  *     block   … 葉っぱが通れない
  *     wall    … カメラが突き抜けない（壁・閉じた扉）
@@ -15,8 +18,18 @@ import { H } from './layout.js';
 export class Builder {
   constructor(mats) {
     this.mats = mats;
-    this.P = new PartBin();
+    this.bins = new Map(); // section id -> PartBin
     this.colliders = [];
+    this.section('shell');
+  }
+
+  /** 【v13】以降の部品を入れる区画を切り替える（戻り値は直前の区画 id） */
+  section(id) {
+    const prev = this.sectionId;
+    this.sectionId = id;
+    if (!this.bins.has(id)) this.bins.set(id, new PartBin());
+    this.P = this.bins.get(id);
+    return prev;
   }
 
   add(key, geo, m, color) {
@@ -25,12 +38,12 @@ export class Builder {
 
   /** 軸平行の箱（範囲で指定） */
   B(key, x0, x1, y0, y1, z0, z1, color) {
-    this.P.add(key, box(x1 - x0, y1 - y0, z1 - z0), trs((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), color);
+    this.add(key, box(x1 - x0, y1 - y0, z1 - z0), trs((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), color);
   }
 
   /** 角丸の箱（中心・回転で指定） */
   RB(key, w, h, d, r, x, y, z, rx = 0, ry = 0, rz = 0, color) {
-    this.P.add(key, roundedBox(w, h, d, r), trs(x, y, z, rx, ry, rz), color);
+    this.add(key, roundedBox(w, h, d, r), trs(x, y, z, rx, ry, rz), color);
   }
 
   /** 角丸の箱のジオメトリ（中心原点）。部品をローカル座標で組むとき用 */
@@ -152,7 +165,20 @@ export class Builder {
     return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: plateTexture(text), roughness: 0.4, metalness: 0.2 }));
   }
 
+  /**
+   * 区画ごとに結合する。戻り値の Group の子 = 区画（name = 区画 id）、孫 = マテリアルごとの Mesh。
+   * sections[id] で区画の Group を引ける。
+   */
   build(name) {
-    return this.P.build(this.mats, name);
+    const root = new THREE.Group();
+    root.name = name;
+    this.sections = {};
+    for (const [id, bin] of this.bins) {
+      const g = bin.build(this.mats, `${name}:${id}`);
+      g.userData.section = id;
+      this.sections[id] = g;
+      root.add(g);
+    }
+    return root;
   }
 }

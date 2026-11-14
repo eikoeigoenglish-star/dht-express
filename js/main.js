@@ -55,6 +55,7 @@ import { VehicleFollowController } from './vehiclecam.js';
 import { LighthouseBeacons } from './lighthouses.js';
 import * as geo from './geo.js';
 import { Boarding } from './boarding.js';
+import { isTouchUI } from './device.js';
 
 const canvas = document.getElementById('scene');
 
@@ -115,6 +116,8 @@ const ui = new UI({
   // v9: 通常 UI の CAMERA は 6 件だけ（全プリセットは DHT.presets に残す）
   presets: HUD_PRESET_IDS.map((id) => CAMERA_PRESETS.find((p) => p.id === id)).filter(Boolean),
   onMode: (m) => setMode(m),
+  // v13: EXPLORE VIEW 中にタッチ UI へ切り替わったら（外付けマウスを外したタブレットなど）MAP VIEW へ戻す
+  onTouchUI: (touch) => touch && mode === 'explore' && queueMicrotask(() => setMode('map')),
   onVehicle: (kind) => followVehicle(kind),
   onPreset: (p) => goPreset(p),
   onToggleLabels: () => {
@@ -165,6 +168,7 @@ const boarding = new Boarding({
 
 function setMode(next) {
   if (next === mode || rig.animating) return;
+  if (next === 'explore' && isTouchUI()) return; // v13: タッチ端末には EXPLORE VIEW を出さない（キーボード + マウス前提）
   ui.setActivePreset(null);
   if (mode === 'vehicle') follow.disable();
   if (next === 'vehicle') {

@@ -10,6 +10,9 @@
  * 操作（室内だけ。MAP の操作は変えない）
  *   ↑ / W 前進　↓ / S 後退　← / A 左旋回　→ / D 右旋回（左右は平行移動ではなく向きを変える）　Shift 走る
  *   E 話す / 調べる / ドアの開閉　V 見渡す　ドラッグ 視点（左右・上下：見上げ +32° 〜 見下ろし -45°）　ホイール 距離
+ * 【v13】タッチ端末（touch.js）
+ *   左下の仮想スティック（上下 = 前進・後退、左右 = 旋回）　画面のドラッグ = 視点　2 本指のピンチ = 距離
+ *   右下のボタン / 相手の上の表示をタップ = 話す・調べる・ドアの開閉
  *
  * 構成
  *   layout.js       寸法・部屋・ゾーン
@@ -33,6 +36,8 @@ import { buildLounge, HOLOGRAM_POS } from './lounge.js';
 import { Hologram } from './hologram.js';
 import { DohentaiSource } from './data/dohentai.js';
 import { H, WALL, COMP, COMPARTMENTS, CORRIDOR, DOOR, LOUNGE, LOUNGE_DOOR, CREW_DOOR, SPAWN, zoneAt } from './layout.js';
+import { TouchControls } from './touch.js';
+import { isTouchUI, onTouchUIChange } from '../device.js';
 
 const PLAYER = { radius: 0.15, walk: 1.4, run: 2.4, back: 0.8, turn: 2.2, turnRun: 2.6 };
 const CAM = {
@@ -46,6 +51,9 @@ const CAM = {
   pitchMax: THREE.MathUtils.degToRad(32),
   wallGap: 0.16, // 壁・天井・床からのすき間
 };
+
+/** 【v13】自動解像度の段階（乗車時の pixelRatio に掛ける。下限は pixelRatio 1.0） */
+const RES_LEVELS = [1, 0.87, 0.75, 0.65, 0.57];
 
 const KEYS = {
   KeyW: 'f', ArrowUp: 'f',
@@ -84,6 +92,11 @@ export class TrainInterior {
     this.overview = false;
     this.zone = null;
     this._built = false;
+    // 【v13】描画の切り分け・確認用スイッチ（?off=animals,scenery,nightfx,lights,holo,cull,res または DHT.interior.ab()）
+    this.off = new Set((new URLSearchParams(location.search).get('off') ?? '').split(',').map((v) => v.trim()).filter(Boolean));
+    this.visible = new Set(); // いま見えている区画（room1〜3 / corridor / lounge）
+    this._visKey = null;
+    this.res = { base: 1, level: 0, low: 0, high: 0, lockUntil: 0, raisedAt: -1e9 };
     this._v1 = new THREE.Vector3();
     this._v2 = new THREE.Vector3();
     this._ray = new THREE.Ray();
@@ -98,11 +111,18 @@ export class TrainInterior {
     this._makeMaterials();
     this._buildLights();
 
+    // 【v13】部品は区画（shell / room1〜3 / corridor / lounge）ごとに結合し、見える区画だけを描く（_updateVisibility）
     const b = new Builder(this.mats);
-    this.comps = COMPARTMENTS.map((def) => ({ def, ...buildCompartment(b, def) }));
+    this.comps = COMPARTMENTS.map((def) => {
+      b.section(def.id);
+      return { def, ...buildCompartment(b, def) };
+    });
+    b.section('corridor');
     this._buildCorridor(b);
+    b.section('lounge');
     this.lounge = buildLounge(b);
     this.scene.add(b.build('train'));
+    this.sections = b.sections;
     this.colliders.push(...b.colliders);
     this._buildDoors(b);
     this._buildSunPatch();
@@ -131,7 +151,29 @@ export class TrainInterior {
       this.characters[id] = c;
       this.scene.add(c.group);
       this.targets.push({ kind: 'char', id, char: c, anchor: c.anchor, radius: def.radius ? 0.75 : 0.95, label: 'E：話しかける', head: () => c.headWorld });
-      // 床に立つ人（リンさん）は葉っぱがすり抜けないよう当たり判定を置く
+      // 【v13】ソファーに座る人（リンさん）：膝・すね・ひざ掛けの前垂れを葉っぱとカメラがすり抜けないように
+      if (def.kind === 'human' && def.pose === 'sit') {
+        const fx = -Math.sin(c.facing);
+        const fz = -Math.cos(c.facing);
+        const boxAhead = (a0, a1, half, y0, y1, block, name) => {
+          const xs = [def.seat.x + fx * a0 - Math.abs(fz) * half, def.seat.x + fx * a1 + Math.abs(fz) * half, def.seat.x + fx * a0 + Math.abs(fz) * half, def.seat.x + fx * a1 - Math.abs(fz) * half];
+          const zs = [def.seat.z + fz * a0 - Math.abs(fx) * half, def.seat.z + fz * a1 + Math.abs(fx) * half, def.seat.z + fz * a0 + Math.abs(fx) * half, def.seat.z + fz * a1 - Math.abs(fx) * half];
+          const col = new Collider(Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs), y0, y1, { block, occlude: false, name });
+          col.wall = true; // カメラも体・ひざ掛けの中へ入れない
+          this.colliders.push(col);
+        };
+        boxAhead(0.24, 0.8, 0.27, 0, 0.86, true, `${id}:legs`);
+        boxAhead(-0.22, 0.24, 0.27, 0.45, 1.6, false, `${id}:torso`);
+      }
+      // ひざ掛けは室内の布と同じく、夕方・夜の「電灯の回り込み光」で明るくする
+      if (def.blanket) {
+        const m = c.blanketMaterial();
+        m.emissiveMap = m.map;
+        m.emissive = new THREE.Color(0, 0, 0);
+        m.userData.fillScale = 1;
+        this.fillMats.push(m);
+      }
+      // 床に立つ人は葉っぱがすり抜けないよう当たり判定を置く
       if (def.radius) {
         const r = def.radius;
         const col = new Collider(def.seat.x - r, def.seat.x + r, def.seat.z - r, def.seat.z + r, 0, 1.7, { occlude: false, name: `${id}:body` });
@@ -141,6 +183,7 @@ export class TrainInterior {
       if (def.model) c.loadModel(def.model);
     }
 
+    this.doorById = Object.fromEntries(this.doors.map((d) => [d.id, d]));
     this.walls = this.colliders.filter((c) => c.wall);
     this.modestChars = Object.values(this.characters).filter((c) => c.def.modestyRadius);
     this.occluders = this.colliders.filter((c) => c.occlude && !c.wall);
@@ -281,7 +324,7 @@ export class TrainInterior {
 
   /** 照明の配置をゾーンに合わせる */
   _placeLamps(zone) {
-    const L = this.look;
+    const L = this._lookApplied ?? this.look;
     const p = this.player.pos;
     let pts;
     if (zone.id === 'lounge') pts = [...this.lounge.lights, new THREE.Vector3(10.3, 2.3, 1.6), new THREE.Vector3(20.2, 2.2, 2.6)];
@@ -325,31 +368,38 @@ export class TrainInterior {
     const bounds = [];
     for (const c of COMPARTMENTS) bounds.push(c.cx - COMP.hw - WALL, c.cx + COMP.hw);
     const uniq = [...new Set(bounds.map((v) => +v.toFixed(3)))].sort((a, b2) => a - b2);
+    b.section('shell'); // 仕切り壁・個室と廊下の間の壁は両側から見えるので、常に描く区画へ
     for (const xa of uniq) {
       b.B('plaster', xa, xa + WALL, 0, H, -WALL, Z1);
       b.coll(xa - 0.02, xa + WALL + 0.02, -0.5, Z1, { wall: true, name: 'partition' });
     }
+    b.section('corridor');
 
     // 個室側の壁（z = 3.0〜3.1）。各個室の扉の開口部だけ空ける
     const openings = COMPARTMENTS.map((c) => [c.cx + DOOR.rx0, c.cx + DOOR.rx1]);
     let px = x0;
     for (const [a, c] of openings) {
+      b.section('shell');
       b.B('plaster', px, a, 0, H, Z1, z0);
+      b.B('plaster', a, c, DOOR.h, H, Z1, z0);
+      b.B('wood', a, a + 0.02, 0, DOOR.h, Z1, z0);
+      b.B('wood', c - 0.02, c, 0, DOOR.h, Z1, z0);
+      b.B('wood', a, c, DOOR.h - 0.02, DOOR.h, Z1, z0);
+      b.B('brass', a, c, -0.03, 0.006, Z1 - 0.02, z0 + 0.02);
+      b.B('floor', a - 0.1, c + 0.1, -0.06, 0, z0, z0 + 0.14); // 扉の足元（閉じた扉と壁のすき間から見える床。廊下を描かないときも残す）
+      b.section('corridor');
       b.finish('z', z0, 1, px, a);
       b.coll(px - (px === x0 ? 0.3 : 0), a, Z1 - 0.04, z0, { wall: true, name: 'corridor-inner' });
-      b.B('plaster', a, c, DOOR.h, H, Z1, z0);
       // 開口部の枠（廊下側）・レール・敷居
       b.B('wood', a - 0.08, a, 0, DOOR.h + 0.08, z0, z0 + 0.035);
       b.B('wood', c, c + 0.08, 0, DOOR.h + 0.08, z0, z0 + 0.035);
       b.B('wood', a - 0.08, c + 0.08, DOOR.h, DOOR.h + 0.08, z0, z0 + 0.035);
-      b.B('wood', a, a + 0.02, 0, DOOR.h, Z1, z0);
-      b.B('wood', c - 0.02, c, 0, DOOR.h, Z1, z0);
-      b.B('wood', a, c, DOOR.h - 0.02, DOOR.h, Z1, z0);
       b.B('brass', a - 0.05, c + DOOR.slide + 0.1, DOOR.h + 0.1, DOOR.h + 0.13, z0 + 0.035, z0 + 0.065);
-      b.B('brass', a, c, -0.03, 0.006, Z1 - 0.02, z0 + 0.02);
       px = c;
     }
+    b.section('shell');
     b.B('plaster', px, x1, 0, H, Z1, z0);
+    b.section('corridor');
     b.finish('z', z0, 1, px, x1);
     b.coll(px, x1, Z1 - 0.04, z0, { wall: true, name: 'corridor-inner' });
 
@@ -543,6 +593,103 @@ export class TrainInterior {
   }
 
   /* ==================================================================== */
+  /* 【v13】見える区画だけを更新・描画する                                     */
+  /* ==================================================================== */
+  /**
+   * 個室は天井まで届く壁と不透明な引き戸で囲まれているので、「葉っぱ（とカメラ）がいる区画」から
+   * 「開いている扉」をたどって届く区画だけが見える。届かない区画の内装・住人・ホログラム・
+   * 反対舷の車窓は、描画も毎フレームの更新もしない（見た目は変わらない）。
+   *   Room 2（扉は閉）→ Room 2 の内装 + 4 匹 + 右舷の車窓だけ
+   *   廊下（扉はすべて閉）→ 廊下 + 左舷の車窓だけ
+   */
+  _updateVisibility() {
+    const vis = this.visible;
+    vis.clear();
+    const open = (id) => this.doorById[id].open > 0.001;
+    const visit = (id) => {
+      if (vis.has(id)) return;
+      vis.add(id);
+      if (id === 'corridor') {
+        for (const c of COMPARTMENTS) if (open(`${c.id}-door`)) visit(c.id);
+        if (open('lounge-door')) visit('lounge');
+      } else if (open(`${id}-door`)) visit('corridor');
+    };
+    if (this.off.has('cull')) for (const id of Object.keys(this.sections)) vis.add(id); // 切り分け用：v12 と同じく全部描く
+    else {
+      visit(this.zone.id);
+      visit(zoneAt(this.camera.position.x, this.camera.position.z).id);
+    }
+    const key = [...vis].sort().join('+');
+    // 個室の中だけが見えているとき：車窓は「その部屋の窓枠」を通して見える範囲だけ（scenery.cull）
+    this._portal = null;
+    if (vis.size === 1 && !this.off.has('cull')) {
+      const c = this.comps.find((q) => q.def.id === this.zone.id);
+      if (c) this._portal = c.window;
+    }
+    if (key === this._visKey) return;
+    this._visKey = key;
+    const off = this.off;
+    for (const [id, g] of Object.entries(this.sections)) g.visible = id === 'shell' || vis.has(id);
+    for (const d of this.doors) d.mesh.visible = vis.has('corridor') || vis.has(d.id.replace('-door', ''));
+    for (const c of Object.values(this.characters)) {
+      const kindOff = c.def.kind === 'human' ? off.has('rin') : off.has('animals');
+      c.group.visible = vis.has(c.roomId) && !kindOff && !off.has('chars');
+    }
+    this.hologram.group.visible = vis.has('lounge') && !off.has('holo');
+    const rooms = COMPARTMENTS.some((c) => vis.has(c.id));
+    const lounge = vis.has('lounge');
+    this.scenery.group.visible = !off.has('scenery');
+    this.scenery.setVisibleSides(rooms || lounge, vis.has('corridor') || lounge);
+  }
+
+  /**
+   * 【v13】切り分け用スイッチ。例：DHT.interior.ab('animals', false) で 4 匹を描かない。
+   *   animals / rin / chars … 住人　　scenery … 車窓　　nightfx … 夜景の追加要素（窓明かり・街路灯・航空障害灯・星・遠景の光）
+   *   lights … 室内の電灯（PointLight と回り込み光）　　holo … ホログラム
+   *   cull … v13 の「見える区画だけ描く」を無効にして v12 と同じ描き方にする　　res … 自動解像度を無効にする
+   * URL でも指定できる：?stats=1&off=animals,scenery
+   */
+  ab(name, on) {
+    if (on ?? this.off.has(name)) this.off.delete(name);
+    else this.off.add(name);
+    this._visKey = null;
+    if (this._built && this.look) this.setTimeMode(this.timeMode);
+    if (this.off.has('res')) this._setResLevel(0);
+    return [...this.off];
+  }
+
+  /**
+   * 【v13】自動解像度（車内だけ）。見える区画だけ描いてもなお 45 fps を下回る端末では、
+   * 描画解像度（pixelRatio）を段階的に下げて操作感を保つ。余裕があれば元へ戻す。
+   * 下限は CSS ピクセル等倍（pixelRatio 1.0）。MAP へ戻るときに元の値へ戻す。
+   */
+  _adaptResolution(fps) {
+    const r = this.res;
+    if (this.off.has('res') || r.base <= 1) return;
+    const now = performance.now();
+    if (now < r.settleUntil) return; // 乗車直後・モデル読み込み直後のひっかかりは数えない
+    r.low = fps < 45 ? r.low + 1 : 0;
+    r.high = fps >= 58 ? r.high + 1 : 0;
+    if (r.low >= 4 && r.level < RES_LEVELS.length - 1) {
+      // 上げた直後にまた落ちた → しばらく上げない（行ったり来たりを防ぐ）
+      if (now - r.raisedAt < 12000) r.lockUntil = now + 90000;
+      this._setResLevel(r.level + 1);
+    } else if (r.high >= 12 && r.level > 0 && now > r.lockUntil) {
+      r.raisedAt = now;
+      this._setResLevel(r.level - 1);
+    }
+  }
+
+  _setResLevel(level) {
+    const r = this.res;
+    r.level = level;
+    r.low = r.high = 0;
+    r.settleUntil = performance.now() + 1500;
+    const pr = Math.max(Math.min(r.base, 1), r.base * RES_LEVELS[level]);
+    if (Math.abs(this.renderer.getPixelRatio() - pr) > 1e-3) this.renderer.setPixelRatio(pr);
+  }
+
+  /* ==================================================================== */
   /* 入退室・時間帯                                                          */
   /* ==================================================================== */
   /** @param {{ timeMode?: string }} [opts] timeMode は MAP の tod.mode */
@@ -570,12 +717,18 @@ export class TrainInterior {
     this.keys.clear();
     this._camInit = true;
     this.zone = null;
+    this._visKey = null;
+    this.res.base = this.renderer.getPixelRatio();
+    this.res.lockUntil = 0;
+    this._setResLevel(0);
+    this.res.settleUntil = performance.now() + 4000;
     this._prevTone = { tm: this.renderer.toneMapping, ex: this.renderer.toneMappingExposure };
     this.renderer.toneMapping = THREE.NeutralToneMapping;
     this.renderer.toneMappingExposure = this.look.exposure;
     this.resize();
     this._listen(true);
     this.hud.hidden = false;
+    this.touch.showGuide(true, 7000); // タッチ端末：乗車直後だけ操作ガイド（? ボタンでいつでも出せる）
     this.update(0);
   }
 
@@ -588,6 +741,7 @@ export class TrainInterior {
     this.keys.clear();
     this.hud.hidden = true;
     this.$prompt.classList.remove('is-on');
+    if (Math.abs(this.renderer.getPixelRatio() - this.res.base) > 1e-3) this.renderer.setPixelRatio(this.res.base); // 自動解像度を元へ
     if (this._prevTone) {
       this.renderer.toneMapping = this._prevTone.tm;
       this.renderer.toneMappingExposure = this._prevTone.ex;
@@ -600,14 +754,21 @@ export class TrainInterior {
     this.timeMode = r.requested;
     this.lookKey = r.key;
     this.look = r.look;
-    const L = this.look;
+    let L = this.look;
+    // 【v13】切り分け用：夜景の追加要素・室内の電灯を消した見た目
+    if (this.off.has('nightfx')) L = { ...L, windowLit: 0, windowGlow: 0, streetGlow: 0, beacons: false, stars: 0, sunGlow: { ...L.sunGlow, opacity: 0 } };
+    if (this.off.has('lights')) L = { ...L, lamp: 0, interiorFill: 0 };
+    this._lookApplied = L;
     this.hemi.color.copy(L.hemiSky);
     this.hemi.groundColor.copy(L.hemiGround);
     this.hemi.intensity = L.hemi;
     this.sun.color.copy(L.sunColor);
     this.sun.intensity = L.sun;
     this.sun.position.copy(L.sunDir).multiplyScalar(30).add(this.sun.target.position);
-    for (const l of this.lamps) l.color.copy(L.lampColor);
+    for (const l of this.lamps) {
+      l.color.copy(L.lampColor);
+      l.visible = !this.off.has('lights');
+    }
     // 室内の回り込み光（夕方・夜は電灯をつけて明るく）
     const fill = new THREE.Color(L.fillColor ?? L.lampColor);
     for (const m of this.fillMats) m.emissive.copy(fill).multiplyScalar((L.interiorFill ?? 0) * m.userData.fillScale);
@@ -640,6 +801,15 @@ export class TrainInterior {
     if (this.$stats?.hidden) this.$stats = null;
     this.$talk.addEventListener('click', () => this._advanceTalk());
     this.$holo.querySelector('[data-act="close"]').addEventListener('click', () => this._closeHolo());
+    // 【v13】タッチ端末：仮想スティック・右下のボタン。相手の上の表示（話しかける など）もタップできる
+    this.touch = new TouchControls({
+      hud: this.hud,
+      onAction: () => this._primaryAction(),
+      onOverview: () => (this.overview = !this.overview),
+    });
+    this.$prompt.addEventListener('click', () => this.touchUI && this._primaryAction());
+    this._setTouchUI(isTouchUI());
+    onTouchUIChange((t) => this._setTouchUI(t));
 
     this._onKeyDown = (e) => {
       if (!this.active) return;
@@ -652,9 +822,7 @@ export class TrainInterior {
       if (e.repeat) return;
       if (e.code === 'KeyE' || ((e.code === 'Enter' || e.code === 'Space') && (this.talk || this.holoOpen))) {
         e.preventDefault();
-        if (this.talk) this._advanceTalk();
-        else if (this.holoOpen) this._closeHolo();
-        else this._interact();
+        this._primaryAction();
       } else if (e.code === 'Escape') {
         if (this.talk) this._closeTalk();
         if (this.holoOpen) this._closeHolo();
@@ -666,19 +834,53 @@ export class TrainInterior {
       const k = KEYS[e.code];
       if (k) this.keys.delete(k);
     };
-    this._onBlur = () => this.keys.clear();
+    this._onBlur = () => {
+      this.keys.clear();
+      this._ptrs.clear(); // 離した通知が届かなかった指を残さない
+      this._drag = this._pinch = null;
+      this.touch.release();
+    };
+    // 視点のドラッグ。【v13】canvas の上で始まった指（pointerId）だけを追う
+    //   → スティックやボタンに触れている別の指の動きでは視点は動かない（マルチタッチの競合を防ぐ）。
+    //   canvas に 2 本の指があるときはピンチ（カメラの距離。PC のホイールと同じ）。
+    this._ptrs = new Map();
+    const startDrag = (id, p) => (this._drag = { id, x: p.x, y: p.y, yaw: this.yawOffset, pitch: this.viewPitch });
+    const pinchDist = () => {
+      const [a, b] = [...this._ptrs.values()];
+      return Math.max(8, Math.hypot(a.x - b.x, a.y - b.y));
+    };
     this._onPointerDown = (e) => {
       if (e.button !== 0 && e.button !== 2) return;
-      this._drag = { x: e.clientX, y: e.clientY, yaw: this.yawOffset, pitch: this.viewPitch };
+      if (this._ptrs.size >= 2) return;
+      this._ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
       this.canvas.setPointerCapture?.(e.pointerId);
+      if (this._ptrs.size === 1) startDrag(e.pointerId, { x: e.clientX, y: e.clientY });
+      else {
+        this._drag = null;
+        this._pinch = { d0: pinchDist(), dist0: this.camDist };
+      }
     };
     this._onPointerMove = (e) => {
-      if (!this._drag) return;
+      const p = this._ptrs.get(e.pointerId);
+      if (!p) return; // canvas で始まっていない指（スティック・ボタン）は無視
+      p.x = e.clientX;
+      p.y = e.clientY;
+      if (this._pinch && this._ptrs.size === 2) {
+        this.camDist = THREE.MathUtils.clamp((this._pinch.dist0 * this._pinch.d0) / pinchDist(), CAM.minDist, CAM.maxDist);
+        return;
+      }
+      if (!this._drag || this._drag.id !== e.pointerId) return;
       // 左右：葉っぱのまわりを回る（離すと少しずつ葉っぱの後ろへ戻る）／上下：上へドラッグで見上げる
       this.yawOffset = this._drag.yaw - (e.clientX - this._drag.x) * 0.006;
       this.viewPitch = THREE.MathUtils.clamp(this._drag.pitch - (e.clientY - this._drag.y) * 0.0045, CAM.pitchMin, CAM.pitchMax);
     };
-    this._onPointerUp = () => (this._drag = null);
+    this._onPointerUp = (e) => {
+      if (!this._ptrs.delete(e.pointerId)) return;
+      this._pinch = null;
+      this._drag = null;
+      // ピンチの片方の指を離した → 残った指でそのまま視点のドラッグを続ける（視点が飛ばないよう今の位置から）
+      for (const [id, p] of this._ptrs) startDrag(id, p);
+    };
     this._onWheel = (e) => {
       e.preventDefault();
       this.camDist = THREE.MathUtils.clamp(this.camDist * Math.exp(e.deltaY * 0.0012), CAM.minDist, CAM.maxDist);
@@ -694,9 +896,29 @@ export class TrainInterior {
     this.canvas[f]('pointerdown', this._onPointerDown);
     window[f]('pointermove', this._onPointerMove);
     window[f]('pointerup', this._onPointerUp);
+    window[f]('pointercancel', this._onPointerUp);
     this.canvas[f]('wheel', this._onWheel, { passive: false });
     this.canvas[f]('contextmenu', this._onContext);
-    if (!on) this._drag = null;
+    if (!on) {
+      this._drag = null;
+      this._pinch = null;
+      this._ptrs.clear();
+      this.touch.release();
+    }
+  }
+
+  /** 【v13】タッチ UI の切替（device.js の判定）。PC の UI では仮想スティック・ボタンは出さない */
+  _setTouchUI(on) {
+    this.touchUI = on;
+    this.touch.setEnabled(on);
+    this.resize();
+  }
+
+  /** E キー / 右下のボタン / 表示のタップ：会話を進める・ホログラムを閉じる・近くの相手へ話しかける（調べる） */
+  _primaryAction() {
+    if (this.talk) this._advanceTalk();
+    else if (this.holoOpen) this._closeHolo();
+    else this._interact();
   }
 
   /* ==================================================================== */
@@ -717,8 +939,8 @@ export class TrainInterior {
   }
 
   _promptLabel(t) {
-    if (t.kind === 'door') return t.door.target > 0.5 ? 'E：ドアを閉める' : 'E：ドアを開ける';
-    return t.label;
+    const s = t.kind === 'door' ? (t.door.target > 0.5 ? 'E：ドアを閉める' : 'E：ドアを開ける') : t.label;
+    return this.touchUI ? s.replace(/^E：/, '') : s; // タッチ端末には E キーが無い（表示そのものをタップ）
   }
 
   _interact() {
@@ -827,15 +1049,18 @@ export class TrainInterior {
     const p = this.player;
     const K = this.keys;
     const busy = this.talk || this.holoOpen;
-    const turn = busy ? 0 : (K.has('l') ? 1 : 0) - (K.has('r') ? 1 : 0);
-    const fwd = busy ? 0 : (K.has('f') ? 1 : 0) - (K.has('b') ? 1 : 0);
-    const run = K.has('run');
+    // キーボード（-1 / 0 / +1）+ 【v13】仮想スティック（-1〜+1 のアナログ）。PC ではスティックは常に 0
+    const A = this.touch.axes;
+    const clamp1 = (v) => Math.max(-1, Math.min(1, v));
+    const turn = busy ? 0 : clamp1((K.has('l') ? 1 : 0) - (K.has('r') ? 1 : 0) + A.turn);
+    const fwd = busy ? 0 : clamp1((K.has('f') ? 1 : 0) - (K.has('b') ? 1 : 0) + A.fwd);
+    const run = K.has('run') || A.run;
     // 旋回（左 = 正）。角速度をなめらかに
     const wTarget = turn * (run ? PLAYER.turnRun : PLAYER.turn);
     p.angVel += (wTarget - p.angVel) * damp(14, dt);
     p.heading += p.angVel * dt;
     // 前進・後退
-    const sTarget = fwd > 0 ? (run ? PLAYER.run : PLAYER.walk) : fwd < 0 ? -PLAYER.back : 0;
+    const sTarget = fwd > 0 ? fwd * (run ? PLAYER.run : PLAYER.walk) : fwd * PLAYER.back;
     p.speed += (sTarget - p.speed) * damp(fwd !== 0 ? 9 : 12, dt);
     const vx = -Math.sin(p.heading) * p.speed;
     const vz = -Math.cos(p.heading) * p.speed;
@@ -959,6 +1184,8 @@ export class TrainInterior {
     const t = this.talk || this.holoOpen ? null : this._nearestTarget();
     this.focus = t;
     for (const c of Object.values(this.characters)) c._hl = t?.char === c;
+    // 【v13】タッチ端末：右下のボタン（会話中は「次へ」、ホログラム表示中は「閉じる」）
+    if (this.touchUI) this.touch.setAction(this.talk ? '次へ' : this.holoOpen ? '閉じる' : t ? this._promptLabel(t) : null);
     if (!t) {
       this.$prompt.classList.remove('is-on');
       return;
@@ -996,10 +1223,15 @@ export class TrainInterior {
       this._placeLamps(zone);
     } else if (zone.id === 'corridor') this._placeLamps(zone);
     if (!this._freeze) this._updateCamera(dt); // _freeze: QA 用（DHT.interior._freeze = true でカメラを手動に）
+    // 【v13】見える区画だけを描く・動かす（閉じた扉の向こうの部屋・住人・反対舷の車窓は止める）
+    this._updateVisibility();
     this.scenery.update(dt);
-    this.hologram.update(dt, this.camera);
+    if (this.off.has('cull')) this.scenery.showAll();
+    else if (this.scenery.group.visible) this.scenery.cull(this.camera, this._portal);
+    this.hologram.update(dt, this.camera, this.hologram.group.visible);
     const pp = this.player.pos;
     for (const c of Object.values(this.characters)) {
+      if (!c.group.visible) continue; // 見えない部屋の住人はアニメーションも止める
       const talking = this.talk?.ch === c;
       c.update(dt, c._hl || talking);
       const toLeaf = Math.atan2(-(pp.x - c.def.seat.x), -(pp.z - c.def.seat.z));
@@ -1021,7 +1253,11 @@ export class TrainInterior {
       st.frames = 0;
       st.t = 0;
       // ?stats=1 のとき右上に FPS・draw call・三角形数（実機の GPU での確認用）
-      if (this.$stats) this.$stats.textContent = `${st.fps} fps · ${st.draw} draws · ${(st.tris / 1000).toFixed(0)}k tris`;
+      if (this.$stats) {
+        const pr = this.renderer.getPixelRatio();
+        this.$stats.textContent = `${st.fps} fps · ${st.draw} draws · ${(st.tris / 1000).toFixed(0)}k tris · x${pr.toFixed(2)}${this.off.size ? ` · off: ${[...this.off].join(',')}` : ''}`;
+      }
+      this._adaptResolution(st.fps);
     }
   }
 
@@ -1033,7 +1269,15 @@ export class TrainInterior {
   }
 
   resize() {
-    this.camera.aspect = innerWidth / innerHeight;
+    const aspect = innerWidth / innerHeight;
+    this.camera.aspect = aspect;
+    // 【v13】タッチ端末の縦持ち：そのままでは左右の視野が狭すぎるので、上下の視野を広げて補う（PC は変えない）
+    let fov = CAM.fov;
+    if (this.touchUI && aspect < 1.2) {
+      const half = Math.atan((Math.tan(THREE.MathUtils.degToRad(CAM.fov / 2)) * 1.2) / aspect);
+      fov = Math.min(78, THREE.MathUtils.radToDeg(half * 2));
+    }
+    this.camera.fov = fov;
     this.camera.updateProjectionMatrix();
   }
 

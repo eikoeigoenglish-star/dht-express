@@ -106,21 +106,23 @@ export function buildLounge(b) {
   // 前の壁（x = 9.0〜9.12）。入口の開口部は左舷側
   {
     const xa = x0 - WALL;
+    // 【v13】壁そのものは廊下側からも見えるので、常に描く区画（shell）へ
+    const sec = b.section('shell');
     b.B('plaster', xa, x0, 0, 3.05, z0 - WALL, D.z0);
     b.B('plaster', xa, x0, 0, 3.05, D.z1, z1 + WALL);
     b.B('plaster', xa, x0, D.h, 3.05, D.z0, D.z1);
+    for (const xf of [xa - 0.035, x0]) {
+      // 開口部の枠（廊下側・ラウンジ側）と敷居
+      b.B('wood', xf, xf + 0.035, 0, D.h + 0.08, D.z0 - 0.08, D.z0);
+      b.B('wood', xf, xf + 0.035, 0, D.h + 0.08, D.z1, D.z1 + 0.08);
+      b.B('wood', xf, xf + 0.035, D.h, D.h + 0.08, D.z0 - 0.08, D.z1 + 0.08);
+    }
+    b.B('brass', xa - 0.02, x0 + 0.02, -0.03, 0.006, D.z0, D.z1); // 敷居
+    b.B('floor', x0, x0 + 0.16, -0.06, 0, D.z0 - 0.1, D.z1 + 0.1); // 扉の足元（廊下側から、閉じた扉と壁のすき間に見える床）
+    b.section(sec);
     b.finish('x', x0, 1, z0, D.z0, { h: T });
     b.finish('x', x0, 1, D.z1, z1, { h: T });
-    // 開口部の枠（ラウンジ側・廊下側）
-    for (const [xf, s] of [[x0, 1], [xa, -1]]) {
-      const xA = s > 0 ? xf : xf - 0.035;
-      const xB = s > 0 ? xf + 0.035 : xf;
-      b.B('wood', xA, xB, 0, D.h + 0.08, D.z0 - 0.08, D.z0);
-      b.B('wood', xA, xB, 0, D.h + 0.08, D.z1, D.z1 + 0.08);
-      b.B('wood', xA, xB, D.h, D.h + 0.08, D.z0 - 0.08, D.z1 + 0.08);
-    }
     b.B('brass', x0 + 0.035, x0 + 0.065, D.h + 0.1, D.h + 0.13, D.z0 - D.slide - 0.1, D.z1 + 0.05); // 引き戸のレール
-    b.B('brass', xa - 0.02, x0 + 0.02, -0.03, 0.006, D.z0, D.z1); // 敷居
     b.coll(xa - 0.02, x0, z0 - 0.4, D.z0, { wall: true, name: 'lounge:front-a', y1: 3.1 });
     b.coll(xa - 0.02, x0, D.z1, z1 + 0.4, { wall: true, name: 'lounge:front-b', y1: 3.1 });
   }

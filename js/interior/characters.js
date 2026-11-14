@@ -15,10 +15,13 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { asset } from '../config.js';
-import { bubbleTexture, nameTagTexture, radialTexture } from './textures.js';
+import { bubbleTexture, nameTagTexture, radialTexture, lapBlanketTexture } from './textures.js';
 import { COMPARTMENTS, BENCH } from './layout.js';
+import { lapBlanketGeometry } from './blanket.js';
 
 const SEAT_Y = BENCH.seatTop;
+/** リンさんの席（個室の中心からの x・窓からの z）。x は背もたれの手前、z はクッション（0.92 / 1.8）の間 */
+const RIN_SEAT = { x: 1.72, z: 1.36 };
 
 /** 個室のベンチの座席。side：L = -X 側のベンチ（+X を向く）、R = +X 側（-X を向く） */
 export function seatAt(roomId, side, slot) {
@@ -33,17 +36,18 @@ export const ROOM_CHARACTERS = {
     rin: {
       name: 'リンさん',
       kind: 'human',
-      // 立ち姿（座らせるとスカートの中が見える角度があるため、座らせない）
-      pose: 'stand',
+      // 【v13】Room 1 の後部側（+X 側）のソファーに座る。両脚をそろえ、膝〜太もも全体を大きめのひざ掛けで覆う
+      //   （低い視点から見てもスカートの内側が見えないよう、blanket.js の布とふさぎ布で隠す）
+      //   立ち姿へ戻すときは pose: 'stand'・seat.y: 0・radius: 0.24 にして blanket を外す
+      pose: 'sit',
       model: 'models/characters/rin.glb',
-      // Room 1 の窓際・テーブルの横に立ち、扉（廊下）の方を向く
-      seat: { x: COMPARTMENTS[0].cx - 0.95, y: 0, z: 1.45, facing: Math.atan2(-0.35, -1) },
-      radius: 0.24, // 葉っぱがすり抜けない当たり判定
-      // スカートの中が映らないよう、近く（半径 modestyRadius m）ではカメラを modestyMinY m より下げない
-      modestyRadius: 1.4,
-      modestyMinY: 0.85,
+      // 座面の上の腰の位置。ベンチの 2 つのクッションの間、部屋の中央（-X）を向く
+      seat: { x: COMPARTMENTS[0].cx + RIN_SEAT.x, y: SEAT_Y, z: RIN_SEAT.z, facing: Math.PI / 2 },
+      seatEdge: RIN_SEAT.x - BENCH.x0, // 腰から座面の前の端までの距離（ひざ掛けの脇がここから前で垂れる）
+      blanket: { halfWidth: 0.42, flap: 0.3 }, // ひざ掛け（幅 84 cm・膝から 30 cm 垂らす）
       hideMeshes: ['InnerBrief'], // スカートの内側の部品は描かない
-      promptY: 1.82, // 床からの「E：話しかける」・吹き出しの高さ
+      promptY: 0.98, // 座面からの「E：話しかける」・吹き出しの高さ
+      talkAhead: 0.4, // 話しかける位置（座席から正面へ。膝の前あたり）
       color: '#e8c8b0',
       lines: [
         'あら、葉っぱくん。Room 1 へようこそ。',
@@ -129,7 +133,9 @@ export class RoomCharacter {
     return this.def.lines ?? ['……'];
   }
   get anchor() {
-    return new THREE.Vector3(this.def.seat.x, 0, this.def.seat.z);
+    // 座っている人は膝の前あたり（ベンチの手前）を「話しかける位置」にする
+    const k = this.def.talkAhead ?? 0;
+    return new THREE.Vector3(this.def.seat.x - Math.sin(this.facing) * k, 0, this.def.seat.z - Math.cos(this.facing) * k);
   }
   get promptY() {
     return this.def.promptY ?? (this.def.height ?? 0.5) + 0.22;
@@ -269,31 +275,109 @@ export class RoomCharacter {
       if (head) this._head = { bone: head, rest: head.quaternion.clone(), yaw: 0 };
       return;
     }
+    // ---- 座位（【v13】上品に：背筋を伸ばし、両脚をそろえ、手はひざ掛けの上へ） ----
+    // slope：太ももの下がり（膝が腰より少し低い）。座面が高めなので、足の裏が床に届く角度を下で求める
+    const poseLegs = (slope) => {
+      for (const s of [1, -1]) {
+        const L = s > 0 ? 'L' : 'R'; // L はモデルの +X 側
+        // 左右の太ももは平行に近く、膝をほんの少しだけ内へ寄せる（1 本に重ねない・開かない）
+        //   股関節は左右 ±0.085 m 前後 → 膝は ±0.065 m 前後。左右の太もも・すね・足は別々のまま
+        aim(`upper_leg.${L}`, `lower_leg.${L}`, dir(-s * 0.05, -slope, 1));
+        // すねはまっすぐ下へ（わずかに前へ出して、かかとをベンチの台座から離す）。つま先を少し下げてそろえる
+        aim(`lower_leg.${L}`, `foot.${L}`, dir(0, -1, 0.1));
+        aim(`foot.${L}`, `toes.${L}`, dir(0, -0.5, 1));
+      }
+      holder.updateMatrixWorld(true);
+    };
+    const HIP_ABOVE_SEAT = 0.1; // 腰（股関節）は座面の少し上（太ももの下側が座面に載る高さ）
+    let slope = 0.12;
+    poseLegs(slope);
+    {
+      // 足の裏（靴のいちばん低い点）が床に届くよう、太ももの下がりを 1 度だけ合わせ直す
+      const hipY = (bone('upper_leg.L').getWorldPosition(new THREE.Vector3()).y + bone('upper_leg.R').getWorldPosition(new THREE.Vector3()).y) / 2;
+      const kneeY = bone('lower_leg.L')?.getWorldPosition(new THREE.Vector3()).y ?? hipY;
+      const low = new THREE.Box3().setFromObject(holder, true).min.y; // スキニング後の形で測る
+      const floorGap = low - hipY + HIP_ABOVE_SEAT + (this.def.seat.y ?? 0) - 0.006; // 正 = 足が床から浮いている
+      const thigh = Math.hypot(1, slope, 0.05) * Math.max(0.2, (hipY - kneeY) / slope);
+      const sin1 = Math.min(0.3, slope / Math.hypot(1, slope) + floorGap / thigh);
+      slope = THREE.MathUtils.clamp(Math.tan(Math.asin(Math.max(0, sin1))), 0, 0.32);
+      poseLegs(slope);
+    }
     for (const s of [1, -1]) {
-      const L = s > 0 ? 'L' : 'R'; // L はモデルの +X 側
-      // 左右の太ももを平行にそろえて、側面どうしがくっつくように（脚を開かない・1 本に重ねない）
-      //   股関節は左右 ±0.085 m。膝を ±0.065 m（太ももの太さ分）へ寄せる → 太ももの内側どうしが接する
-      //   すねは真下へ平行に、足も左右に分かれたまま
-      aim(`upper_leg.${L}`, `lower_leg.${L}`, dir(-s * 0.048, 0.03, 1));
-      aim(`lower_leg.${L}`, `foot.${L}`, dir(0, -1, 0.06));
-      aim(`foot.${L}`, `toes.${L}`, dir(0, -0.3, 1));
-      aim(`upper_arm.${L}`, `lower_arm.${L}`, dir(s * 0.22, -1, 0.3));
-      aim(`lower_arm.${L}`, `hand.${L}`, dir(-s * 0.35, -0.3, 1));
-      aim(`hand.${L}`, `middle_proximal.${L}`, dir(-s * 0.3, -0.5, 1));
+      const L = s > 0 ? 'L' : 'R';
+      // 腕：上腕は体の横を自然に下ろし、前腕を前へ（手の位置はひざ掛けを作ってから合わせる）
+      aim(`upper_arm.${L}`, `lower_arm.${L}`, dir(s * 0.2, -1, 0.34));
+      aim(`lower_arm.${L}`, `hand.${L}`, dir(-s * 0.5, -0.36, 1));
+      aim(`hand.${L}`, `middle_proximal.${L}`, dir(-s * 0.42, -0.3, 1));
     }
     holder.updateMatrixWorld(true);
     const hl = bone('upper_leg.L')?.getWorldPosition(new THREE.Vector3());
     const hr = bone('upper_leg.R')?.getWorldPosition(new THREE.Vector3());
     const hip = hl && hr ? hl.add(hr).multiplyScalar(0.5) : new THREE.Vector3();
-    yawed.position.set(-hip.x, -hip.y + 0.09, -hip.z);
+    yawed.position.set(-hip.x, -hip.y + HIP_ABOVE_SEAT, -hip.z);
     // 首だけ葉っぱの方を向くため、頭の骨の元の向きを覚える
     const head = bone('head');
     this._posed = !!(hl && hr);
     if (!this._posed) console.warn('[interior] リンさんの骨が見つからないため座らせられませんでした');
-    if (head) {
+    holder.updateMatrixWorld(true);
+    if (head) this._head = { bone: head, rest: head.quaternion.clone(), yaw: 0 };
+    if (!this._posed) return;
+
+    // ---- 座った形を測る（holder のローカル = キャラクターのローカル。原点 = 腰の真下の座面） ----
+    const at = (n) => bone(n)?.getWorldPosition(new THREE.Vector3());
+    const kL = at('lower_leg.L');
+    const kR = at('lower_leg.R');
+    const fL = at('foot.L');
+    const tL = at('toes.L');
+    if (!kL || !kR) return;
+    const rig = {
+      seatY: 0,
+      hipY: HIP_ABOVE_SEAT,
+      kneeY: (kL.y + kR.y) / 2,
+      kneeZ: (kL.z + kR.z) / 2,
+      kneeX: Math.abs(kL.x - kR.x) / 2,
+      thighR: 0.078,
+      kneeR: 0.06,
+      seatEdgeZ: this.def.seatEdge != null ? -this.def.seatEdge : undefined,
+      ...measureLap(holder, (kL.z + kR.z) / 2), // 太もも・スカートの上面の高さ（ひざ掛けを体に沿わせる）
+      ankle: fL ? { y: fL.y, z: fL.z } : null,
+      toe: tL ? { y: tL.y, z: tL.z } : null,
+      hands: ['L', 'R'].map((L) => at(`hand.${L}`)),
+    };
+    this.sitRig = rig;
+    // 手をひざ掛けの上面にそっと載せる（上面の高さを測ってから、前腕の向きを合わせ直す）
+    if (this.def.blanket) {
+      const mesh = new THREE.Mesh(lapBlanketGeometry(rig, this.def.blanket), this.blanketMaterial());
+      mesh.name = 'lap-blanket';
+      mesh.userData.ownGeo = true;
+      holder.add(mesh);
+      this.blanket = mesh;
+      const top = mesh.geometry.userData.top;
+      for (const s of [1, -1]) {
+        const L = s > 0 ? 'L' : 'R';
+        const el = at(`lower_arm.${L}`);
+        if (!el) continue;
+        // 手首の目標：太ももの上（ひざ掛けの上面 + 手の厚み）。左右の手は中央で軽く重ねる
+        const tz = top.zBack + (top.zKnee - top.zBack) * 0.42;
+        const ty = top.yHip + (top.yKnee - top.yHip) * 0.42 + 0.03;
+        //   holder のローカルでは -Z が正面、モデルの左（L）は -X 側。手首は自分の側、指先を中央・前へ向ける
+        const target = new THREE.Vector3(-s * 0.06, ty + (s > 0 ? 0.012 : 0), tz + (s > 0 ? -0.02 : 0.02));
+        aim(`lower_arm.${L}`, `hand.${L}`, target.clone().sub(el).normalize());
+        aim(`hand.${L}`, `middle_proximal.${L}`, new THREE.Vector3(s * 0.7, -0.1, -1).normalize());
+      }
       holder.updateMatrixWorld(true);
-      this._head = { bone: head, rest: head.quaternion.clone(), yaw: 0 };
     }
+  }
+
+  /** 【v13】ひざ掛けのマテリアル（1 つを使い回す。train.js が夕方・夜の「電灯の回り込み光」の対象へ加える） */
+  blanketMaterial() {
+    return (this._blanketMat ??= new THREE.MeshStandardMaterial({
+      map: (_tex.blanket ??= lapBlanketTexture()),
+      vertexColors: true,
+      roughness: 0.96,
+      metalness: 0,
+      side: THREE.DoubleSide,
+    }));
   }
 
   /** 時間帯に合わせた明るさ（unlit のモデルは照明が効かないので色で調整） */
@@ -344,6 +428,56 @@ export class RoomCharacter {
     this.bubble.position.y = this.promptY - 0.02 + Math.sin(t * 2.4) * 0.015;
     this.bubble.visible = !highlighted;
   }
+}
+
+/**
+ * 【v13】座った人の「ひざの上」の形を測る（スキニング後の頂点。腰・脚の骨に付いている頂点だけ）
+ *   profile … 前後 3 cm ごとの上面の高さ [[z, y], ...]（z は負 = 前。膝 → お腹の順）
+ *   lapHalf … 太もも・スカートの左右の広がり（中心からの距離）
+ *   hemZ    … スカートの裾の前端（マテリアル名に skirt を含むメッシュがあれば）
+ * 腕は T ポーズのまま（ひざの上に手が無い状態）で呼ぶこと。
+ */
+function measureLap(holder, kneeZ) {
+  holder.updateMatrixWorld(true);
+  const inv = holder.matrixWorld.clone().invert();
+  const v = new THREE.Vector3();
+  const STEP = 0.03;
+  const z0 = kneeZ - 0.06;
+  const bins = new Array(Math.ceil((0 - z0) / STEP) + 1).fill(-Infinity);
+  let lapHalf = 0;
+  let hemZ = Infinity;
+  holder.traverse((o) => {
+    if (!o.isSkinnedMesh || !o.visible) return;
+    const g = o.geometry;
+    const si = g.attributes.skinIndex;
+    const sw = g.attributes.skinWeight;
+    if (!si || !sw) return;
+    const isLeg = o.skeleton.bones.map((b) => /hips|upper_leg|lower_leg/i.test(b.name));
+    const isSkirt = [o.material].flat().some((m) => /skirt/i.test(m?.name ?? ''));
+    for (let i = 0; i < si.count; i++) {
+      let best = 0;
+      let bw = -1;
+      for (let k = 0; k < 4; k++) {
+        const w = sw.getComponent(i, k);
+        if (w > bw) {
+          bw = w;
+          best = si.getComponent(i, k);
+        }
+      }
+      if (!isLeg[best]) continue;
+      o.getVertexPosition(i, v).applyMatrix4(o.matrixWorld).applyMatrix4(inv);
+      if (v.z > -0.1 || v.z < z0 || v.y < 0.02 || v.y > 0.3) continue; // お腹より前・膝より後ろ・座面より上だけ
+      const b = Math.round((v.z - z0) / STEP);
+      if (Math.abs(v.x) < 0.2 && v.y > bins[b]) bins[b] = v.y;
+      if (Math.abs(v.x) > lapHalf && Math.abs(v.x) < 0.3) lapHalf = Math.abs(v.x);
+      if (isSkirt && v.z < hemZ) hemZ = v.z;
+    }
+  });
+  const profile = [];
+  bins.forEach((y, b) => {
+    if (y > -Infinity) profile.push([z0 + b * STEP, y]);
+  });
+  return { profile, lapHalf: lapHalf || undefined, hemZ: Number.isFinite(hemZ) ? hemZ : undefined };
 }
 
 const _tex = {};
