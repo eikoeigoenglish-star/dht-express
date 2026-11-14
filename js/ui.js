@@ -65,6 +65,8 @@ export class UI {
     addEventListener('keydown', (e) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
       if (e.repeat) return;
+      // v11: Room 1 表示中・乗車確認中は MAP のショートカット（1/2/3/H/L/B/R/I）を無効に
+      if (document.body.classList.contains('is-interior') || document.body.classList.contains('is-boarding')) return;
       switch (e.code) {
         case 'Digit1':
         case 'Numpad1':

@@ -20,6 +20,7 @@
  *   livery.js      v7: FOREST SCHOOL の列車・船の塗装（GLB 読み込み後にマテリアルを差し替え）
  *   vehicles.js    v7: 列車・船の配置と「昨日 → 今日」の移動アニメーション
  *   progress.js    v7: DHT 進捗 API（GAS。fetch → 失敗時 JSONP）と進捗パネル
+ *   boarding.js    v11: 列車クリック → 乗車確認 → FOREST SCHOOL EXPRESS / Room 1（interior/*）⇔ MAP
  *
  * シーングラフ
  *   scene
@@ -53,6 +54,7 @@ import { TimeOfDay } from './timeofday.js';
 import { VehicleFollowController } from './vehiclecam.js';
 import { LighthouseBeacons } from './lighthouses.js';
 import * as geo from './geo.js';
+import { Boarding } from './boarding.js';
 
 const canvas = document.getElementById('scene');
 
@@ -130,6 +132,31 @@ const ui = new UI({
   },
 });
 exploreCtl.onLockChange = (l) => ui.setLocked(l);
+
+/* ---------------------------------------------------------------------- */
+/* v11: FOREST SCHOOL EXPRESS / Room 1（列車クリック → 乗車確認 → 車内）      */
+/*      Room 1 表示中は MAP の更新・描画を止め、入力だけを一時停止して戻す     */
+/* ---------------------------------------------------------------------- */
+let mapPaused = null;
+const boarding = new Boarding({
+  renderer,
+  canvas,
+  camera,
+  vehicles,
+  canBoard: () => vehicleReady && !rig.animating && (mode === 'map' || mode === 'vehicle'),
+  timeMode: () => tod.mode, // v11: Room 1 は day のみ実装（他は day で表示。interior/looks.js）
+  suspendMap: () => {
+    mapPaused = { map: mapCtl.controls.enabled, follow: follow.enabled };
+    mapCtl.disable();
+    follow.enabled = false; // 追跡の状態（向き・ずらし・距離）は保持したまま止める
+  },
+  resumeMap: () => {
+    if (!mapPaused) return;
+    if (mapPaused.map) mapCtl.controls.enabled = true;
+    if (mapPaused.follow && mode === 'vehicle') follow.enabled = true;
+    mapPaused = null;
+  },
+});
 
 /* ---------------------------------------------------------------------- */
 /* モード切替                                                               */
@@ -433,6 +460,8 @@ async function start() {
     timer.update();
     const rawDt = timer.getDelta();
     const dt = Math.min(0.1, rawDt);
+    // v11: Room 1 表示中は Room 1 だけを更新・描画（MAP の地形・都市・列車の再生は止めたまま保持）
+    if (boarding.frame(dt)) return;
     if (!rig.update(dt)) {
       if (mode === 'map') mapCtl.update(dt);
       else if (mode === 'vehicle') {
@@ -470,10 +499,11 @@ addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight, false);
+  boarding.resize(); // v11
 });
 
 // 将来の拡張・デバッグ用ハンドル（コンソールから window.DHT で触れる）
-export const app = { renderer, scene, camera, terrain, env, rig, mapCtl, exploreCtl, labels, cities, stations, landmarks, water, journeyLayer, journey: null, route: null, vehicles, follow, beacons, progress: null, tod, mode: () => mode, layers: { actors, fx }, geo, presets: CAMERA_PRESETS, setMode, goPreset };
+export const app = { renderer, scene, camera, terrain, env, rig, mapCtl, exploreCtl, labels, cities, stations, landmarks, water, journeyLayer, journey: null, route: null, vehicles, follow, beacons, progress: null, tod, boarding, get room1() { return boarding.room; }, mode: () => mode, layers: { actors, fx }, geo, presets: CAMERA_PRESETS, setMode, goPreset };
 window.DHT = app;
 
 start();
