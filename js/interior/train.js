@@ -1350,7 +1350,8 @@ export class TrainInterior {
     this.keys.clear();
     const heading = j.heading ?? Math.atan2(-(j.lookX - j.x), -(j.lookZ - j.z));
     this.teleport(j.x, j.z, heading);
-    this.viewPitch = CAM.pitch;
+    // 視線の上下（度）。指定が無ければ既定の見下ろし（ラウンジは大きなホログラムが入るよう水平に近く）
+    this.viewPitch = j.pitch != null ? THREE.MathUtils.degToRad(j.pitch) : CAM.pitch;
     this.camDist = CAM.dist;
     // 部屋名・照明をすぐ切り替える（update を待たない）
     this.zone = null;

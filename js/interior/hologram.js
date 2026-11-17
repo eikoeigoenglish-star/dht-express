@@ -19,6 +19,13 @@ const AQUA = '#8fdcff';
 const GOLD = '#f3d58c';
 const CW = 512;
 const CH = 352;
+/** 【v14.1】像の大きさ（v14 までの 1.06 m 幅の 1.4 倍）。下端の高さは据え置き（光の輪 0.98 m のすぐ上） */
+const SCREEN_SCALE = 1.4;
+const SCREEN_W = 1.06 * SCREEN_SCALE;
+const SCREEN_H = SCREEN_W * (CH / CW);
+const SCREEN_Y = 0.956 + SCREEN_H / 2; // 像の中心の高さ（v14 までは 1.32）
+/** Canvas の解像度の倍率（像を大きくしても文字がにじまないよう 2 倍で描く。描画の座標は CW × CH のまま） */
+const RES = 2;
 
 export class Hologram {
   /**
@@ -57,26 +64,27 @@ export class Hologram {
     this.lens = new THREE.Mesh(new THREE.CircleGeometry(0.2, 32), add(MINT, 0.9));
     this.lens.rotation.x = -Math.PI / 2;
     this.lens.position.y = 0.613;
-    this.cone = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.17, 0.62, 32, 1, true), add(MINT, 0.07));
+    this.cone = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.17, 0.62, 32, 1, true), add(MINT, 0.07));
     this.cone.position.y = 0.93;
     this.ringA = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.006, 6, 64), add(AQUA, 0.55));
     this.ringA.position.y = 0.98;
     this.ringB = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.004, 6, 48), add(GOLD, 0.45));
-    this.ringB.position.y = 1.62;
+    this.ringB.position.y = SCREEN_Y + SCREEN_H * 0.41; // 像の上の方（v14 までは 1.62）
     this.tabletScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.14), add(AQUA, 0.6));
     this.tabletScreen.position.set(0.33, 0.525, 0.24);
     this.tabletScreen.rotation.set(-Math.PI / 2 + 0.5, 0, 0.6);
     // 像（Canvas）
     this.canvas = document.createElement('canvas');
-    this.canvas.width = CW;
-    this.canvas.height = CH;
+    this.canvas.width = CW * RES;
+    this.canvas.height = CH * RES;
     this.ctx = this.canvas.getContext('2d');
+    this.ctx.scale(RES, RES);
     this.tex = new THREE.CanvasTexture(this.canvas);
     this.tex.colorSpace = THREE.SRGBColorSpace;
     this.screenMat = add('#ffffff', 1);
     this.screenMat.map = this.tex;
-    this.screen = new THREE.Mesh(new THREE.PlaneGeometry(1.06, 1.06 * (CH / CW)), this.screenMat);
-    this.screen.position.y = 1.32;
+    this.screen = new THREE.Mesh(new THREE.PlaneGeometry(SCREEN_W, SCREEN_H), this.screenMat);
+    this.screen.position.y = SCREEN_Y;
     this.screenPivot = new THREE.Group();
     this.screenPivot.add(this.screen);
     for (const m of [this.lens, this.cone, this.ringA, this.ringB, this.tabletScreen]) m.renderOrder = 6;
@@ -90,7 +98,7 @@ export class Hologram {
     return new THREE.Vector3(this.group.position.x, 0, this.group.position.z + 0.15);
   }
   get head() {
-    return new THREE.Vector3(this.group.position.x, 1.95, this.group.position.z);
+    return new THREE.Vector3(this.group.position.x, SCREEN_Y + SCREEN_H / 2 + 0.17, this.group.position.z); // 像の上端の少し上
   }
 
   setMode(mode) {
@@ -133,7 +141,7 @@ export class Hologram {
     this.fade = Math.min(1, this.fade + dt * 2.5);
     const flicker = 0.92 + Math.sin(this.t * 13) * 0.03 + Math.sin(this.t * 37) * 0.02;
     this.screenMat.opacity = this.fade * flicker;
-    this.screen.position.y = 1.32 + Math.sin(this.t * 1.3) * 0.012;
+    this.screen.position.y = SCREEN_Y + Math.sin(this.t * 1.3) * 0.012;
     this.ringA.rotation.z = this.t * 0.4;
     this.ringA.rotation.x = Math.PI / 2 + Math.sin(this.t * 0.7) * 0.08;
     this.ringB.rotation.x = Math.PI / 2;

@@ -95,7 +95,7 @@ export const SPAWN = { x: 0.6, z: 1.75, heading: 0 };
 
 /**
  * 【v14】左上の現在地メニューから瞬時に移動する先（葉っぱの位置と、見る方向の点）
- *   id は ZONES の id。heading は (lookX, lookZ) を向く向きとして train.js が計算する。
+ *   id は ZONES の id。heading は (lookX, lookZ) を向く向きとして train.js が計算する。pitch は視線の上下 [度]（省略 = 既定の -14°）
  *   Room 2 は乗車したときの出発点（SPAWN）と同じ。
  */
 export const JUMP_POINTS = {
@@ -103,5 +103,5 @@ export const JUMP_POINTS = {
   room2: { x: SPAWN.x, z: SPAWN.z, heading: SPAWN.heading },
   room3: { x: COMPARTMENTS[2].cx + 0.9, z: 2.25, lookX: COMPARTMENTS[2].cx - 0.9, lookZ: 1.0 }, // 扉から入ったところ。本棚の前の仔馬・窓側の猫の方へ
   corridor: { x: 0.6, z: (CORRIDOR.z0 + CORRIDOR.z1) / 2, lookX: CORRIDOR.x1, lookZ: (CORRIDOR.z0 + CORRIDOR.z1) / 2 }, // ラウンジの方へ
-  lounge: { x: 10.75, z: 2.35, lookX: 10.75, lookZ: 0.6 }, // ホログラム投影機の前
+  lounge: { x: 10.75, z: 2.6, lookX: 10.75, lookZ: 0.6, pitch: -3 }, // ホログラム投影機の前。1.4 倍の像の上端まで入るよう視線は水平に近く
 };
