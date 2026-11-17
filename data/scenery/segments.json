@@ -1,0 +1,279 @@
+{
+ "_comment": "v15 車窓景観の区間（累積 km、両端を含む整数 km）。0〜2061 km を欠落・重複なく覆う。景観の中身は presets.json。js/sceneryplan.js が読む。「都心」はすべて同じ preset（urban）。",
+ "version": 15,
+ "crossfadeKm": 2,
+ "segments": [
+  {
+   "startKm": 0,
+   "endKm": 30,
+   "sceneId": "urban",
+   "reason": "東京〜新横浜"
+  },
+  {
+   "startKm": 31,
+   "endKm": 80,
+   "sceneId": "default"
+  },
+  {
+   "startKm": 81,
+   "endKm": 110,
+   "sceneId": "sea_left_mountain_right"
+  },
+  {
+   "startKm": 111,
+   "endKm": 170,
+   "sceneId": "fuji_right"
+  },
+  {
+   "startKm": 171,
+   "endKm": 248,
+   "sceneId": "default"
+  },
+  {
+   "startKm": 249,
+   "endKm": 255,
+   "sceneId": "hamanako",
+   "reason": "浜名湖"
+  },
+  {
+   "startKm": 256,
+   "endKm": 330,
+   "sceneId": "default"
+  },
+  {
+   "startKm": 331,
+   "endKm": 350,
+   "sceneId": "urban",
+   "reason": "名古屋"
+  },
+  {
+   "startKm": 351,
+   "endKm": 380,
+   "sceneId": "default"
+  },
+  {
+   "startKm": 381,
+   "endKm": 400,
+   "sceneId": "gentle_hills"
+  },
+  {
+   "startKm": 401,
+   "endKm": 450,
+   "sceneId": "biwako_fields"
+  },
+  {
+   "startKm": 451,
+   "endKm": 470,
+   "sceneId": "default"
+  },
+  {
+   "startKm": 471,
+   "endKm": 530,
+   "sceneId": "urban",
+   "reason": "京都〜新神戸"
+  },
+  {
+   "startKm": 531,
+   "endKm": 620,
+   "sceneId": "default"
+  },
+  {
+   "startKm": 621,
+   "endKm": 670,
+   "sceneId": "mountains",
+   "reason": "岡山手前"
+  },
+  {
+   "startKm": 671,
+   "endKm": 745,
+   "sceneId": "default"
+  },
+  {
+   "startKm": 746,
+   "endKm": 755,
+   "sceneId": "sea_left_mountain_right",
+   "reason": "尾道"
+  },
+  {
+   "startKm": 756,
+   "endKm": 810,
+   "sceneId": "mountains",
+   "reason": "東広島〜広島"
+  },
+  {
+   "startKm": 811,
+   "endKm": 830,
+   "sceneId": "urban",
+   "reason": "広島"
+  },
+  {
+   "startKm": 831,
+   "endKm": 860,
+   "sceneId": "default"
+  },
+  {
+   "startKm": 861,
+   "endKm": 900,
+   "sceneId": "mountains",
+   "reason": "新岩国〜徳山"
+  },
+  {
+   "startKm": 901,
+   "endKm": 910,
+   "sceneId": "tokuyama_factory",
+   "reason": "徳山"
+  },
+  {
+   "startKm": 911,
+   "endKm": 940,
+   "sceneId": "mountain_fields_plain"
+  },
+  {
+   "startKm": 941,
+   "endKm": 950,
+   "sceneId": "default"
+  },
+  {
+   "startKm": 951,
+   "endKm": 990,
+   "sceneId": "mountain_fields"
+  },
+  {
+   "startKm": 991,
+   "endKm": 1060,
+   "sceneId": "default",
+   "reason": "小倉周辺"
+  },
+  {
+   "startKm": 1061,
+   "endKm": 1080,
+   "sceneId": "urban",
+   "reason": "博多"
+  },
+  {
+   "startKm": 1081,
+   "endKm": 1090,
+   "sceneId": "default"
+  },
+  {
+   "startKm": 1091,
+   "endKm": 1140,
+   "sceneId": "plain_fields_residential",
+   "reason": "新大牟田〜新玉名"
+  },
+  {
+   "startKm": 1141,
+   "endKm": 1160,
+   "sceneId": "default"
+  },
+  {
+   "startKm": 1161,
+   "endKm": 1170,
+   "sceneId": "urban",
+   "reason": "熊本"
+  },
+  {
+   "startKm": 1171,
+   "endKm": 1200,
+   "sceneId": "default"
+  },
+  {
+   "startKm": 1201,
+   "endKm": 1250,
+   "sceneId": "mountains"
+  },
+  {
+   "startKm": 1251,
+   "endKm": 1260,
+   "sceneId": "default",
+   "reason": "出水"
+  },
+  {
+   "startKm": 1261,
+   "endKm": 1285,
+   "sceneId": "mountains"
+  },
+  {
+   "startKm": 1286,
+   "endKm": 1295,
+   "sceneId": "default",
+   "reason": "川内"
+  },
+  {
+   "startKm": 1296,
+   "endKm": 1320,
+   "sceneId": "mountains"
+  },
+  {
+   "startKm": 1321,
+   "endKm": 1325,
+   "sceneId": "urban",
+   "reason": "鹿児島"
+  },
+  {
+   "startKm": 1326,
+   "endKm": 1350,
+   "sceneId": "kagoshima_bay_sakurajima"
+  },
+  {
+   "startKm": 1351,
+   "endKm": 1380,
+   "sceneId": "kagoshima_bay"
+  },
+  {
+   "startKm": 1381,
+   "endKm": 1400,
+   "sceneId": "osumi_left"
+  },
+  {
+   "startKm": 1401,
+   "endKm": 1690,
+   "sceneId": "open_ocean"
+  },
+  {
+   "startKm": 1691,
+   "endKm": 1760,
+   "sceneId": "amami_left"
+  },
+  {
+   "startKm": 1761,
+   "endKm": 1810,
+   "sceneId": "open_ocean"
+  },
+  {
+   "startKm": 1811,
+   "endKm": 1820,
+   "sceneId": "tokunoshima_right"
+  },
+  {
+   "startKm": 1821,
+   "endKm": 1860,
+   "sceneId": "open_ocean"
+  },
+  {
+   "startKm": 1861,
+   "endKm": 1880,
+   "sceneId": "okinoerabu_right"
+  },
+  {
+   "startKm": 1881,
+   "endKm": 1910,
+   "sceneId": "open_ocean"
+  },
+  {
+   "startKm": 1911,
+   "endKm": 1930,
+   "sceneId": "yoron_left"
+  },
+  {
+   "startKm": 1931,
+   "endKm": 1980,
+   "sceneId": "open_ocean"
+  },
+  {
+   "startKm": 1981,
+   "endKm": 2061,
+   "sceneId": "okinawa_left"
+  }
+ ]
+}

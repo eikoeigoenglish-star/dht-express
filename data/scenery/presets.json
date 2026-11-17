@@ -1,0 +1,198 @@
+{
+ "_comment": "v15 車窓景観 preset。left / right = 近景〜中景の種類（js/interior/scenery.js のテーマ）、*Background / *FarBackground = 遠景、*Water = 海の色。時間帯（timeMode）とは独立（光・空・夜景は timeMode 側）。左右は進行方向に対して。",
+ "version": 15,
+ "sideKinds": {
+  "default": "既存の車窓",
+  "urban": "都市（高層ビルを加える）",
+  "sea": "海",
+  "mountain": "山",
+  "gentle_hills": "なだらかな山",
+  "fuji_foothills": "富士裾野（工場・住宅街）",
+  "lake_shore": "湖（対岸に住宅）",
+  "mountain_fields": "山と田園",
+  "fields_plain": "田園と平地",
+  "mountain_plain": "山と平地",
+  "plain_fields_residential": "平地＋田園＋住宅街",
+  "factory": "工場群"
+ },
+ "backgrounds": {
+  "mt_fuji": "富士山",
+  "lake_biwa": "琵琶湖",
+  "hiei_range": "比叡山系",
+  "sea": "海",
+  "sakurajima_osumi": "桜島＋大隅半島",
+  "osumi": "大隅半島",
+  "satsuma": "薩摩半島",
+  "island_amami": "奄美大島",
+  "island_tokunoshima": "徳之島",
+  "island_okinoerabu": "沖永良部島",
+  "island_yoron": "与論島",
+  "island_okinawa": "沖縄本島"
+ },
+ "presets": [
+  {
+   "id": "default",
+   "label": "デフォルト",
+   "left": "default",
+   "right": "default",
+   "notes": "既存（v11〜）の車窓：高架から見下ろす住宅街・ときどき迫る緑の山・遠い山並み"
+  },
+  {
+   "id": "urban",
+   "label": "都心",
+   "left": "urban",
+   "right": "urban",
+   "notes": "都市景観 preset（東京・名古屋・京都〜新神戸・広島・博多・熊本・鹿児島で共通）"
+  },
+  {
+   "id": "sea_left_mountain_right",
+   "label": "左：海 / 右：山",
+   "left": "sea",
+   "right": "mountain",
+   "notes": "81-110（小田原〜熱海〜三島）、746-755（尾道）"
+  },
+  {
+   "id": "fuji_right",
+   "label": "右：富士裾野と富士山",
+   "left": "default",
+   "right": "fuji_foothills",
+   "rightBackground": "mt_fuji",
+   "notes": "富士裾野、麓にパルプ工場と住宅街。右遠景に富士山"
+  },
+  {
+   "id": "hamanako",
+   "label": "浜名湖",
+   "left": "lake_shore",
+   "right": "lake_shore",
+   "notes": "左右とも湖、対岸に住宅"
+  },
+  {
+   "id": "gentle_hills",
+   "label": "なだらかな山",
+   "left": "gentle_hills",
+   "right": "gentle_hills",
+   "notes": "左右：なだらかな山"
+  },
+  {
+   "id": "biwako_fields",
+   "label": "山と田園 / 田園と琵琶湖",
+   "left": "mountain_fields",
+   "right": "fields_plain",
+   "rightBackground": "lake_biwa",
+   "rightFarBackground": "hiei_range",
+   "notes": "左：山と田園、右：田園と平地。右遠景：琵琶湖、さらに遠景：比叡山系"
+  },
+  {
+   "id": "mountains",
+   "label": "山",
+   "left": "mountain",
+   "right": "mountain",
+   "notes": "左右：山"
+  },
+  {
+   "id": "tokuyama_factory",
+   "label": "徳山の工場群",
+   "left": "factory",
+   "leftBackground": "sea",
+   "right": "default",
+   "notes": "左：工場群、左遠景：海、右：デフォルト"
+  },
+  {
+   "id": "mountain_fields_plain",
+   "label": "山と田園 / 山と平地",
+   "left": "mountain_fields",
+   "right": "mountain_plain",
+   "notes": "左：山と田園、右：山と平地"
+  },
+  {
+   "id": "mountain_fields",
+   "label": "山と田園",
+   "left": "mountain_fields",
+   "right": "mountain_fields",
+   "notes": "左右：山と田園"
+  },
+  {
+   "id": "plain_fields_residential",
+   "label": "平地・田園・住宅街",
+   "left": "plain_fields_residential",
+   "right": "plain_fields_residential",
+   "notes": "左右：平地＋田園＋住宅街"
+  },
+  {
+   "id": "kagoshima_bay_sakurajima",
+   "label": "鹿児島湾（桜島）",
+   "left": "sea",
+   "right": "sea",
+   "leftBackground": "sakurajima_osumi",
+   "rightBackground": "satsuma",
+   "notes": "海。左遠景：桜島＋大隅半島、右遠景：薩摩半島"
+  },
+  {
+   "id": "kagoshima_bay",
+   "label": "鹿児島湾",
+   "left": "sea",
+   "right": "sea",
+   "leftBackground": "osumi",
+   "rightBackground": "satsuma",
+   "notes": "海。左遠景：大隅半島、右遠景：薩摩半島"
+  },
+  {
+   "id": "osumi_left",
+   "label": "大隅半島沖",
+   "left": "sea",
+   "right": "sea",
+   "leftBackground": "osumi",
+   "notes": "海。左遠景：大隅半島、右：海のみ"
+  },
+  {
+   "id": "open_ocean",
+   "label": "外洋",
+   "left": "sea",
+   "right": "sea",
+   "notes": "左右とも海のみ"
+  },
+  {
+   "id": "amami_left",
+   "label": "奄美大島",
+   "left": "sea",
+   "right": "sea",
+   "leftBackground": "island_amami",
+   "notes": "左：奄美大島の島影、右：海のみ"
+  },
+  {
+   "id": "tokunoshima_right",
+   "label": "徳之島",
+   "left": "sea",
+   "right": "sea",
+   "rightBackground": "island_tokunoshima",
+   "notes": "左：海のみ、右：徳之島の島影"
+  },
+  {
+   "id": "okinoerabu_right",
+   "label": "沖永良部島",
+   "left": "sea",
+   "right": "sea",
+   "rightBackground": "island_okinoerabu",
+   "rightWater": "emerald",
+   "notes": "右：沖永良部島の島影、島周辺の海はエメラルドグリーン"
+  },
+  {
+   "id": "yoron_left",
+   "label": "与論島",
+   "left": "sea",
+   "right": "sea",
+   "leftBackground": "island_yoron",
+   "leftWater": "emerald",
+   "notes": "左：与論島の島影、島周辺の海はエメラルドグリーン、右：海のみ"
+  },
+  {
+   "id": "okinawa_left",
+   "label": "沖縄本島",
+   "left": "sea",
+   "right": "sea",
+   "leftBackground": "island_okinawa",
+   "leftWater": "emerald",
+   "notes": "左：沖縄本島の島影、島周辺の海はエメラルドグリーン、右：海のみ"
+  }
+ ]
+}
