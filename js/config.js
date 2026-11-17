@@ -23,6 +23,9 @@ export const ASSETS = {
   landmarksV10: asset('data/landmarks-v10.json'), // v10: 詳細地形に合わせた橋（大鳴門橋・瀬戸大橋・しまなみ海道 7 橋・関門橋・レインボーブリッジ・ゲートブリッジ）・追加ランドマーク
   water: asset('data/water.json'), // v3: 湖沼・河川（地形の加工と同時に tools/water.py が生成）
   journey: asset('data/routes/journey.json'), // v5: DHT EXPRESS 全行程（新幹線・鹿児島接続・フェリー。tools/route/build_routes.py が生成）
+  locations: asset('data/routes/locations-1km.json'), // v15: 0〜2061 km の 1 km ごとの現在地（tools/route/build_locations.py が生成）
+  scenerySegments: asset('data/scenery/segments.json'), // v15: 車窓景観の区間（累積 km → scene ID）
+  sceneryPresets: asset('data/scenery/presets.json'), // v15: 車窓景観 preset（左右の近景・遠景・海の色）
 
   // v7: FOREST SCHOOL の列車・船（GLB。塗装は js/livery.js が読み込み後に適用）
   models: {

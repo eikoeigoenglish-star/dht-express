@@ -159,7 +159,8 @@ export class Boarding {
         this.room.build();
       }
       this.o.suspendMap();
-      this.room.enter({ timeMode: this.o.timeMode() });
+      // v15: 車窓の景観は「いまの累積 km」の scene（timeMode とは独立）
+      this.room.enter({ timeMode: this.o.timeMode(), km: this.o.journeyKm?.(), sceneryPlan: this.o.sceneryPlan?.() });
       document.body.classList.add('is-interior');
       this.state = 'room';
       this.trips++;

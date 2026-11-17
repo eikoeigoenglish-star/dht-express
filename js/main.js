@@ -21,6 +21,8 @@
  *   vehicles.js    v7: 列車・船の配置と「昨日 → 今日」の移動アニメーション
  *   progress.js    v7: DHT 進捗 API（GAS。fetch → 失敗時 JSONP）と進捗パネル
  *   boarding.js    v11/v12: 列車クリック → 乗車確認 → FOREST SCHOOL EXPRESS の車内（interior/*）⇔ MAP
+ *   guide.js       v15: 1 km ごとの現在地（data/routes/locations-1km.json）と「次は / まもなく / ただ今」の駅・港案内
+ *   sceneryplan.js v15: 累積 km → 車窓景観 scene（data/scenery/segments.json・presets.json）と境界のクロスフェード
  *
  * シーングラフ
  *   scene
@@ -56,6 +58,8 @@ import { LighthouseBeacons } from './lighthouses.js';
 import * as geo from './geo.js';
 import { Boarding } from './boarding.js';
 import { isTouchUI } from './device.js';
+import { LocationGuide } from './guide.js';
+import { SceneryPlan } from './sceneryplan.js';
 
 const canvas = document.getElementById('scene');
 
@@ -102,6 +106,11 @@ const progressPromise = loadProgress().then(
   (r) => r,
   (e) => ({ error: e }),
 );
+// v15: 1 km 現在地データ・車窓景観の区間（小さな JSON。地形の読み込みと並行して取りに行く）
+const guide = new LocationGuide();
+const guidePromise = guide.load(ASSETS.locations).catch((e) => console.warn('[guide] 現在地データを読み込めませんでした', e));
+const sceneryPlan = new SceneryPlan();
+const sceneryPromise = sceneryPlan.load(ASSETS.scenerySegments, ASSETS.sceneryPresets).catch((e) => console.warn('[scenery] 車窓区間を読み込めませんでした', e));
 
 const rig = new CameraRig(camera);
 const mapCtl = new MapController(camera, canvas, terrain);
@@ -148,6 +157,9 @@ const boarding = new Boarding({
   vehicles,
   canBoard: () => vehicleReady && !rig.animating && (mode === 'map' || mode === 'vehicle'),
   timeMode: () => tod.mode, // v12: 車窓・室内照明は morning / day / evening / night に対応（interior/looks.js）
+  // v15: 車窓の景観は「いまの累積 km」の scene（timeMode とは独立）。再生中・再生後の列車・船の km
+  journeyKm: () => vehicles.liveKm ?? app.progress?.progress?.currentKm ?? 0,
+  sceneryPlan: () => (sceneryPlan.ready ? sceneryPlan : null),
   refreshTime: () => tod._check(), // v12: 車内にいる間も 30 秒ごとに時刻から時間帯を判定（MAP の更新は止めたまま）
   suspendMap: () => {
     mapPaused = { map: mapCtl.controls.enabled, follow: follow.enabled };
@@ -362,6 +374,10 @@ async function setupJourney() {
     const j = await loadJourney(ASSETS.journey, { getSurfaceY: (x, z) => terrain.getSurfaceY(x, z) });
     app.journey = j;
     app.route = { rail: j.rail, connector: j.connector, ferry: j.ferry };
+    // v15: 駅・港案内は既存の Journey.stops（46 駅・7 港）から作る
+    await guidePromise;
+    guide.setJourney(j);
+    hud.setGuide(guide);
     journeyLayer.build(j);
     labels.addItems(journeyLayer.labelItems());
   } catch (e) {
@@ -372,6 +388,7 @@ async function setupJourney() {
 /** v7: 列車・船の GLB を読み込み、進捗 API の結果で「昨日 → 今日」を再生する */
 const hud = new ProgressHud(document.getElementById('dht-progress'), {
   onReplay: () => vehicles.play(0.2),
+  guide,
 });
 hud.setLoading();
 vehicles.onLive = (km) => hud.setLive(km);
@@ -410,13 +427,28 @@ async function setupVehicles() {
     console.info(`[progress] ${r.source.toUpperCase()} 昨日 ${p.previousKm} km（${p.previousFrom}）→ 今日 ${p.currentKm} km`, plan);
     app.progress = { ...r, plan };
   }
-  hud.setLive(p.previousKm);
+  hud.setLive(vehicles.liveKm ?? p.previousKm);
   // v8: 1 度配置してから VEHICLE VIEW の追跡を始める（初期表示）。
   //     カメラが乗り物の後ろへ飛び終わってから「昨日 → 今日」を再生する（飛行中に動いて追跡位置がずれないように）
   vehicles.update(camera, 0, innerHeight, innerWidth);
   vehicleReady = true;
   const fly = mode === 'vehicle' ? enterVehicleView() : 0;
   vehicles.play(1.2 + fly);
+}
+
+/** v15: 追跡中の乗り物（再生中は動いている方、乗換中は乗換線上）の画面座標 → hud.anchor */
+const _hv = new THREE.Vector3();
+function hudAnchor(dt) {
+  let v = null;
+  const t = vehicleReady ? vehicles.followTarget() : null;
+  if (t) {
+    _hv.set(t.x, t.y + 0.02, t.z).project(camera);
+    const behind = _hv.z > 1 || _hv.z < -1;
+    v = { x: (_hv.x + 1) * 0.5 * innerWidth, y: (1 - _hv.y) * 0.5 * innerHeight, behind };
+    // 画面のかなり外（遠くを見ている）なら退避
+    if (v.x < -innerWidth * 0.25 || v.x > innerWidth * 1.25 || v.y < -innerHeight * 0.25 || v.y > innerHeight * 1.25) v.behind = true;
+  }
+  hud.anchor(v, dt, innerWidth, innerHeight);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -486,6 +518,8 @@ async function start() {
     const vdt = Math.min(0.25, rawDt);
     vehicles.update(camera, vdt, innerHeight, innerWidth); // v7
     if (mode === 'vehicle' && !rig.animating) follow.update(vdt); // v8
+    // v15: Journey Progress の吹き出しを列車／船の画面位置へ（ノッチの先端が乗り物を指す）
+    hudAnchor(dt);
     if (mode === 'vehicle' && vehicleReady) {
       const k = vehicles.followTarget()?.kind;
       ui.setVehicleKind(k === 'transfer' ? 'ship' : k); // v9: 左上の新幹線／船アイコン
@@ -505,10 +539,11 @@ addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight, false);
   boarding.resize(); // v11
+  hud._w = null; // v15: 吹き出しの大きさを測り直す
 });
 
 // 将来の拡張・デバッグ用ハンドル（コンソールから window.DHT で触れる）
-export const app = { renderer, scene, camera, terrain, env, rig, mapCtl, exploreCtl, labels, cities, stations, landmarks, water, journeyLayer, journey: null, route: null, vehicles, follow, beacons, progress: null, tod, boarding, get interior() { return boarding.room; }, get room1() { return boarding.room; }, mode: () => mode, layers: { actors, fx }, geo, presets: CAMERA_PRESETS, setMode, goPreset };
+export const app = { guide, sceneryPlan, renderer, scene, camera, terrain, env, rig, mapCtl, exploreCtl, labels, cities, stations, landmarks, water, journeyLayer, journey: null, route: null, vehicles, follow, beacons, progress: null, tod, boarding, get interior() { return boarding.room; }, get room1() { return boarding.room; }, mode: () => mode, layers: { actors, fx }, geo, presets: CAMERA_PRESETS, setMode, goPreset };
 window.DHT = app;
 
 start();

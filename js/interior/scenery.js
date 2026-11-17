@@ -26,6 +26,7 @@
  */
 import * as THREE from 'three';
 import { box, PartBin, trs, rng } from './kit.js';
+import { SceneryThemes } from './scenerythemes.js';
 
 export const TRAIN_DIR = -1; // 列車の進行方向（-X）。景色は逆向き（+X）へ流れる
 export const SCENERY = {
@@ -34,7 +35,7 @@ export const SCENERY = {
   skyR: 12000,
 };
 
-function canvasTex(w, h, draw, { repeat = true, tile = 1 } = {}) {
+export function canvasTex(w, h, draw, { repeat = true, tile = 1 } = {}) {
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
@@ -211,7 +212,7 @@ function cloudTexture() {
  *   2 枚で xc ± W/2 を常に覆う。reach [m] を指定すると最後部のパノラマ車窓から見える
  *   後方（+X）の reach m 先までを覆うよう枚数を増やす（見えない分は視錐台カリングで描かれない）。
  */
-class LoopLayer {
+export class LoopLayer {
   constructor(geometry, material, W, name, { reach = 0, Ctor = THREE.Mesh } = {}) {
     this.W = W;
     this.n = 2 + Math.ceil(Math.max(0, reach - W / 2) / W);
@@ -236,7 +237,7 @@ class LoopLayer {
 }
 
 /** 周期 W で滑らかにつながる 1 次元ノイズ（整数倍の周波数の正弦の和） */
-function periodicNoise(W, seed, terms) {
+export function periodicNoise(W, seed, terms) {
   const r = rng(seed);
   const t = terms.map(([k, a]) => ({ k, a, ph: r() * Math.PI * 2 }));
   return (x) => t.reduce((s, { k, a, ph }) => s + a * Math.sin((x / W) * Math.PI * 2 * k + ph), 0);
@@ -351,9 +352,11 @@ export class WindowScenery {
       this._buildSide(s, opts.seed ?? 1);
       this.group = root;
       root.add(sg);
-      this.sides.push({ facing: s.facing, group: sg, layers: this.layers.slice(first) });
+      this.sides.push({ facing: s.facing, group: sg, layers: this.layers.slice(first), spec: s });
     }
     this.cullStats = { parts: 0, shown: 0 };
+    // 【v15】累積 km の景観 scene（data/scenery）。既定は既存の車窓（default）のまま
+    this.themes = new SceneryThemes(this);
   }
 
   /** 【v13】見える舷だけを描く（train.js が扉の開閉・いる場所から決める） */
@@ -397,12 +400,14 @@ export class WindowScenery {
     for (const side of this.sides) {
       if (!side.group.visible) continue;
       for (const { layer } of side.layers) {
+        if (!layer.group.visible) continue; // 【v15】この区間の景観に無い層
         const b = layer.box;
+        const dy = layer.group.position.y; // 【v15】出し入れ中（沈んでいる量）
         for (const m of layer.parts) {
           parts++;
           const dx = m.position.x;
-          _box.min.set(b.min.x + dx, b.min.y, b.min.z);
-          _box.max.set(b.max.x + dx, b.max.y, b.max.z);
+          _box.min.set(b.min.x + dx, b.min.y + dy, b.min.z);
+          _box.max.set(b.max.x + dx, b.max.y + dy, b.max.z);
           let vis = _frustum.intersectsBox(_box);
           if (vis && usePortal) {
             // 窓の面より外側（z < portal.z）の奥行きの範囲 → 窓枠の左右の端を通る視線が届く x の範囲
@@ -468,16 +473,22 @@ export class WindowScenery {
       this.group.add(fixed.build(this.mats, 'viaduct'));
     }
 
+    // 【v15】既存の層に景観テーマの名前を付ける（scenerythemes.js が区間の scene に応じて出し入れする）
+    const tag = (name, fn) => {
+      const a = this.layers.length;
+      fn();
+      for (let i = a; i < this.layers.length; i++) this.layers[i].theme = name;
+    };
     // ---- 街（近い） ----
-    this._city(s, r, { d0: 18, d1: 260, W: this._W(260, s), density: s.lite ? 0.8 : 1, near: true }, z, cy, xc);
+    tag('cityNear', () => this._city(s, r, { d0: 18, d1: 260, W: this._W(260, s), density: s.lite ? 0.8 : 1, near: true }, z, cy, xc));
     // ---- 街（遠い）。左舷（廊下・ラウンジの左舷の窓）は少しまばらに ----
-    this._city(s, r, { d0: 260, d1: 1000, W: this._W(1000, s), density: s.lite ? 0.55 : 1, near: false }, z, cy, xc);
+    tag('cityFar', () => this._city(s, r, { d0: 260, d1: 1000, W: this._W(1000, s), density: s.lite ? 0.55 : 1, near: false }, z, cy, xc));
     // ---- 緑の山（右舷だけ） ----
-    if (!s.lite) this._mountains(z, cy, xc, seed);
+    if (!s.lite) tag('defMountains', () => this._mountains(z, cy, xc, seed));
     // ---- 遠くの街の光（夜・夕方。点の集まり） ----
-    this._farLights(s, z, cy, xc, seed);
+    tag('farLights', () => this._farLights(s, z, cy, xc, seed));
     // ---- 遠い山並み（両側） ----
-    this._ridge(s, z, cy, xc, seed);
+    tag('ridge', () => this._ridge(s, z, cy, xc, seed));
 
     // ---- 雲（1 枚の半透明板。テクスチャを流す） ----
     {
@@ -715,6 +726,7 @@ export class WindowScenery {
       cl.mesh.material.opacity = L.cloudOpacity;
     }
     this.speed = L.speed ?? this.speed;
+    this.themes?.applyLook(L); // 【v15】海・田園・山・島影の色（timeMode と独立に組み合わせる）
   }
 
   /** QA・演出用：景色の位置を任意の距離へ（例：山の区間を確認） */
@@ -738,9 +750,11 @@ export class WindowScenery {
       // 板の向きで UV の向きが反転する（facing +1 は 180° 回している）
       t.offset.x = ((((cl.facing < 0 ? -1 : 1) * this.offset) / cl.tile) % 1 + 1) % 1;
     }
+    this.themes?.update(dt); // 【v15】景観テーマの出し入れ・水面と田園の流れ
   }
 
   dispose() {
+    this.themes?.dispose();
     this.group.traverse((o) => {
       if (o.isMesh) o.geometry.dispose();
     });

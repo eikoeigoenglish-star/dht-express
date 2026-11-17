@@ -704,11 +704,16 @@ export class TrainInterior {
   /* ==================================================================== */
   /* 入退室・時間帯                                                          */
   /* ==================================================================== */
-  /** @param {{ timeMode?: string }} [opts] timeMode は MAP の tod.mode */
+  /**
+   * @param {{ timeMode?: string, km?: number, sceneryPlan?: import('../sceneryplan.js').SceneryPlan }} [opts]
+   *   timeMode は MAP の tod.mode。km は【v15】いまの累積 km（車窓の景観 scene を決める。timeMode とは独立）
+   */
   enter(opts = {}) {
     this.build();
     this.active = true;
     this.setTimeMode(opts.timeMode ?? 'day');
+    if (opts.sceneryPlan) this.sceneryPlan = opts.sceneryPlan;
+    this.setJourneyKm(opts.km ?? this.journeyKm ?? 0, { instant: true });
     const p = this.player;
     p.pos.set(SPAWN.x, 0, SPAWN.z);
     p.speed = p.angVel = 0;
@@ -759,6 +764,20 @@ export class TrainInterior {
       this.renderer.toneMapping = this._prevTone.tm;
       this.renderer.toneMappingExposure = this._prevTone.ex;
     }
+  }
+
+  /**
+   * 【v15】累積 km → 車窓の景観（data/scenery の区間・preset。境界 ±1 km はクロスフェード）。
+   * 乗車時は即座に、乗車中に変えたとき（DHT.interior.setJourneyKm(…) など）は約 1.2 秒で入れ替える。
+   */
+  setJourneyKm(km, { instant = false } = {}) {
+    this.journeyKm = Number(km) || 0;
+    const plan = this.sceneryPlan;
+    if (!plan?.ready || !this.scenery?.themes) return null;
+    const r = plan.resolve(this.journeyKm);
+    this.scenery.themes.setScene(r, { instant });
+    this.sceneId = r.t > 0 && r.t < 1 ? `${r.from.id}→${r.to.id}` : r.sceneId;
+    return r;
   }
 
   /** 時間帯（MAP と同じ 4 モード名）。車窓・室内の照明・住人の明るさを切り替える */
