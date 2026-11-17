@@ -35,7 +35,7 @@ import { buildCompartment } from './compartment.js';
 import { buildLounge, HOLOGRAM_POS } from './lounge.js';
 import { Hologram } from './hologram.js';
 import { DohentaiSource } from './data/dohentai.js';
-import { H, WALL, COMP, COMPARTMENTS, CORRIDOR, DOOR, LOUNGE, LOUNGE_DOOR, CREW_DOOR, SPAWN, zoneAt } from './layout.js';
+import { H, WALL, COMP, COMPARTMENTS, CORRIDOR, DOOR, LOUNGE, LOUNGE_DOOR, CREW_DOOR, SPAWN, ZONES, JUMP_POINTS, zoneAt } from './layout.js';
 import { TouchControls } from './touch.js';
 import { isTouchUI, onTouchUIChange } from '../device.js';
 
@@ -178,6 +178,18 @@ export class TrainInterior {
         const r = def.radius;
         const col = new Collider(def.seat.x - r, def.seat.x + r, def.seat.z - r, def.seat.z + r, 0, 1.7, { occlude: false, name: `${id}:body` });
         col.wall = true; // カメラも体の中へ入れない
+        this.colliders.push(col);
+      }
+      // 【v14】床に伏せる動物（Room 3 の仔馬）：体の範囲に当たり判定（葉っぱもカメラも体の中へ入らない）
+      if (def.footprint) {
+        const f = def.footprint;
+        const ca = Math.abs(Math.cos(c.facing));
+        const sa = Math.abs(Math.sin(c.facing));
+        // 前後 = facing の向き、左右 = その直角。回した箱を軸にそろえた箱で包む
+        const ex = sa * f.hx + ca * f.hz;
+        const ez = ca * f.hx + sa * f.hz;
+        const col = new Collider(def.seat.x - ex, def.seat.x + ex, def.seat.z - ez, def.seat.z + ez, 0, f.h, { occlude: false, name: `${id}:body` });
+        col.wall = true;
         this.colliders.push(col);
       }
       if (def.model) c.loadModel(def.model);
@@ -738,6 +750,7 @@ export class TrainInterior {
     this._listen(false);
     this._closeTalk();
     this._closeHolo();
+    this._toggleZoneMenu(false);
     this.keys.clear();
     this.hud.hidden = true;
     this.$prompt.classList.remove('is-on');
@@ -800,6 +813,42 @@ export class TrainInterior {
     if (this.$stats) this.$stats.hidden = !new URLSearchParams(location.search).has('stats');
     if (this.$stats?.hidden) this.$stats = null;
     this.$talk.addEventListener('click', () => this._advanceTalk());
+    // 【v14】現在地メニュー（部屋名の ▾ から Room 1〜3・Corridor・Dining & Lounge へ瞬時に移動）
+    this.$zoneBtn = $('[data-room1="zone-btn"]');
+    this.$zoneMenu = $('[data-room1="zone-menu"]');
+    if (this.$zoneBtn && this.$zoneMenu) {
+      this.$zoneMenu.innerHTML = ZONES.map((z) => `<li><button type="button" role="menuitem" data-zone="${z.id}">${z.label}</button></li>`).join('');
+      this.$zoneBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._toggleZoneMenu();
+      });
+      this.$zoneMenu.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-zone]');
+        if (!b) return;
+        e.stopPropagation();
+        this._toggleZoneMenu(false);
+        this.jumpTo(b.dataset.zone);
+        b.blur();
+        this.$zoneBtn.blur();
+        this.canvas.focus?.({ preventScroll: true });
+      });
+      this.$zoneMenu.addEventListener('keydown', (e) => {
+        const items = [...this.$zoneMenu.querySelectorAll('[data-zone]')];
+        const i = items.indexOf(document.activeElement);
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]?.focus();
+        } else if (e.key === 'Escape') {
+          this._toggleZoneMenu(false);
+          this.$zoneBtn.focus();
+        } else return;
+        e.preventDefault();
+        e.stopPropagation();
+      });
+      // メニューの外を押したら閉じる
+      document.addEventListener('pointerdown', (e) => {
+        if (this._zoneMenuOpen && !e.target.closest?.('[data-room1="zone-menu"], [data-room1="zone-btn"]')) this._toggleZoneMenu(false);
+      });
+    }
     this.$holo.querySelector('[data-act="close"]').addEventListener('click', () => this._closeHolo());
     // 【v13】タッチ端末：仮想スティック・右下のボタン。相手の上の表示（話しかける など）もタップできる
     this.touch = new TouchControls({
@@ -814,6 +863,11 @@ export class TrainInterior {
     this._onKeyDown = (e) => {
       if (!this.active) return;
       if (e.target instanceof HTMLInputElement) return;
+      // 【v14】現在地メニューを開いている間は、矢印キー・Enter・Space はメニューの操作に使う
+      if (this._zoneMenuOpen || e.target.closest?.('[data-room1="zone-btn"]')) {
+        if (e.code === 'Escape' && this._zoneMenuOpen) this._toggleZoneMenu(false);
+        if (this._zoneMenuOpen || ['Enter', 'Space'].includes(e.code)) return;
+      }
       const k = KEYS[e.code];
       if (k) {
         this.keys.add(k);
@@ -1236,7 +1290,9 @@ export class TrainInterior {
       c.update(dt, c._hl || talking);
       const toLeaf = Math.atan2(-(pp.x - c.def.seat.x), -(pp.z - c.def.seat.z));
       if (c.turnsBody) {
-        const want = talking ? toLeaf : c.facing;
+        let want = talking ? toLeaf : c.facing;
+        // 【v14】ソファーの背・本棚へめり込まないよう、向きを変える角度に上限（Room 3 の 4 匹）
+        if (talking && c.def.turnLimit != null) want = c.facing + THREE.MathUtils.clamp(wrapA(toLeaf - c.facing), -c.def.turnLimit, c.def.turnLimit);
         c.group.rotation.y += wrapA(want - c.group.rotation.y) * damp(5, dt);
       } else {
         // 人は首だけ：近くにいる・話しているときは葉っぱの方へ
@@ -1279,6 +1335,45 @@ export class TrainInterior {
     }
     this.camera.fov = fov;
     this.camera.updateProjectionMatrix();
+  }
+
+  /**
+   * 【v14】左上の現在地メニュー：Room 1 / Room 2 / Room 3 / Corridor / Dining & Lounge へ瞬時に移動（フェードなし）。
+   *   扉の開閉はそのまま。見える区画・照明・部屋名は次のフレームの update で新しい場所に合わせて切り替わる。
+   */
+  jumpTo(zoneId) {
+    const j = JUMP_POINTS[zoneId];
+    if (!j || !this._built) return false;
+    this._closeTalk();
+    this._closeHolo();
+    this.overview = false;
+    this.keys.clear();
+    const heading = j.heading ?? Math.atan2(-(j.lookX - j.x), -(j.lookZ - j.z));
+    this.teleport(j.x, j.z, heading);
+    this.viewPitch = CAM.pitch;
+    this.camDist = CAM.dist;
+    // 部屋名・照明をすぐ切り替える（update を待たない）
+    this.zone = null;
+    this._visKey = null;
+    if (this.active) this.update(0);
+    return true;
+  }
+
+  /** 【v14】左上の現在地メニューの開閉 */
+  _toggleZoneMenu(open = !this._zoneMenuOpen) {
+    if (!this.$zoneMenu) return;
+    this._zoneMenuOpen = open;
+    this.$zoneMenu.hidden = !open;
+    this.$zoneBtn.setAttribute('aria-expanded', String(open));
+    if (open) {
+      const cur = this.zone?.id;
+      for (const li of this.$zoneMenu.querySelectorAll('[data-zone]')) {
+        const here = li.dataset.zone === cur;
+        li.classList.toggle('is-here', here);
+        li.setAttribute('aria-current', here ? 'location' : 'false');
+      }
+      (this.$zoneMenu.querySelector('.is-here') ?? this.$zoneMenu.querySelector('[data-zone]'))?.focus({ preventScroll: true });
+    }
   }
 
   /** QA・確認用：葉っぱを任意の位置へ（x, z, heading） */

@@ -18,6 +18,8 @@ import { asset } from '../config.js';
 import { bubbleTexture, nameTagTexture, radialTexture, lapBlanketTexture } from './textures.js';
 import { COMPARTMENTS, BENCH } from './layout.js';
 import { lapBlanketGeometry } from './blanket.js';
+import { applyQuadPose, filterIdle, bodyMinY, poseTail } from './quadpose.js';
+import { isTouchUI } from '../device.js';
 
 const SEAT_Y = BENCH.seatTop;
 /** リンさんの席（個室の中心からの x・窓からの z）。x は背もたれの手前、z はクッション（0.92 / 1.8）の間 */
@@ -29,6 +31,21 @@ export function seatAt(roomId, side, slot) {
   const z = { window: 0.42, center: 0.95, aisle: 1.42 }[slot];
   const s = side === 'L' ? -1 : 1;
   return { x: cx + s * 1.74, y: SEAT_Y, z, facing: s < 0 ? -Math.PI / 2 : Math.PI / 2 };
+}
+
+/** 座席の位置から (tx, tz) を向く facing（0 = -Z = 車窓、+π/2 = -X、-π/2 = +X） */
+function faceToward(x, y, z, tx, tz) {
+  return { x, y, z, facing: Math.atan2(-(tx - x), -(tz - z)) };
+}
+
+/**
+ * 【v14】Room 3 のソファーの上（座面の奥行きの中央）。部屋の中央 (cx, lookZ) を向く
+ *   side：L = 先頭側（-X）、R = 後方側（+X）。z：窓からの距離（窓側 0.45 / 廊下側 1.42）
+ */
+function room3Seat(side, z, dx, lookZ) {
+  const cx = COMPARTMENTS[2].cx;
+  const s = side === 'L' ? -1 : 1;
+  return faceToward(cx + s * (1.67 + dx), SEAT_Y, z, cx, lookZ);
 }
 
 export const ROOM_CHARACTERS = {
@@ -90,12 +107,58 @@ export const ROOM_CHARACTERS = {
       lines: ['ワン！ ぼくはこの部屋の見張り番。', 'ドアの向こうは廊下だよ。E で開けられるよ。'],
     },
   },
-  // 将来の住人（今は乗っていない）。enabled: true + model を入れるだけで座る
+  // 【v14】Room 3 の 4 匹（GLB は添付のまま。座り・伏せのクリップは無い）
+  //   猫・赤ちゃん虎・ウサギ … ソファーの上で GLB の idle（デフォルトの姿勢）。座面の奥行き（約 0.5 m）に収まるよう、
+  //                            部屋の中央へ斜めに向ける
+  //   仔馬 … 先頭側（-X）の本棚の前の床に、四肢を折りたたんで伏せる（quadpose.js の foalRest）
+  //   height … idle の姿勢での高さ [m]（耳の先まで）。standHeight … 伏せる前の立ち姿の高さ [m]（仔馬）
+  //   turnLimit … 話しかけたとき体ごと向きを変える角度の上限 [rad]（ソファーの背・本棚へめり込まない）
   room3: {
-    cat: { name: '猫', enabled: false, model: null, height: 0.46, color: '#9a8a7a', seat: seatAt('room3', 'L', 'aisle'), lines: ['にゃあ。'] },
-    pony: { name: '仔馬', enabled: false, model: null, height: 0.62, color: '#b88a5a', seat: seatAt('room3', 'L', 'window'), lines: ['ヒヒン。'] },
-    tiger: { name: '赤ちゃん虎', enabled: false, model: null, height: 0.5, color: '#e09a4a', seat: seatAt('room3', 'R', 'window'), lines: ['がおー（小声）'] },
-    rabbit: { name: 'ウサギ', enabled: false, model: null, height: 0.44, color: '#efe8e0', seat: seatAt('room3', 'R', 'aisle'), lines: ['ぴょん。'] },
+    cat: {
+      name: '猫',
+      model: 'models/characters/hachiware_cat.glb',
+      height: 0.46,
+      color: '#3a3a3a',
+      seat: room3Seat('L', 0.45, 0, 1.35), // 先頭側・窓側のソファー
+      turnLimit: 0.6,
+      maxTex: 2048,
+      lines: ['にゃあ。窓の外、ずっと見ていられるにゃ。', 'このソファー、日なたでぽかぽかするんだよ。'],
+    },
+    pony: {
+      name: '仔馬',
+      model: 'models/characters/kouma.glb',
+      pose: 'foalRest', // 床に伏せる（座ったポーズ）。ソファーには乗らない
+      standHeight: 0.9, // 立ったときの高さ（伏せると約 0.55 m）
+      height: 0.56,
+      color: '#c98a4a',
+      // 先頭側の本棚（x = cx-2.1〜cx-1.68, z = 2.1〜2.76）の前の床。体は本棚と平行、頭は部屋の中央へ少し向ける
+      seat: faceToward(COMPARTMENTS[2].cx - 1.08, 0, 2.47, COMPARTMENTS[2].cx + 1.2, 1.95),
+      footprint: { hx: 0.58, hz: 0.28, h: 0.78 }, // 葉っぱ・カメラが体の中へ入らない当たり判定
+      talkAhead: 0.7,
+      turnLimit: 0.25,
+      maxTex: 2048,
+      lines: ['ヒヒン。ぼくは体が大きいから、床でのんびりしてるんだ。', '本棚の絵本、あとで読んでくれる？'],
+    },
+    tiger: {
+      name: '赤ちゃん虎',
+      model: 'models/characters/baby_tiger.glb',
+      height: 0.52,
+      color: '#e09a4a',
+      seat: room3Seat('R', 0.45, 0, 1.35), // 後方側・窓側のソファー
+      turnLimit: 0.6,
+      maxTex: 2048,
+      lines: ['がおー（小声）', 'しましま、かっこいいでしょ？'],
+    },
+    rabbit: {
+      name: 'ウサギ',
+      model: 'models/characters/rabbit.glb',
+      height: 0.46,
+      color: '#efe0cc',
+      seat: room3Seat('R', 1.42, 0, 1.25), // 後方側・廊下側のソファー
+      turnLimit: 0.6,
+      maxTex: 2048,
+      lines: ['ぴょん。廊下の足音、ちゃんと聞こえてるよ。', 'にんじんのケーキ、ラウンジにあるかなあ。'],
+    },
   },
 };
 
@@ -175,6 +238,7 @@ export class RoomCharacter {
     try {
       const gltf = await _loader().loadAsync(url.startsWith('http') || url.startsWith('blob:') ? url : asset(url));
       const root = gltf.scene;
+      if (this.def.maxTex) await capTextures(root, isTouchUI() ? Math.min(1024, this.def.maxTex) : this.def.maxTex);
       root.traverse((o) => {
         if (o.isMesh) {
           if (this.def.hideMeshes?.some((n) => o.name.startsWith(n) || o.parent?.name?.startsWith(n))) o.visible = false;
@@ -203,11 +267,13 @@ export class RoomCharacter {
   /** 動物：座りのクリップを再生し、ポーズを当てた形を測って座面に置く */
   _seatAnimal(holder, yawed, root, clips) {
     const pick = (names) => names.map((n) => clips.find((c) => c.name === n)).find(Boolean);
-    const body = pick(this.def.clips ?? ['SitIdle', 'Sit', 'Idle']) ?? clips[0];
+    const quad = this.def.pose; // 【v14】クリップに無い姿勢（仔馬の伏せ）は骨を回して付ける（quadpose.js）
+    let body = pick(this.def.clips ?? ['SitIdle', 'Sit', 'Idle', 'idle']) ?? clips[0];
+    if (body && quad) body = filterIdle(body); // 脚・しっぽは姿勢のまま、首・頭・耳だけ idle で動かす
     if (body) {
       const mixer = new THREE.AnimationMixer(root);
       mixer.clipAction(body).play();
-      const blink = pick(['Expr_Blink']);
+      const blink = pick(['Expr_Blink', 'blink']);
       if (blink && blink !== body) {
         const act = mixer.clipAction(blink);
         act.setLoop(THREE.LoopOnce, 1);
@@ -223,11 +289,25 @@ export class RoomCharacter {
       return new THREE.Box3().setFromObject(holder, true);
     };
     let bb = measure();
-    const s = (this.def.height ?? 0.5) / Math.max(1e-3, bb.max.y - bb.min.y);
-    root.scale.multiplyScalar(s);
-    bb = measure();
-    const c = bb.getCenter(new THREE.Vector3());
-    yawed.position.set(-c.x, -bb.min.y - 0.01, -c.z);
+    if (quad) {
+      // 立ち姿の高さで大きさを決めてから伏せる → しっぽ以外のいちばん低い点を床へ、しっぽを床に沿わせる
+      root.scale.multiplyScalar((this.def.standHeight ?? 0.8) / Math.max(1e-3, bb.max.y - bb.min.y));
+      holder.updateMatrixWorld(true);
+      applyQuadPose(root, quad, yawed.quaternion);
+      holder.updateMatrixWorld(true);
+      const floor = bodyMinY(root);
+      poseTail(root, quad, floor, (this.def.standHeight ?? 0.8) * 0.05, yawed.quaternion);
+      bb = measure();
+      const c = bb.getCenter(new THREE.Vector3());
+      yawed.position.set(-c.x, -floor - 0.005, -c.z);
+      this.posedHeight = bb.max.y - floor;
+    } else {
+      const s = (this.def.height ?? 0.5) / Math.max(1e-3, bb.max.y - bb.min.y);
+      root.scale.multiplyScalar(s);
+      bb = measure();
+      const c = bb.getCenter(new THREE.Vector3());
+      yawed.position.set(-c.x, -bb.min.y - 0.01, -c.z);
+    }
     if (this.def.offset) yawed.position.add(new THREE.Vector3(...this.def.offset));
   }
 
@@ -478,6 +558,42 @@ function measureLap(holder, kneeZ) {
     if (y > -Infinity) profile.push([z0 + b * STEP, y]);
   });
   return { profile, lapHalf: lapHalf || undefined, hemZ: Number.isFinite(hemZ) ? hemZ : undefined };
+}
+
+/**
+ * 【v14】大きすぎるテクスチャ（4096 px）を読み込み時に縮める（GLB のファイルはそのまま）。
+ *   住人の画面上の大きさでは 2048 px（タッチ端末は 1024 px）で見た目は変わらず、GPU メモリを 1/4〜1/16 に抑える。
+ */
+async function capTextures(root, max) {
+  const seen = new Set();
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    for (const m of [o.material].flat()) for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap']) if (m?.[k]) seen.add(m[k]);
+  });
+  // 同じ画像を複数のテクスチャが共有していることがある（kouma.glb の目とまぶた）ので画像ごとに 1 回だけ縮める
+  const byImage = new Map();
+  for (const t of seen) {
+    const img = t.image;
+    if (!img || Math.max(img.width ?? 0, img.height ?? 0) <= max) continue;
+    if (!byImage.has(img)) byImage.set(img, []);
+    byImage.get(img).push(t);
+  }
+  if (typeof createImageBitmap !== 'function') return;
+  await Promise.all(
+    [...byImage].map(async ([img, texs]) => {
+      const k = max / Math.max(img.width, img.height);
+      try {
+        const bmp = await createImageBitmap(img, { resizeWidth: Math.round(img.width * k), resizeHeight: Math.round(img.height * k), resizeQuality: 'high', imageOrientation: 'none' });
+        for (const t of texs) {
+          t.image = bmp;
+          t.needsUpdate = true;
+        }
+        img.close?.();
+      } catch {
+        /* 縮められない環境ではそのまま */
+      }
+    }),
+  );
 }
 
 const _tex = {};

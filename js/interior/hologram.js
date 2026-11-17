@@ -314,6 +314,165 @@ export class Hologram {
     g.fillText('近づいて E：すべての記録を見る', CW - 34, CH - 44);
   }
 
+  /** 【v14】車内 CM：スポンサー名・新発売の品・「リンさんだけ」の特典（右に線画のアイコン） */
+  _slide_cm(g, s) {
+    g.textAlign = 'left';
+    g.fillStyle = GOLD;
+    g.font = `700 13px ui-monospace, Menlo, monospace`;
+    g.fillText('FOREST SCHOOL EXPRESS · CM', 34, 44);
+    g.fillStyle = MINT;
+    g.font = this._font(700, s.sponsor.length > 8 ? 26 : 30);
+    g.fillText(s.sponsor, 34, 82);
+    // 新発売の品（金の小さな帯）
+    g.font = this._font(700, 18);
+    const pw = g.measureText(s.product).width + 24;
+    g.fillStyle = 'rgba(243,213,140,0.16)';
+    g.strokeStyle = GOLD;
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.roundRect(34, 96, pw, 30, 15);
+    g.fill();
+    g.stroke();
+    g.fillStyle = GOLD;
+    g.fillText(s.product, 46, 118);
+    if (s.sub) {
+      g.font = this._font(500, 14);
+      g.fillStyle = AQUA;
+      g.fillText(s.sub, 34, 150);
+    }
+    this._cmIcon(g, s.icon, CW - 104, 112);
+    // 特典の枠（リンさんだけ）
+    const bx = 34;
+    const by = 170;
+    const bw = CW - 68;
+    const lines = s.offer ?? [];
+    const bh = 34 + lines.length * 32;
+    g.fillStyle = 'rgba(166,243,226,0.1)';
+    g.strokeStyle = MINT;
+    g.lineWidth = 2;
+    g.beginPath();
+    g.roundRect(bx, by, bw, bh, 12);
+    g.fill();
+    g.stroke();
+    g.font = this._font(700, 14);
+    const lw = g.measureText(s.offerLabel).width + 20;
+    g.fillStyle = GOLD;
+    g.beginPath();
+    g.roundRect(bx + 14, by - 11, lw, 24, 12);
+    g.fill();
+    g.fillStyle = '#123430';
+    g.fillText(s.offerLabel, bx + 24, by + 6);
+    g.fillStyle = MINT;
+    lines.forEach((t, i) => {
+      // 枠に収まる大きさで（長い行は少し小さく）
+      let px = 24;
+      g.font = this._font(700, px);
+      while (g.measureText(t).width > bw - 40 && px > 16) g.font = this._font(700, --px);
+      g.fillText(t, bx + 20, by + 44 + i * 32);
+    });
+  }
+
+  /** CM の線画アイコン（ホログラムらしく線と淡い塗りだけ） */
+  _cmIcon(g, kind, x, y) {
+    g.save();
+    g.translate(x, y);
+    g.strokeStyle = MINT;
+    g.fillStyle = 'rgba(166,243,226,0.16)';
+    g.lineWidth = 2.4;
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    const steam = (xs, y0) => {
+      g.strokeStyle = AQUA;
+      for (const sx of xs) {
+        g.beginPath();
+        g.moveTo(sx, y0);
+        g.bezierCurveTo(sx - 8, y0 - 10, sx + 8, y0 - 18, sx, y0 - 30);
+        g.stroke();
+      }
+      g.strokeStyle = MINT;
+    };
+    if (kind === 'bowl') {
+      // どんぶり + 湯気 + 唐辛子
+      g.beginPath();
+      g.moveTo(-46, 4);
+      g.lineTo(46, 4);
+      g.bezierCurveTo(44, 38, 22, 50, 0, 50);
+      g.bezierCurveTo(-22, 50, -44, 38, -46, 4);
+      g.fill();
+      g.stroke();
+      g.beginPath();
+      g.moveTo(-16, 52);
+      g.lineTo(16, 52);
+      g.stroke();
+      steam([-18, 0, 18], -4);
+      g.strokeStyle = GOLD;
+      g.beginPath();
+      g.moveTo(30, -2);
+      g.quadraticCurveTo(48, -14, 54, -36);
+      g.stroke();
+      g.beginPath();
+      g.moveTo(54, -36);
+      g.lineTo(58, -44);
+      g.stroke();
+    } else if (kind === 'soft') {
+      // ソフトクリーム（渦 3 段 + コーン）
+      g.beginPath();
+      g.moveTo(-20, 8);
+      g.lineTo(0, 56);
+      g.lineTo(20, 8);
+      g.closePath();
+      g.fill();
+      g.stroke();
+      g.beginPath();
+      g.moveTo(-10, 18);
+      g.lineTo(6, 34);
+      g.moveTo(10, 18);
+      g.lineTo(-4, 32);
+      g.stroke();
+      for (const [w, yy] of [[30, 2], [24, -16], [16, -32]]) {
+        g.beginPath();
+        g.ellipse(0, yy, w, 11, 0, 0, Math.PI * 2);
+        g.fill();
+        g.stroke();
+      }
+      g.beginPath();
+      g.moveTo(0, -42);
+      g.quadraticCurveTo(4, -52, -2, -58);
+      g.stroke();
+    } else {
+      // カレー皿（ごはんの丘 + ルウ + スプーン）
+      g.beginPath();
+      g.ellipse(0, 24, 56, 18, 0, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+      g.beginPath();
+      g.ellipse(0, 20, 44, 12, 0, 0, Math.PI * 2);
+      g.stroke();
+      g.beginPath();
+      g.moveTo(-34, 18);
+      g.bezierCurveTo(-30, -6, -6, -8, 2, 12);
+      g.stroke();
+      g.strokeStyle = GOLD;
+      g.beginPath();
+      g.ellipse(18, 16, 4, 6, 0.6, 0, Math.PI * 2);
+      g.stroke();
+      g.beginPath();
+      g.moveTo(22, 10);
+      g.lineTo(26, 4);
+      g.stroke();
+      g.strokeStyle = MINT;
+      g.beginPath();
+      g.moveTo(40, -2);
+      g.lineTo(62, -30);
+      g.stroke();
+      g.beginPath();
+      g.ellipse(38, 2, 6, 9, 0.65, 0, Math.PI * 2);
+      g.stroke();
+      steam([-14, 4], 2);
+    }
+    g.restore();
+  }
+
   _drawStats(g) {
     this._title(g, 'ド変態カウンター', `${this.data.target}への「ド変態」の回数${this.data.isMock ? '（仮データ）' : ''}`);
     this._bars(g, this.data.entries, 122, 26, false);
