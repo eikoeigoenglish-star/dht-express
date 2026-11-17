@@ -417,3 +417,42 @@ body.is-touch .holo-panel__close { min-height: 44px; padding: 0 20px; }
   body.is-touch .room-hud__back { padding: 0 12px; font-size: 12px; }
   body.is-touch .room-hud__help { right: calc(var(--sr) + 112px); }
 }
+
+/* v14: 現在地プレートの移動メニュー（部屋名の ▾ → Room 1〜3・Corridor・Dining & Lounge） */
+.room-hud__zone {
+  appearance: none; display: flex; align-items: center; gap: 8px; margin: 0; padding: 0 2px 0 0; border: 0; background: none; cursor: pointer;
+  color: inherit; font: inherit; text-align: left; border-radius: 8px;
+}
+.room-hud__zone b { min-width: 0; }
+.room-hud__chev {
+  flex: none; width: 20px; height: 20px; border-radius: 999px; border: 1px solid rgba(201, 163, 90, 0.75); position: relative; top: 1px;
+  transition: background 0.15s, transform 0.2s;
+}
+.room-hud__chev::before {
+  content: ''; position: absolute; left: 50%; top: 45%; width: 6px; height: 6px; border: solid var(--fs-green-ink); border-width: 0 2px 2px 0;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.room-hud__zone:hover .room-hud__chev, .room-hud__zone[aria-expanded="true"] .room-hud__chev { background: rgba(201, 163, 90, 0.22); }
+.room-hud__zone[aria-expanded="true"] .room-hud__chev { transform: rotate(180deg); }
+.room-hud__zone:focus-visible { outline: 2px solid var(--fs-brass); outline-offset: 3px; }
+.room-hud__menu {
+  position: absolute; left: 0; top: calc(100% + 6px); min-width: 100%; box-sizing: border-box; margin: 0; padding: 6px; list-style: none; z-index: 2;
+  background: rgba(247, 241, 225, 0.97); border: 1px solid rgba(201, 163, 90, 0.6); border-radius: 14px; box-shadow: 0 8px 24px rgba(30, 20, 10, 0.3);
+}
+.room-hud__menu[hidden] { display: none; }
+.room-hud__menu button {
+  appearance: none; display: flex; align-items: center; gap: 10px; width: 100%; margin: 0; padding: 9px 12px; border: 0; border-radius: 9px; background: none; cursor: pointer;
+  color: var(--fs-green-ink); font: 700 15px/1.2 var(--fs-serif); text-align: left; white-space: nowrap;
+}
+.room-hud__menu button::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid rgba(201, 163, 90, 0.9); }
+.room-hud__menu button:hover, .room-hud__menu button:focus-visible { background: rgba(63, 107, 69, 0.12); outline: none; }
+.room-hud__menu button[aria-current="location"] { color: var(--fs-green); }
+.room-hud__menu button[aria-current="location"]::before { background: var(--fs-green); border-color: var(--fs-green); }
+.room-hud__menu button[aria-current="location"]::after { content: '現在地'; margin-left: auto; padding-left: 12px; font: 700 10px/1 var(--font); letter-spacing: 0.08em; color: #8a7a52; }
+body.is-touch .room-hud__chev { width: 22px; height: 22px; }
+body.is-touch .room-hud__zone { min-height: 30px; }
+body.is-touch .room-hud__menu button { min-height: 44px; font-size: 15px; }
+@media (orientation: landscape) and (max-height: 540px) {
+  body.is-touch .room-hud__menu { padding: 4px; }
+  body.is-touch .room-hud__menu button { min-height: 40px; padding: 6px 12px; }
+}
