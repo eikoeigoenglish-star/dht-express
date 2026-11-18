@@ -94,6 +94,35 @@ export function plankTexture() {
   return tex(c, 1.28);
 }
 
+/** 【v16】船の甲板（チーク材：明るい茶の細い板 + 黒いコーキングの目地）。tile 1.28 m */
+export function deckTexture() {
+  const S = 512;
+  const [c, g] = canvas(S);
+  const r = rng(1607);
+  const n = 12;
+  const pw = S / n;
+  for (let i = 0; i < n; i++) {
+    const l = 0.88 + r() * 0.18;
+    g.fillStyle = `rgb(${Math.round(176 * l)},${Math.round(128 * l)},${Math.round(82 * l)})`;
+    g.fillRect(0, i * pw, S, pw);
+    for (let k = 0; k < 10; k++) {
+      g.strokeStyle = `rgba(90,55,25,${0.05 + r() * 0.08})`;
+      g.lineWidth = 1 + r() * 1.5;
+      const y = i * pw + r() * pw;
+      g.beginPath();
+      g.moveTo(0, y);
+      g.bezierCurveTo(S * 0.3, y + (r() - 0.5) * 4, S * 0.6, y + (r() - 0.5) * 4, S, y);
+      g.stroke();
+    }
+    g.fillStyle = 'rgba(25,20,15,0.85)';
+    g.fillRect(0, i * pw, S, 3); // コーキングの目地
+    const jx = r() * S;
+    g.fillRect(jx, i * pw, 2, pw);
+  }
+  noise(g, S, S, 0.05, 12, 2);
+  return tex(c, 1.28);
+}
+
 /** 緑の布（ベンチ）：細かい織り目とわずかなムラ。tile 0.5 m */
 export function fabricTexture(base = '#3f6b45') {
   const S = 256;

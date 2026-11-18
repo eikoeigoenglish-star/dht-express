@@ -408,7 +408,7 @@ export function buildLounge(b) {
 }
 
 /** 側壁（窓の穴・枠・窓台・カーテン） side: -1 = 右舷 z=0（内面 z0）, +1 = 左舷（内面 z1） */
-function sideWall(b, zi, side, wins) {
+export function sideWall(b, zi, side, wins) {
   const W = LOUNGE_WINDOWS;
   const { x0, x1 } = LOUNGE;
   const zo = zi + side * WALL;
@@ -444,7 +444,7 @@ function sideWall(b, zi, side, wins) {
 }
 
 /** 食堂の椅子（緑の革・木の枠・背に葉の紋章）。yaw = 座った人の正面（0 = -Z） */
-function diningChair(b, x, z, yaw) {
+export function diningChair(b, x, z, yaw) {
   const m = new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw), new THREE.Vector3(1, 1, 1));
   const put = (key, geo, lx, ly, lz, rx = 0, color) => {
     const g = geo;
@@ -464,7 +464,7 @@ function diningChair(b, x, z, yaw) {
 }
 
 /** 窓辺のアームチェア */
-function armchair(b, x, z, yaw) {
+export function armchair(b, x, z, yaw) {
   const m = new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw), new THREE.Vector3(1, 1, 1));
   const put = (key, geo, lx, ly, lz, rx = 0, color) => {
     geo.applyMatrix4(trs(lx, ly, lz, rx, 0, 0));

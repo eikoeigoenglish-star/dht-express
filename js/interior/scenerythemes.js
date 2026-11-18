@@ -383,7 +383,7 @@ export class SceneryThemes {
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     g.computeVertexNormals();
-    const L = new LoopLayer(g, this.mats.hill, W, 'theme-hills', { reach: this.sc.reach });
+    const L = new LoopLayer(g, this.mats.hill, W, 'theme-hills', { reach: this.sc.reach, front: this.sc.front });
     this.sc.layers.push({ layer: L, xc });
     this.sc.group.add(L.group);
   }

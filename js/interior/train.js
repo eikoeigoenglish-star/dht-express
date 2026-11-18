@@ -33,9 +33,10 @@ import { resolveRoomLook } from './looks.js';
 import { Builder } from './builder.js';
 import { buildCompartment } from './compartment.js';
 import { buildLounge, HOLOGRAM_POS } from './lounge.js';
+import { buildViewRoom } from './viewroom.js';
 import { Hologram } from './hologram.js';
 import { DohentaiSource } from './data/dohentai.js';
-import { H, WALL, COMP, COMPARTMENTS, CORRIDOR, DOOR, LOUNGE, LOUNGE_DOOR, CREW_DOOR, SPAWN, ZONES, JUMP_POINTS, zoneAt } from './layout.js';
+import { H, WALL, COMP, COMPARTMENTS, CORRIDOR, DOOR, LOUNGE, LOUNGE_DOOR, CREW_DOOR, SPAWN, ZONES, JUMP_POINTS, MENU_ZONES, VIEW, STAIR, CROSS, zoneAt } from './layout.js';
 import { TouchControls } from './touch.js';
 import { isTouchUI, onTouchUIChange } from '../device.js';
 
@@ -97,6 +98,15 @@ export class TrainInterior {
     this.visible = new Set(); // いま見えている区画（room1〜3 / corridor / lounge）
     this._visKey = null;
     this.res = { base: 1, level: 0, low: 0, high: 0, lockUntil: 0, raisedAt: -1e9 };
+    // 【v16】乗り物ごとの配置（船内 ship.js は同じクラスを継承して差し替える）
+    this.kind = 'train';
+    this.zoneAt = zoneAt;
+    this.zones = ZONES;
+    this.menuZones = MENU_ZONES;
+    this.spawn = SPAWN;
+    this.jumpPoints = JUMP_POINTS;
+    this.holoPos = HOLOGRAM_POS;
+    this.characterTable = undefined; // characters.js の ROOM_CHARACTERS（列車）
     this._v1 = new THREE.Vector3();
     this._v2 = new THREE.Vector3();
     this._ray = new THREE.Ray();
@@ -110,8 +120,27 @@ export class TrainInterior {
     const t0 = performance.now();
     this._makeMaterials();
     this._buildLights();
+    this._buildWorld();
+    this._buildSunPatch();
+    this._buildPlayer();
+    this._buildScenery();
+    this._buildHologram();
+    this._buildCharacters();
+    this.doorById = Object.fromEntries(this.doors.map((d) => [d.id, d]));
+    this.walls = this.colliders.filter((c) => c.wall);
+    this.modestChars = Object.values(this.characters).filter((c) => c.def.modestyRadius);
+    this.occluders = this.colliders.filter((c) => c.occlude && !c.wall);
+    this._makeEnvironment();
+    this._bindDom();
+    this._built = true;
+    this.buildMs = Math.round(performance.now() - t0);
+    console.info(`[interior:${this.kind}] built in ${this.buildMs} ms`);
+  }
 
+  /** 列車の内装（区画ごとに結合）・扉 */
+  _buildWorld() {
     // 【v13】部品は区画（shell / room1〜3 / corridor / lounge）ごとに結合し、見える区画だけを描く（_updateVisibility）
+    // 【v16】View Room（viewroom）・横通路・Lower Deck への階段を追加
     const b = new Builder(this.mats);
     this.comps = COMPARTMENTS.map((def) => {
       b.section(def.id);
@@ -119,34 +148,44 @@ export class TrainInterior {
     });
     b.section('corridor');
     this._buildCorridor(b);
+    this.view = buildViewRoom(b);
+    for (const p of this.view.plates) this.scene.add(p);
     b.section('lounge');
     this.lounge = buildLounge(b);
     this.scene.add(b.build('train'));
     this.sections = b.sections;
     this.colliders.push(...b.colliders);
     this._buildDoors(b);
-    this._buildSunPatch();
-    this._buildPlayer();
+    this.sunWindows = [...this.comps.map((c) => c.window), ...this.lounge.windows, ...this.view.windows];
+  }
 
+  /** 車窓（右舷・左舷）。【v16】View Room の前面展望窓から前方 front m 先まで景色を置く */
+  _buildScenery() {
     this.scenery = new WindowScenery({
       reach: 3200, // 最後部のパノラマ車窓から見える後方
+      front: 1600, // 【v16】View Room の前面展望窓から見える前方
       sides: [
         { facing: -1, z0: -WALL, xc: 4 }, // 右舷（個室・ラウンジの大きな窓）
         { facing: 1, z0: CORRIDOR.z1 + WALL, xc: 4, lite: true }, // 左舷（廊下・ラウンジの左舷の窓）
       ],
     });
     this.scene.add(this.scenery.group);
+  }
 
-    // ホログラム投影機
+  /** ホログラム投影機（Dining & Lounge） */
+  _buildHologram() {
+    const P = this.holoPos;
     this.holoSource = new DohentaiSource();
-    this.hologram = new Hologram({ position: HOLOGRAM_POS, mats: this.mats, source: this.holoSource });
+    this.hologram = new Hologram({ position: P, mats: this.mats, source: this.holoSource });
     this.scene.add(this.hologram.group);
-    this.colliders.push(new Collider(HOLOGRAM_POS.x - 0.42, HOLOGRAM_POS.x + 0.42, HOLOGRAM_POS.z - 0.42, HOLOGRAM_POS.z + 0.42, 0, 1.0, { occlude: false, name: 'hologram' }));
+    this.colliders.push(new Collider(P.x - 0.42, P.x + 0.42, P.z - 0.42, P.z + 0.42, 0, 1.0, { occlude: false, name: 'hologram' }));
     this.targets.push({ kind: 'holo', id: 'hologram', anchor: this.hologram.anchor, radius: 1.05, label: 'E：調べる', head: () => this.hologram.head });
+  }
 
-    // 住人
-    for (const { id, roomId, def } of listCharacters()) {
-      if (def.enabled === false) continue; // まだ乗っていない（Room 3 の 4 匹）
+  /** 住人（characters.js の表。列車 = ROOM_CHARACTERS） */
+  _buildCharacters() {
+    for (const { id, roomId, def } of listCharacters(this.characterTable)) {
+      if (def.enabled === false) continue; // まだ乗っていない
       const c = new RoomCharacter(id, def, roomId);
       this.characters[id] = c;
       this.scene.add(c.group);
@@ -180,7 +219,7 @@ export class TrainInterior {
         col.wall = true; // カメラも体の中へ入れない
         this.colliders.push(col);
       }
-      // 【v14】床に伏せる動物（Room 3 の仔馬）：体の範囲に当たり判定（葉っぱもカメラも体の中へ入らない）
+      // 【v14】床に伏せる動物（仔馬）：体の範囲に当たり判定（葉っぱもカメラも体の中へ入らない）
       if (def.footprint) {
         const f = def.footprint;
         const ca = Math.abs(Math.cos(c.facing));
@@ -188,22 +227,13 @@ export class TrainInterior {
         // 前後 = facing の向き、左右 = その直角。回した箱を軸にそろえた箱で包む
         const ex = sa * f.hx + ca * f.hz;
         const ez = ca * f.hx + sa * f.hz;
-        const col = new Collider(def.seat.x - ex, def.seat.x + ex, def.seat.z - ez, def.seat.z + ez, 0, f.h, { occlude: false, name: `${id}:body` });
+        const y0 = def.seat.y ?? 0;
+        const col = new Collider(def.seat.x - ex, def.seat.x + ex, def.seat.z - ez, def.seat.z + ez, 0, y0 + f.h, { occlude: false, name: `${id}:body` });
         col.wall = true;
         this.colliders.push(col);
       }
       if (def.model) c.loadModel(def.model);
     }
-
-    this.doorById = Object.fromEntries(this.doors.map((d) => [d.id, d]));
-    this.walls = this.colliders.filter((c) => c.wall);
-    this.modestChars = Object.values(this.characters).filter((c) => c.def.modestyRadius);
-    this.occluders = this.colliders.filter((c) => c.occlude && !c.wall);
-    this._makeEnvironment();
-    this._bindDom();
-    this._built = true;
-    this.buildMs = Math.round(performance.now() - t0);
-    console.info(`[interior] built in ${this.buildMs} ms`);
   }
 
   _makeMaterials() {
@@ -232,6 +262,8 @@ export class TrainInterior {
       ring: T.radialTexture(0, 1, true),
       banner: T.bannerTexture(),
       emblem: T.emblemTexture(),
+      quilt: T.fabricTexture('#ece6d8'), // 【v16】掛け布団（頂点カラーで深緑・アイボリーなどに）
+      deck: T.deckTexture(), // 【v16】船のチーク材の甲板
     });
     this.mats = {
       wood: std({ map: tx.wood, roughness: 0.55 }),
@@ -269,10 +301,17 @@ export class TrainInterior {
       cushion: std({ map: tx.cushion, roughness: 0.95 }),
       banner: std({ map: tx.banner, roughness: 0.9, transparent: false, alphaTest: 0.5, side: THREE.DoubleSide }),
       emblem: std({ map: tx.emblem, roughness: 0.4, metalness: 0.6, alphaTest: 0.5, side: THREE.DoubleSide }),
+      // 【v16】ベッド・船の外装（View Room・船内で使う。使わない区画では描かれない）
+      linen: std({ color: '#f3ecdc', roughness: 0.95 }),
+      quilt: std({ map: tx.quilt, roughness: 0.95 }),
+      exterior: std({ map: tx.plaster, color: '#f4f1ea', roughness: 0.7 }),
+      deck: std({ map: tx.deck, roughness: 0.75 }),
+      paint: std({ color: '#ffffff', roughness: 0.55 }),
+      glassPane: new THREE.MeshStandardMaterial({ color: '#dceee8', roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }),
     };
     // 室内の「電灯の回り込み光」：夕方・夜は室内の面だけを暖色で持ち上げる（車窓の景色は暗いまま）。
     // emissive にそのマテリアルの模様（map）を掛けるので、木目や布の柄はそのまま明るくなる。
-    const own = ['glow', 'shade', 'frost', 'frostPlain', 'curtain', 'glassDome'];
+    const own = ['glow', 'shade', 'frost', 'frostPlain', 'curtain', 'glassDome', 'glassPane'];
     this.fillMats = Object.entries(this.mats).filter(([k]) => !own.includes(k)).map(([, m]) => m);
     for (const m of this.fillMats) {
       if (m.map) m.emissiveMap = m.map;
@@ -280,7 +319,7 @@ export class TrainInterior {
       m.userData.fillScale = m.map ? 1 : 0.55; // 模様の無い面（真鍮など）は控えめに
     }
     // 色を頂点カラーで付けている部品（本の背・かばん・植物・お菓子など）は回り込み光で白っぽくならないよう弱く
-    for (const k of ['book', 'leather', 'plant', 'cake', 'button', 'ceramic', 'ceramicWhite']) {
+    for (const k of ['book', 'leather', 'plant', 'cake', 'button', 'ceramic', 'ceramicWhite', 'paint', 'deck', 'linen', 'quilt']) {
       const m = this.mats[k];
       if (m.emissiveMap) m.emissiveMap = null;
       m.userData.fillScale = 0.12;
@@ -340,7 +379,12 @@ export class TrainInterior {
     const p = this.player.pos;
     let pts;
     if (zone.id === 'lounge') pts = [...this.lounge.lights, new THREE.Vector3(10.3, 2.3, 1.6), new THREE.Vector3(20.2, 2.2, 2.6)];
-    else if (zone.id === 'corridor') {
+    else if (zone.id === 'viewroom') pts = [...this.view.lights, new THREE.Vector3(-5.5, 2.35, 3.7), new THREE.Vector3(-12.6, 1.4, 2.15)];
+    else if (zone.id === 'corridor' && p.x < CROSS.x1 + 0.6) {
+      // 【v16】先頭側の横通路・階段の降り口：横通路 + View Room の後ろ + 廊下の先頭
+      const V = this.view.lights;
+      pts = [new THREE.Vector3(-7.3, 2.35, 0.7), new THREE.Vector3(-7.3, 2.35, 2.4), new THREE.Vector3(-7.4, 2.35, 3.7), new THREE.Vector3(-4.6, 2.35, 3.7), V[1], V[2]];
+    } else if (zone.id === 'corridor') {
       // 廊下：葉っぱの前後の天井 + いちばん近い個室
       const near = this.comps.reduce((a, c) => (Math.abs(c.def.cx - p.x) < Math.abs(a.def.cx - p.x) ? c : a));
       const x = THREE.MathUtils.clamp(p.x, CORRIDOR.x0 + 1, CORRIDOR.x1 - 1);
@@ -389,7 +433,9 @@ export class TrainInterior {
 
     // 個室側の壁（z = 3.0〜3.1）。各個室の扉の開口部だけ空ける
     const openings = COMPARTMENTS.map((c) => [c.cx + DOOR.rx0, c.cx + DOOR.rx1]);
-    let px = x0;
+    // 【v16】先頭側（x < -6.54）は横通路へ開いているので、個室側の壁は Room 1 の前の仕切り壁から
+    const innerStart = CROSS.x1;
+    let px = innerStart;
     for (const [a, c] of openings) {
       b.section('shell');
       b.B('plaster', px, a, 0, H, Z1, z0);
@@ -401,7 +447,7 @@ export class TrainInterior {
       b.B('floor', a - 0.1, c + 0.1, -0.06, 0, z0, z0 + 0.14); // 扉の足元（閉じた扉と壁のすき間から見える床。廊下を描かないときも残す）
       b.section('corridor');
       b.finish('z', z0, 1, px, a);
-      b.coll(px - (px === x0 ? 0.3 : 0), a, Z1 - 0.04, z0, { wall: true, name: 'corridor-inner' });
+      b.coll(px, a, Z1 - 0.04, z0, { wall: true, name: 'corridor-inner' });
       // 開口部の枠（廊下側）・レール・敷居
       b.B('wood', a - 0.08, a, 0, DOOR.h + 0.08, z0, z0 + 0.035);
       b.B('wood', c, c + 0.08, 0, DOOR.h + 0.08, z0, z0 + 0.035);
@@ -436,13 +482,10 @@ export class TrainInterior {
     for (let x = x0 + 0.5; x < x1; x += 1.25) b.add('brass', rodZ(0.07, 0.012), trs(x, 0.99, zo0 - 0.045));
     b.coll(x0 - 0.3, x1, zo0 - 0.1, zo1 + 0.4, { wall: true, name: 'corridor-outer' });
 
-    // 先頭側の端（CREW ROOM の扉がある壁）
-    b.B('plaster', x0 - WALL, x0, 0, H, Z1, zo1);
-    b.finish('x', x0, 1, z0, zo0);
-    b.coll(x0 - 0.4, x0, Z1, zo1, { wall: true, name: 'corridor-front' });
+    // 【v16】先頭側の端：v15 までの CREW ROOM の扉の壁は撤去。突き当たりは Lower Deck への階段（viewroom.js）
 
     // 壁のランプ・額・部屋のプレート
-    for (const x of [-7.2, -5.3, -1.6, 2.6, 3.4, 6.9, 8.5]) {
+    for (const x of [-5.3, -1.6, 2.6, 3.4, 6.9, 8.5]) {
       b.add('brass', box(0.12, 0.12, 0.02), trs(x, 1.85, z0 + 0.02));
       b.add('glow', new THREE.SphereGeometry(0.05, 12, 8), trs(x, 1.92, z0 + 0.1));
       b.add('brass', box(0.018, 0.08, 0.08), trs(x, 1.85, z0 + 0.06));
@@ -497,14 +540,11 @@ export class TrainInterior {
       col.wall = true;
       mk('lounge-door', 'Dining & Lounge', m, 'z', -1, D.slide, col, new THREE.Vector3(LOUNGE.x0 - 0.06, 0, mz), new THREE.Vector3(LOUNGE.x0 - 0.06, 1.3, mz));
     }
-    // CREW ROOM（先頭側の端。入れない）
+    // 【v16】Lower Deck への階段（チェーンで閉鎖。入れない）。v15 までの CREW ROOM の扉の代わり
     {
-      const m = b.doorPanel(1.0, DOOR.h + 0.03, CREW_DOOR.label, { emblem: false });
-      const mz = (CORRIDOR.z0 + CORRIDOR.z1) / 2;
-      m.position.set(CORRIDOR.x0 + 0.04, 0, mz);
-      m.rotation.y = Math.PI / 2;
-      this.scene.add(m);
-      this.targets.push({ kind: 'future', id: CREW_DOOR.id, note: CREW_DOOR.note, anchor: new THREE.Vector3(CORRIDOR.x0 + 0.5, 0, mz), radius: 0.8, label: 'E：調べる', head: () => new THREE.Vector3(CORRIDOR.x0 + 0.1, 1.3, mz) });
+      const mz = (STAIR.z0 + STAIR.z1) / 2;
+      const head = this.view.stair.plate.position.clone();
+      this.targets.push({ kind: 'future', id: CREW_DOOR.id, note: CREW_DOOR.note, anchor: new THREE.Vector3(STAIR.x1 + 0.3, 0, mz), radius: 0.8, label: 'E：調べる', head: () => head });
     }
   }
 
@@ -526,7 +566,7 @@ export class TrainInterior {
 
   _layoutSunPatch(L) {
     const d = L.sunDir;
-    const wins = [...this.comps.map((c) => c.window), ...this.lounge.windows];
+    const wins = this.sunWindows ?? [];
     const pos = [];
     const uvs = [];
     for (const w of wins) {
@@ -618,18 +658,22 @@ export class TrainInterior {
     const vis = this.visible;
     vis.clear();
     const open = (id) => this.doorById[id].open > 0.001;
+    this._facingFront = this.camera.getWorldDirection(this._v1).x < -0.2; // 【v16】カメラが先頭側（-X）を向いている
     const visit = (id) => {
       if (vis.has(id)) return;
       vis.add(id);
       if (id === 'corridor') {
         for (const c of COMPARTMENTS) if (open(`${c.id}-door`)) visit(c.id);
         if (open('lounge-door')) visit('lounge');
-      } else if (open(`${id}-door`)) visit('corridor');
+        // 【v16】扉の無いアーチと階段の上の手すり壁越しに見える。ただし廊下で後ろ（+X・ラウンジの方）を向いているときは見えないので描かない
+        if (this._facingFront || this.player.pos.x < CROSS.x1 + 0.4) visit('viewroom');
+      } else if (id === 'viewroom') visit('corridor');
+      else if (open(`${id}-door`)) visit('corridor');
     };
     if (this.off.has('cull')) for (const id of Object.keys(this.sections)) vis.add(id); // 切り分け用：v12 と同じく全部描く
     else {
       visit(this.zone.id);
-      visit(zoneAt(this.camera.position.x, this.camera.position.z).id);
+      visit(this.zoneAt(this.camera.position.x, this.camera.position.z).id);
     }
     const key = [...vis].sort().join('+');
     // 個室の中だけが見えているとき：車窓は「その部屋の窓枠」を通して見える範囲だけ（scenery.cull）
@@ -650,8 +694,9 @@ export class TrainInterior {
     this.hologram.group.visible = vis.has('lounge') && !off.has('holo');
     const rooms = COMPARTMENTS.some((c) => vis.has(c.id));
     const lounge = vis.has('lounge');
+    const view = vis.has('viewroom'); // 【v16】前面展望窓からは両舷の景色が見える
     this.scenery.group.visible = !off.has('scenery');
-    this.scenery.setVisibleSides(rooms || lounge, vis.has('corridor') || lounge);
+    this.scenery.setVisibleSides(rooms || lounge || view, vis.has('corridor') || lounge || view);
   }
 
   /**
@@ -715,9 +760,9 @@ export class TrainInterior {
     if (opts.sceneryPlan) this.sceneryPlan = opts.sceneryPlan;
     this.setJourneyKm(opts.km ?? this.journeyKm ?? 0, { instant: true });
     const p = this.player;
-    p.pos.set(SPAWN.x, 0, SPAWN.z);
+    p.pos.set(this.spawn.x, 0, this.spawn.z);
     p.speed = p.angVel = 0;
-    p.heading = SPAWN.heading;
+    p.heading = this.spawn.heading;
     p.group.rotation.y = p.heading;
     this.camYaw = p.heading;
     this.yawOffset = 0;
@@ -744,6 +789,12 @@ export class TrainInterior {
     this.renderer.toneMappingExposure = this.look.exposure;
     this.resize();
     this._listen(true);
+    this.touch._label = undefined; // 【v16】HUD を共有するもう一方の室内が最後に出したボタンの表示を引き継がない
+    this.touch.setAction(null);
+    this._renderZoneMenu(); // 【v16】列車と船で HUD を共有するので、乗るたびにメニューを作り直す
+    this.hud.dataset.vehicle = this.kind;
+    const brand = this.hud.querySelector('[data-room1="brand"]');
+    if (brand) brand.textContent = this.kind === 'ship' ? 'FOREST SCHOOL EXPRESS · SHIP' : 'FOREST SCHOOL EXPRESS';
     this.hud.hidden = false;
     this.touch.showGuide(true, 7000); // タッチ端末：乗車直後だけ操作ガイド（? ボタンでいつでも出せる）
     this.update(0);
@@ -831,17 +882,18 @@ export class TrainInterior {
     this.$stats = $('[data-room1="stats"]');
     if (this.$stats) this.$stats.hidden = !new URLSearchParams(location.search).has('stats');
     if (this.$stats?.hidden) this.$stats = null;
-    this.$talk.addEventListener('click', () => this._advanceTalk());
+    this.$talk.addEventListener('click', () => this.active && this._advanceTalk());
     // 【v14】現在地メニュー（部屋名の ▾ から Room 1〜3・Corridor・Dining & Lounge へ瞬時に移動）
     this.$zoneBtn = $('[data-room1="zone-btn"]');
     this.$zoneMenu = $('[data-room1="zone-menu"]');
     if (this.$zoneBtn && this.$zoneMenu) {
-      this.$zoneMenu.innerHTML = ZONES.map((z) => `<li><button type="button" role="menuitem" data-zone="${z.id}">${z.label}</button></li>`).join('');
       this.$zoneBtn.addEventListener('click', (e) => {
+        if (!this.active) return;
         e.stopPropagation();
         this._toggleZoneMenu();
       });
       this.$zoneMenu.addEventListener('click', (e) => {
+        if (!this.active) return;
         const b = e.target.closest('[data-zone]');
         if (!b) return;
         e.stopPropagation();
@@ -852,6 +904,7 @@ export class TrainInterior {
         this.canvas.focus?.({ preventScroll: true });
       });
       this.$zoneMenu.addEventListener('keydown', (e) => {
+        if (!this.active) return;
         const items = [...this.$zoneMenu.querySelectorAll('[data-zone]')];
         const i = items.indexOf(document.activeElement);
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -865,17 +918,18 @@ export class TrainInterior {
       });
       // メニューの外を押したら閉じる
       document.addEventListener('pointerdown', (e) => {
-        if (this._zoneMenuOpen && !e.target.closest?.('[data-room1="zone-menu"], [data-room1="zone-btn"]')) this._toggleZoneMenu(false);
+        if (this.active && this._zoneMenuOpen && !e.target.closest?.('[data-room1="zone-menu"], [data-room1="zone-btn"]')) this._toggleZoneMenu(false);
       });
     }
-    this.$holo.querySelector('[data-act="close"]').addEventListener('click', () => this._closeHolo());
+    this.$holo.querySelector('[data-act="close"]').addEventListener('click', () => this.active && this._closeHolo());
     // 【v13】タッチ端末：仮想スティック・右下のボタン。相手の上の表示（話しかける など）もタップできる
     this.touch = new TouchControls({
       hud: this.hud,
-      onAction: () => this._primaryAction(),
-      onOverview: () => (this.overview = !this.overview),
+      onAction: () => this.active && this._primaryAction(),
+      onOverview: () => this.active && (this.overview = !this.overview),
+      isActive: () => this.active,
     });
-    this.$prompt.addEventListener('click', () => this.touchUI && this._primaryAction());
+    this.$prompt.addEventListener('click', () => this.active && this.touchUI && this._primaryAction());
     this._setTouchUI(isTouchUI());
     onTouchUIChange((t) => this._setTouchUI(t));
 
@@ -1059,7 +1113,7 @@ export class TrainInterior {
   /** ホログラム：情報 UI（ド変態カウンター）へ切り替え */
   async _openHolo() {
     this.holoOpen = true;
-    this._faceTo(HOLOGRAM_POS.x, HOLOGRAM_POS.z);
+    this._faceTo(this.holoPos.x, this.holoPos.z);
     this.hologram.setMode('stats');
     this.$holo.classList.add('is-on');
     this._renderHoloPanel(this.holoSource.last, true);
@@ -1185,7 +1239,7 @@ export class TrainInterior {
   _updateCamera(dt) {
     const p = this.player;
     const pivot = new THREE.Vector3(p.pos.x, CAM.pivotY, p.pos.z);
-    const zone = zoneAt(p.pos.x, p.pos.z);
+    const zone = this.zoneAt(p.pos.x, p.pos.z);
     // 左右：葉っぱの向き + ドラッグのずれ。少し遅れて追従（急に回らない）
     const moving = Math.abs(p.speed) > 0.05 || Math.abs(p.angVel) > 0.05;
     if (moving && !this._drag) this.yawOffset *= Math.exp(-dt * 1.2);
@@ -1219,7 +1273,7 @@ export class TrainInterior {
         if (Math.hypot(pos.x - s.x, pos.z - s.z) < c.def.modestyRadius) pos.y = Math.max(pos.y, c.def.modestyMinY);
       }
       // 丸い天井（ラウンジ）など場所で天井が変わるので念のため
-      const zc = zoneAt(pos.x, pos.z);
+      const zc = this.zoneAt(pos.x, pos.z);
       pos.y = THREE.MathUtils.clamp(pos.y, 0.1, zc.ceil(pos.z) - 0.1);
       look = pivot.clone().addScaledVector(dir, 2.0);
     }
@@ -1244,6 +1298,8 @@ export class TrainInterior {
   _overviewCam(zone, pivot) {
     let pos;
     if (zone.id === 'lounge') pos = new THREE.Vector3(LOUNGE.x0 + 0.5, 2.5, 0.45);
+    else if (zone.id === 'viewroom') pos = new THREE.Vector3(VIEW.x1 - 0.25, 2.35, 1.0);
+    else if (zone.id === 'corridor' && pivot.x < CROSS.x1) pos = new THREE.Vector3(CROSS.x1 - 0.2, 2.3, 0.3);
     else if (zone.id === 'corridor') pos = new THREE.Vector3(THREE.MathUtils.clamp(pivot.x - 3, CORRIDOR.x0 + 0.3, CORRIDOR.x1 - 0.3), 2.3, CORRIDOR.z0 + 0.25);
     else {
       const c = this.comps.find((q) => q.def.id === zone.id);
@@ -1289,7 +1345,7 @@ export class TrainInterior {
     }
     this._movePlayer(dt);
     // ゾーン（HUD の部屋名・照明）
-    const zone = zoneAt(this.player.pos.x, this.player.pos.z);
+    const zone = this.zoneAt(this.player.pos.x, this.player.pos.z);
     if (zone !== this.zone) {
       this.zone = zone;
       if (this.$zone) this.$zone.textContent = zone.label;
@@ -1361,7 +1417,7 @@ export class TrainInterior {
    *   扉の開閉はそのまま。見える区画・照明・部屋名は次のフレームの update で新しい場所に合わせて切り替わる。
    */
   jumpTo(zoneId) {
-    const j = JUMP_POINTS[zoneId];
+    const j = this.jumpPoints[zoneId];
     if (!j || !this._built) return false;
     this._closeTalk();
     this._closeHolo();
@@ -1377,6 +1433,13 @@ export class TrainInterior {
     this._visKey = null;
     if (this.active) this.update(0);
     return true;
+  }
+
+  /** 【v16】現在地メニューの項目（列車：View Room〜Dining & Lounge、船：View Room〜Aft Observation Deck） */
+  _renderZoneMenu() {
+    if (!this.$zoneMenu) return;
+    this.$zoneMenu.innerHTML = this.menuZones.map((z) => `<li><button type="button" role="menuitem" data-zone="${z.id}">${z.label}</button></li>`).join('');
+    this._toggleZoneMenu(false);
   }
 
   /** 【v14】左上の現在地メニューの開閉 */

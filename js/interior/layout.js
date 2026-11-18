@@ -40,6 +40,44 @@ export const COMPARTMENTS = [
 
 export const CORRIDOR = { x0: -8, x1: 9.0, z0: 3.1, z1: 4.3 };
 
+/**
+ * 【v16】View Room（Upper Deck の前面展望室）と、先頭側の横通路・Lower Deck への階段
+ *
+ *   ← 先頭(-X)
+ *   ┌──────── View Room ────────┐┌横┐┌── Room 1 ──
+ *   │ 前面展望窓   ソファー        ▣棚││通││
+ *   │(x=-13.3)                   入口  路││
+ *   │                         ┌▤階段┘│  │└──🚪────
+ *   └─────────────────────────┴──────┘══ 廊下（左舷）══
+ *   運転席は Upper Deck には無い（View Room の下の Lower Deck。階段はチェーンで閉鎖、Lower Deck は作らない）
+ */
+export const VIEW = {
+  x0: -13.3, // 前面展望窓の内面（床の高さ）
+  x1: -8.12, // 後ろの壁（横通路との境）の内面
+  z0: 0,
+  z1: 4.3,
+  rearWall: -8.0, // 後ろの壁の横通路側の面（= CORRIDOR.x0）
+  door: { z0: 1.05, z1: 2.55, h: 2.2 }, // 横通路からの入口（扉の無いアーチ）
+  cabinet: { x0: -9.0, z0: 0, z1: 0.9 }, // 後ろの右舷の角の造り付け棚（見取り図の右上の四角）
+  winS: { x0: -12.95, x1: -9.35 }, // 右舷の窓
+  winP: { x0: -12.95, x1: -10.35 }, // 左舷の窓（階段の手前まで）
+  win: { y0: 0.93, y1: 2.3 },
+};
+/** Lower Deck への階段（View Room の後ろの左舷の角。廊下の突き当たりから -X へ降りる） */
+export const STAIR = {
+  x0: -9.98, // 段の先端（9 段 × 0.22 m）
+  x1: -8.0, // 降り口（廊下の突き当たり）
+  z0: 3.1,
+  z1: 4.3,
+  top: -8.0, // 1 段目の縁（降り口）
+  run: 0.22,
+  rise: 0.22,
+  steps: 9,
+  chainX: -8.14, // チェーンを張る位置（1 段目の上）
+};
+/** 先頭側の横通路（廊下の突き当たり → View Room の入口）。Room 1 の前の壁との間 */
+export const CROSS = { x0: -8.0, x1: -6.54, z0: 0, z1: 3.1 };
+
 /** Dining & Lounge（最後部の車両。車体の全幅） */
 export const LOUNGE = {
   x0: 9.12, // 前の壁（x = 9.0〜9.12）の内面
@@ -65,8 +103,10 @@ export function loungeCeil(z) {
 
 /** 歩けるゾーン（HUD の表示名・カメラの天井・照明の切替に使う） */
 export const ZONES = [
+  { id: 'viewroom', label: 'View Room', x0: VIEW.x0, x1: VIEW.x1 + 0.06, z0: VIEW.z0, z1: VIEW.z1, ceil: () => H },
   ...COMPARTMENTS.map((c) => ({ id: c.id, label: c.label, x0: c.cx - COMP.hw, x1: c.cx + COMP.hw, z0: 0, z1: COMP.depth, ceil: () => H })),
   { id: 'corridor', label: 'Corridor', x0: CORRIDOR.x0, x1: CORRIDOR.x1, z0: CORRIDOR.z0 - 0.12, z1: CORRIDOR.z1, ceil: () => H },
+  { id: 'corridor', label: 'Corridor', x0: CROSS.x0 - 0.06, x1: CROSS.x1, z0: CROSS.z0, z1: CROSS.z1, ceil: () => H }, // 【v16】先頭側の横通路
   { id: 'lounge', label: 'Dining & Lounge', x0: LOUNGE.x0 - 0.13, x1: LOUNGE.x1, z0: LOUNGE.z0, z1: LOUNGE.z1, ceil: loungeCeil },
 ];
 
@@ -87,8 +127,11 @@ export function zoneAt(x, z) {
   return best;
 }
 
-/** 廊下の入れない扉（先頭側の乗務員室） */
-export const CREW_DOOR = { id: 'crew', label: 'CREW ROOM', note: '乗務員室です。関係者以外は入れません。' };
+/** 【v16】ゾーンの一覧（現在地メニュー用。id の重複を除いた並び） */
+export const MENU_ZONES = ['viewroom', 'room1', 'room2', 'room3', 'corridor', 'lounge'].map((id) => ZONES.find((z) => z.id === id));
+
+/** 【v16】Lower Deck への階段（入れない）。旧 v12〜v15 の「CREW ROOM」の扉は View Room と階段に置き換え */
+export const CREW_DOOR = { id: 'crew', label: 'CREW ONLY', note: 'この先は Lower Deck（運転室）です。乗務員以外は立ち入れません。' };
 
 /** 乗車したときの出発点（Room 2 の扉の前） */
 export const SPAWN = { x: 0.6, z: 1.75, heading: 0 };
@@ -99,6 +142,7 @@ export const SPAWN = { x: 0.6, z: 1.75, heading: 0 };
  *   Room 2 は乗車したときの出発点（SPAWN）と同じ。
  */
 export const JUMP_POINTS = {
+  viewroom: { x: -12.25, z: 2.05, lookX: -14, lookZ: 2.05, pitch: -8 }, // 【v16】ソファーの前から前面展望窓の方へ
   room1: { x: COMPARTMENTS[0].cx + 0.15, z: 1.95, lookX: COMPARTMENTS[0].cx + 1.72, lookZ: 1.3 }, // リンさんの方へ
   room2: { x: SPAWN.x, z: SPAWN.z, heading: SPAWN.heading },
   room3: { x: COMPARTMENTS[2].cx + 0.9, z: 2.25, lookX: COMPARTMENTS[2].cx - 0.9, lookZ: 1.0 }, // 扉から入ったところ。本棚の前の仔馬・窓側の猫の方へ

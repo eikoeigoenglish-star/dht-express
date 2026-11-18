@@ -163,9 +163,9 @@ export const ROOM_CHARACTERS = {
 };
 
 /** すべての定義を { id, roomId, def } の配列に */
-export function listCharacters() {
+export function listCharacters(table = ROOM_CHARACTERS) {
   const out = [];
-  for (const [roomId, chars] of Object.entries(ROOM_CHARACTERS)) for (const [id, def] of Object.entries(chars)) out.push({ id, roomId, def });
+  for (const [roomId, chars] of Object.entries(table)) for (const [id, def] of Object.entries(chars)) out.push({ id, roomId, def });
   return out;
 }
 

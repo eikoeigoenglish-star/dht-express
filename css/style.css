@@ -708,3 +708,8 @@ body.is-touch .jp__play.dht-play { min-height: 38px; }
 #dht-progress.is-flip .jp__notch::after { clip-path: polygon(50% 12%, 50% 100%, 18% 100%); }
 @media (max-width: 760px) { .jp__notch { width: 22px; } }
 @media (prefers-reduced-motion: reduce) { .jp__body { transition: none; } }
+
+/* 【v16】船内では HUD の左上のアイコンを船に（列車と HUD を共有） */
+.room-hud .room-hud__ship { display: none; }
+.room-hud[data-vehicle="ship"] .room-hud__ship { display: block; }
+.room-hud[data-vehicle="ship"] .room-hud__train { display: none; }

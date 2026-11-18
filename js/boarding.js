@@ -8,6 +8,8 @@
  * 2) 「はい」→ フェードしてから車内（Room 2 から）へ（初回だけ interior/train.js を動的 import して構築）
  *    「いいえ」/ Esc → ダイアログだけ閉じる（MAP はそのまま）
  * 3) Room 1 の「← MAPへ戻る」→ フェードして MAP へ
+ * 【v16】船（vehicles.ship）をクリックしたときも同じ流れで「船に乗りますか？」→ 船内（interior/ship.js）へ。
+ *        列車と船の室内は別々のインスタンス（初回だけ動的 import して構築。再乗船は速い）。HUD は共有
  *
  * Room 1 表示中は main.js のループが frame() を呼び、MAP の更新・描画を丸ごと止める。
  * MAP 側の状態（カメラ位置・VIEW・timeMode・列車の位置と再生）は触らないので、そのまま復帰する。
@@ -29,7 +31,9 @@ export class Boarding {
   constructor(opts) {
     this.o = opts;
     this.state = 'map'; // 'map' | 'dialog' | 'entering' | 'room' | 'leaving'
-    this.room = null;
+    this.room = null; // いま表示している室内（列車 or 船）
+    this.rooms = {}; // 【v16】{ train: TrainInterior, ship: ShipInterior }
+    this.kind = 'train';
     this.trips = 0;
     this.$dialog = document.getElementById('board-dialog');
     this.$fade = document.getElementById('scene-fade');
@@ -53,11 +57,13 @@ export class Boarding {
       // ドラッグは対象外（指は少しぶれるので、タッチは 10px まで・当たり判定も指の太さぶん広げる）
       if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > (touch ? 10 : 5) || e.timeStamp - d.t > 600) return;
       if (!this.o.canBoard()) return;
-      if (this.hitTrain(e.clientX, e.clientY, touch ? 14 : 0)) this.openDialog();
+      const pad = touch ? 14 : 0;
+      if (this.hitTrain(e.clientX, e.clientY, pad)) this.openDialog('train');
+      else if (this.hitVehicle('ship', e.clientX, e.clientY, pad)) this.openDialog('ship');
     }, true);
     c.addEventListener('pointermove', (e) => {
       if (this.state !== 'map' || e.buttons) return;
-      const on = this.o.canBoard() && this.hitTrain(e.clientX, e.clientY);
+      const on = this.o.canBoard() && (this.hitTrain(e.clientX, e.clientY) || this.hitVehicle('ship', e.clientX, e.clientY));
       if (on !== this._hover) {
         this._hover = on;
         c.style.cursor = on ? 'pointer' : '';
@@ -87,13 +93,18 @@ export class Boarding {
 
   /** 画面座標 (clientX, clientY) が列車に当たるか。pad：当たり判定を広げる量 [px]（タッチ用） */
   hitTrain(cx, cy, pad = 0) {
-    const t = this.o.vehicles.train;
+    return this.hitVehicle('train', cx, cy, pad);
+  }
+
+  /** 【v16】列車・船の共通の当たり判定（kind = 'train' | 'ship'） */
+  hitVehicle(kind, cx, cy, pad = 0) {
+    const t = this.o.vehicles[kind];
     if (!t || !t.visible) return false;
     const rect = this.o.canvas.getBoundingClientRect();
     const x = cx - rect.left;
     const y = cy - rect.top;
     // 遠景の「列車」札
-    const tag = this.o.vehicles.tags?.train;
+    const tag = this.o.vehicles.tags?.[kind];
     if (tag && tag.style.display !== 'none') {
       const r = tag.getBoundingClientRect();
       if (cx >= r.left - 6 - pad && cx <= r.right + 6 + pad && cy >= r.top - 6 - pad && cy <= r.bottom + 10 + pad) return true;
@@ -117,9 +128,14 @@ export class Boarding {
     return d < Math.max(16, Math.sqrt(L2) * 0.14) + pad;
   }
 
-  openDialog() {
+  openDialog(kind = 'train') {
     if (this.state !== 'map') return;
     this.state = 'dialog';
+    this.kind = kind === 'ship' ? 'ship' : 'train';
+    // 【v16】列車と船で文言を切り替える
+    const ship = this.kind === 'ship';
+    this.$dialog.querySelector('#board-dialog-title').textContent = ship ? 'FOREST SCHOOL EXPRESS の船に乗船しますか？' : 'FOREST SCHOOL EXPRESS に乗車しますか？';
+    this.$dialog.querySelector('.board-dialog__brand').textContent = ship ? 'FOREST SCHOOL EXPRESS · SHIP' : 'FOREST SCHOOL EXPRESS';
     document.body.classList.add('is-boarding');
     this.$dialog.hidden = false;
     requestAnimationFrame(() => this.$dialog.classList.add('is-on'));
@@ -150,14 +166,22 @@ export class Boarding {
     document.body.classList.remove('is-boarding');
     this.o.canvas.style.cursor = '';
     this._hover = false;
-    await this._fade(true, this.room ? '' : '車内へ移動中…');
+    const kind = this.kind;
+    await this._fade(true, this.rooms[kind] ? '' : kind === 'ship' ? '船内へ移動中…' : '車内へ移動中…');
     try {
-      if (!this.room) {
-        const { TrainInterior } = await import('./interior/train.js');
-        this.room = new TrainInterior({ renderer: this.o.renderer, canvas: this.o.canvas, hud: this.$hud });
+      if (!this.rooms[kind]) {
+        const opts = { renderer: this.o.renderer, canvas: this.o.canvas, hud: this.$hud };
+        if (kind === 'ship') {
+          const { ShipInterior } = await import('./interior/ship.js');
+          this.rooms.ship = new ShipInterior(opts);
+        } else {
+          const { TrainInterior } = await import('./interior/train.js');
+          this.rooms.train = new TrainInterior(opts);
+        }
         await new Promise((r) => requestAnimationFrame(r)); // 「移動中…」を一度描画してから構築
-        this.room.build();
+        this.rooms[kind].build();
       }
+      this.room = this.rooms[kind];
       this.o.suspendMap();
       // v15: 車窓の景観は「いまの累積 km」の scene（timeMode とは独立）
       this.room.enter({ timeMode: this.o.timeMode(), km: this.o.journeyKm?.(), sceneryPlan: this.o.sceneryPlan?.() });

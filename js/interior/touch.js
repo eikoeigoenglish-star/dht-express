@@ -43,8 +43,10 @@ export class TouchControls {
     this.$guide = $('guide');
 
     const s = this.$stick;
+    // 【v16】列車と船の室内が同じ HUD を共有するので、いま表示している室内のぶんだけ反応する
+    const live = () => !o.isActive || o.isActive();
     s.addEventListener('pointerdown', (e) => {
-      if (!this.enabled || this.pid !== null) return;
+      if (!this.enabled || this.pid !== null || !live()) return;
       e.preventDefault();
       e.stopPropagation();
       this.pid = e.pointerId;
@@ -76,10 +78,11 @@ export class TouchControls {
       o.onOverview();
     });
     this.$help.addEventListener('click', (e) => {
+      if (!live()) return;
       e.currentTarget.blur();
       this.showGuide(!this.$guide.classList.contains('is-on'), 8000);
     });
-    this.$guide.addEventListener('click', () => this.showGuide(false));
+    this.$guide.addEventListener('click', () => live() && this.showGuide(false));
   }
 
   _move(e) {

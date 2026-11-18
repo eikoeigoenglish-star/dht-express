@@ -213,9 +213,11 @@ function cloudTexture() {
  *   後方（+X）の reach m 先までを覆うよう枚数を増やす（見えない分は視錐台カリングで描かれない）。
  */
 export class LoopLayer {
-  constructor(geometry, material, W, name, { reach = 0, Ctor = THREE.Mesh } = {}) {
+  constructor(geometry, material, W, name, { reach = 0, front = 0, Ctor = THREE.Mesh } = {}) {
     this.W = W;
-    this.n = 2 + Math.ceil(Math.max(0, reach - W / 2) / W);
+    // 【v16】front：列車の View Room の前面展望窓から見える前方（-X）の距離 [m]。そのぶんチャンクを前へ足す
+    this.nFront = Math.ceil(Math.max(0, front) / W);
+    this.n = 2 + Math.ceil(Math.max(0, reach - W / 2) / W) + this.nFront;
     this.parts = [];
     this.group = new THREE.Group();
     for (let i = 0; i < this.n; i++) {
@@ -232,7 +234,8 @@ export class LoopLayer {
   set(offset, xc) {
     const W = this.W;
     const ph = ((((offset + W / 2) % W) + W) % W) - W / 2; // [-W/2, W/2)
-    for (let i = 0; i < this.n; i++) this.parts[i].position.x = xc - W + ph + i * W;
+    const x0 = xc - W + ph - this.nFront * W;
+    for (let i = 0; i < this.n; i++) this.parts[i].position.x = x0 + i * W;
   }
 }
 
@@ -259,6 +262,10 @@ export class WindowScenery {
     this.offset = 0;
     this.speed = 24;
     this.reach = opts.reach ?? 0; // 最後部のパノラマ車窓から見える後方の距離 [m]
+    this.front = opts.front ?? 0; // 【v16】View Room の前面展望窓から見える前方の距離 [m]
+    this.viaduct = opts.viaduct ?? true; // 【v16】船（ship.js）は高架・架線柱なし
+    this.base = opts.base ?? true; // 【v16】船は既存の街・山の層を作らない（海の景観テーマだけ。必要になったときに作る）
+    this.speedScale = opts.speedScale ?? 1; // 【v16】船は列車よりゆっくり流れる
     this.group = new THREE.Group();
     this.group.name = 'window-scenery';
     this.layers = [];
@@ -330,7 +337,7 @@ export class WindowScenery {
     this.group.add(this.glow);
 
     // ---- 自分の線路の高架（最後部のパノラマ車窓から後ろへ続いて見える。固定） ----
-    {
+    if (this.viaduct) {
       const own = new PartBin();
       const zc = opts.trackZ ?? 2.15;
       const ty = this.trackY;
@@ -439,7 +446,7 @@ export class WindowScenery {
   _addLayer(bin, W, name, xc, reach = this.reach) {
     const grp = bin.build(this.mats, name);
     for (const m of [...grp.children]) {
-      const L = new LoopLayer(m.geometry, m.material, W, `${name}:${m.name}`, { reach });
+      const L = new LoopLayer(m.geometry, m.material, W, `${name}:${m.name}`, { reach, front: this.front });
       this.layers.push({ layer: L, xc });
       this.group.add(L.group);
     }
@@ -454,7 +461,7 @@ export class WindowScenery {
     const r = rng(seed * 97 + (f > 0 ? 13 : 0));
 
     // ---- 高架：架線柱（流れる）・架線と隣の線路（連続なので固定） ----
-    if (!s.lite) {
+    if (!s.lite && this.viaduct) {
       const W = 240;
       const bin = new PartBin();
       for (let x = 0; x < W; x += 40) {
@@ -479,6 +486,7 @@ export class WindowScenery {
       fn();
       for (let i = a; i < this.layers.length; i++) this.layers[i].theme = name;
     };
+    if (this.base) {
     // ---- 街（近い） ----
     tag('cityNear', () => this._city(s, r, { d0: 18, d1: 260, W: this._W(260, s), density: s.lite ? 0.8 : 1, near: true }, z, cy, xc));
     // ---- 街（遠い）。左舷（廊下・ラウンジの左舷の窓）は少しまばらに ----
@@ -489,6 +497,7 @@ export class WindowScenery {
     tag('farLights', () => this._farLights(s, z, cy, xc, seed));
     // ---- 遠い山並み（両側） ----
     tag('ridge', () => this._ridge(s, z, cy, xc, seed));
+    }
 
     // ---- 雲（1 枚の半透明板。テクスチャを流す） ----
     {
@@ -622,7 +631,7 @@ export class WindowScenery {
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     g.computeVertexNormals();
-    const L = new LoopLayer(g, this.mats.mountain, W, 'mountains', { reach: this.reach });
+    const L = new LoopLayer(g, this.mats.mountain, W, 'mountains', { reach: this.reach, front: this.front });
     this.layers.push({ layer: L, xc });
     this.group.add(L.group);
   }
@@ -646,7 +655,7 @@ export class WindowScenery {
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     g.computeBoundingSphere();
-    const L = new LoopLayer(g, this.mats.farLights, W, 'far-lights', { reach: this.reach, Ctor: THREE.Points });
+    const L = new LoopLayer(g, this.mats.farLights, W, 'far-lights', { reach: this.reach, front: this.front, Ctor: THREE.Points });
     this.layers.push({ layer: L, xc });
     this.group.add(L.group);
   }
@@ -677,7 +686,7 @@ export class WindowScenery {
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     g.computeVertexNormals();
-    const L = new LoopLayer(g, this.mats.ridge, W, 'ridge', { reach: this.reach });
+    const L = new LoopLayer(g, this.mats.ridge, W, 'ridge', { reach: this.reach, front: this.front });
     this.layers.push({ layer: L, xc });
     this.group.add(L.group);
   }
@@ -725,7 +734,7 @@ export class WindowScenery {
       cl.mesh.material.color.copy(L.cloud);
       cl.mesh.material.opacity = L.cloudOpacity;
     }
-    this.speed = L.speed ?? this.speed;
+    this.speed = (L.speed ?? 24) * this.speedScale;
     this.themes?.applyLook(L); // 【v15】海・田園・山・島影の色（timeMode と独立に組み合わせる）
   }
 
