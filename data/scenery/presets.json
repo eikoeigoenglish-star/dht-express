@@ -1,6 +1,6 @@
 {
  "_comment": "v15 車窓景観 preset。left / right = 近景〜中景の種類（js/interior/scenery.js のテーマ）、*Background / *FarBackground = 遠景、*Water = 海の色。時間帯（timeMode）とは独立（光・空・夜景は timeMode 側）。左右は進行方向に対して。",
- "version": 18,
+ "version": 19,
  "sideKinds": {
   "default": "既存の車窓",
   "urban": "都市（高層ビルを加える）",
@@ -19,7 +19,9 @@
   "fuji_plain": "【v18】富士の平地：田畑・用水路と川・倉庫・家がぽつぽつ",
   "fuji_shore_plain": "【v18】平地に家がぽつぽつ（地平線にわずかな海）",
   "suzuka_fields": "【v18】田園・平地の向こうに鈴鹿山脈",
-  "biwa_plain": "【v18】田園・平地・家がぽつぽつ（開けた平地）"
+  "biwa_plain": "【v18】田園・平地・家がぽつぽつ（開けた平地）",
+  "onomichi_channel": "【v19】見下ろす尾道の町並み → 尾道水道 → 向島・重なる島々",
+  "onomichi_hills": "【v19】線路に近い丸みのある低山（150 m 級）＋山腹に点在する家"
  },
  "backgrounds": {
   "mt_fuji": "富士山（【v18】広い裾野・青く霞む山体＋右に愛鷹の山並み）",
@@ -58,7 +60,14 @@
    "left": "coast_town",
    "leftBackground": "sagami_coast",
    "right": "cliff_cut",
-   "notes": "81-110（小田原〜熱海〜三島）、746-755（尾道）。【v18】左：線路から海へ落ちる急斜面に白いホテル・マンション、岬の緑、近い海。右：切通しの岩肌・法面と木々、切れ目の奥に急峻な山"
+   "notes": "81-110（小田原〜熱海〜三島）。【v19】746-755（尾道）は専用 preset onomichi へ分離。【v18】左：線路から海へ落ちる急斜面に白いホテル・マンション、岬の緑、近い海。右：切通しの岩肌・法面と木々、切れ目の奥に急峻な山"
+  },
+  {
+   "id": "onomichi",
+   "label": "尾道（左：町・尾道水道・島 / 右：低山と山腹の家）",
+   "left": "onomichi_channel",
+   "right": "onomichi_hills",
+   "notes": "【v19】746-755 尾道専用。左：少し高い位置から見下ろす町並み → 港・岸壁・船 → 細長い尾道水道（穏やかな青緑）→ 向島（岸の町・造船所）→ 奥に重なる島々。右：線路に近い丸みのある低山（150 m 級）、山裾の町と山腹に点在する家・擁壁"
   },
   {
    "id": "fuji_right",
