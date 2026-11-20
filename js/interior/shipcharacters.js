@@ -91,7 +91,7 @@ export const SHIP_CHARACTERS = {
         return { x: p.x, y: BED_TOP, z: p.z, facing: cabinFacing(c, 0, -1) };
       })(),
       footprint: { hx: 0.6, hz: 0.3, h: 0.78 },
-      talkAhead: 0.95,
+      talkAhead: 0.6, // 【v17】0.95 → 0.6（ベッド C の足元の手前。アヒルの足元に立ったとき仔馬の方が近くならないように）
       turnLimit: 0.12,
       lines: ['ヒヒン。ぼくは体が大きいから、いちばん広いベッドをもらったんだ。', '窓の外、ずっと海だね。'],
     },

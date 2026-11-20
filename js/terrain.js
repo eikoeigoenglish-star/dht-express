@@ -413,7 +413,7 @@ export class TerrainSystem {
         if (!pt.mesh || i >= rects.length) return;
         const dx = Math.max(pt.x0 - p.x, 0, p.x - pt.maxX);
         const dz = Math.max(pt.z0 - p.z, 0, p.z - pt.maxZ);
-        const on = Math.hypot(dx, dz, p.y) < DETAIL_DIST;
+        const on = Math.hypot(dx, dz, p.y) < (pt.maxDistKm ?? DETAIL_DIST); // 【v17】パッチごとの描画距離（manifest の maxDistKm。省略 = 260km）
         pt.mesh.visible = on;
         if (on) {
           rects[i].set(pt.x0, pt.z0, pt.maxX, pt.maxZ);

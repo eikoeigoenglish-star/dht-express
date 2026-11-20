@@ -580,7 +580,8 @@ export function buildCabin(b, c) {
   mkBed('B', CAB.bedB, 'u-');
   // ベッドの間のナイトテーブルとランプ
   {
-    const [x0, x1, z0, z1] = cabinRect(c, 0.05, 0.5, 1.3, 1.6);
+    const nw = (CAB.bedA.w1 + CAB.bedB.w0) / 2; // 【v17】ベッド A・B の間の中央（通路の奥＝枕元）
+    const [x0, x1, z0, z1] = cabinRect(c, 0.05, 0.5, nw - 0.15, nw + 0.15);
     b.B('woodDark', x0, x1, 0, 0.55, z0, z1);
     b.B('wood', x0 - 0.01, x1 + 0.01, 0.55, 0.58, z0 - 0.01, z1 + 0.01);
     b.add('brass', new THREE.SphereGeometry(0.012, 8, 6), trs(x1 + 0.01, 0.4, (z0 + z1) / 2));
@@ -593,7 +594,7 @@ export function buildCabin(b, c) {
     b.coll(x0, x1, z0, z1, { y1: 0.7, name: `${c.id}:nightstand` });
   }
   // 船首側の壁：ベッドの上の額（2 枚）と壁のランプ
-  for (const [wm, key] of [[0.78, 'paintL'], [2.12, 'paintR']]) {
+  for (const [wm, key] of [[(CAB.bedA.w0 + CAB.bedA.w1) / 2, 'paintL'], [(CAB.bedB.w0 + CAB.bedB.w1) / 2, 'paintR']]) {
     const p = cabinXZ(c, 0.015, wm);
     const pl = new THREE.PlaneGeometry(0.62, 0.44);
     pl.rotateY(Math.PI / 2);
@@ -601,7 +602,7 @@ export function buildCabin(b, c) {
     for (const [dy, dz, wz, hy] of [[0.24, 0, 0.7, 0.04], [-0.24, 0, 0.7, 0.04], [0, 0.33, 0.04, 0.48], [0, -0.33, 0.04, 0.48]]) b.add('wood', box(0.03, hy, wz), trs(p.x + 0.015, 1.62 + dy, p.z + dz));
   }
   {
-    const p = cabinXZ(c, 0, 1.45);
+    const p = cabinXZ(c, 0, (CAB.bedA.w1 + CAB.bedB.w0) / 2);
     sconce(b, p.x + 0.01, 1.62, p.z, 1, 0);
   }
   // ---- ベッド C（Room 3・4）／ ベンチ（Room 1・2） ----
@@ -620,14 +621,15 @@ export function buildCabin(b, c) {
     b.add('paintR', pl, trs(q.x, 1.75, q.z));
     for (const [dy, dx, w, h] of [[0.23, 0, 0.7, 0.04], [-0.23, 0, 0.7, 0.04], [0, 0.33, 0.04, 0.46], [0, -0.33, 0.04, 0.46]]) b.add('wood', box(w, h, 0.03), trs(q.x + dx, 1.75 + dy, q.z + out * 0.0));
   }
-  // ---- 窓辺の小さなテーブル（Room 4 は仔馬のため椅子を置かず広く） ----
+  // ---- 窓辺の小さなテーブル（Room 3・4 は椅子を置かず広く） ----
   {
     const T = CAB.table;
     const p = cabinXZ(c, T.u, T.w);
     roundTable(b, p.x, p.z, T.r, 0.62, `${c.id}:table`);
     lantern(b, p.x - 0.08, 0.62, p.z, 0.9);
     vaseWithFlowers(b, R, p.x + 0.1, 0.62, p.z + 0.04, 0.026, 6);
-    if (!c.roomy) {
+    // 【v17】Room 3 も椅子を置かない（v16 は椅子がテーブルとベッド C の間の唯一の通路を塞ぎ、犬・猫へ行けなかった）
+    if (!c.roomy && c.chair !== false) {
       const q = cabinXZ(c, T.u, T.w + 0.55);
       diningChair(b, q.x, q.z, cabinFacing(c, 0, -1));
     }

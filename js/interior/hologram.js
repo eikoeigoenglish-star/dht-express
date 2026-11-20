@@ -29,11 +29,14 @@ const RES = 2;
 
 export class Hologram {
   /**
-   * @param {{ position: THREE.Vector3, mats: Record<string, THREE.Material>, source: import('./data/dohentai.js').DohentaiSource }} o
+   * @param {{ position: THREE.Vector3, mats: Record<string, THREE.Material>, source: import('./data/dohentai.js').DohentaiSource, signage?: typeof SIGNAGE }} o
+   *   signage … 【v17】表示データ（data/signage.js の signageFor(kind)。省略 = 列車）
    */
   constructor(o) {
     this.source = o.source;
     this.data = o.source.last;
+    // 【v17】表示データ（列車／船で案内図・News が違う）。部品と描画は共用
+    this.signage = o.signage ?? SIGNAGE;
     this.mode = 'signage';
     this.slide = 0;
     this.slideT = 0;
@@ -122,9 +125,9 @@ export class Hologram {
     this.t += dt;
     if (this.mode === 'signage') {
       this.slideT += dt;
-      if (this.slideT >= SIGNAGE.interval) {
+      if (this.slideT >= this.signage.interval) {
         this.slideT = 0;
-        this.slide = (this.slide + 1) % SIGNAGE.slides.length;
+        this.slide = (this.slide + 1) % this.signage.slides.length;
         this.fade = 0;
         this._dirty = true;
       } else if (Math.floor(this.t * 2) !== this._tick) {
@@ -181,10 +184,10 @@ export class Hologram {
     for (let y = 14; y < CH - 14; y += 4) g.fillRect(12, y, CW - 24, 1);
     if (this.mode === 'stats') this._drawStats(g);
     else {
-      const s = SIGNAGE.slides[this.slide];
+      const s = this.signage.slides[this.slide];
       (this[`_slide_${s.kind}`] ?? this._slide_brand).call(this, g, s);
       // 進行（ページの点 + 10 秒のバー）
-      const n = SIGNAGE.slides.length;
+      const n = this.signage.slides.length;
       for (let i = 0; i < n; i++) {
         g.fillStyle = i === this.slide ? MINT : 'rgba(166,243,226,0.3)';
         g.beginPath();
@@ -194,7 +197,7 @@ export class Hologram {
       g.fillStyle = 'rgba(166,243,226,0.25)';
       g.fillRect(40, CH - 20, CW - 80, 2);
       g.fillStyle = GOLD;
-      g.fillRect(40, CH - 20, (CW - 80) * Math.min(1, this.slideT / SIGNAGE.interval), 2);
+      g.fillRect(40, CH - 20, (CW - 80) * Math.min(1, this.slideT / this.signage.interval), 2);
     }
     g.restore();
     this.tex.needsUpdate = true;
@@ -256,46 +259,145 @@ export class Hologram {
     g.fillText(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`, CW / 2, 292);
   }
 
+  /**
+   * 【v17】案内図：見取り図（data/signage.js の plan）をそのまま枠に収めて描く。
+   *   v16 までは車両を横一列の箱で並べるだけで、View Room・船の Room 4・Aft Observation Deck などを表せなかった。
+   *   線・色・書体は既存のスライドと同じ（ミントの線、現在地は金、注記はアクア）。
+   */
   _slide_guide(g, s) {
-    this._title(g, s.title, '← 先頭　　　　　　　　　　　　　最後部 →');
-    const cars = s.cars;
-    const x0 = 30;
-    const w = CW - 60;
-    const y = 140;
-    const ws = cars.map((c) => (c.id === 'lounge' ? 1.6 : c.id === 'crew' ? 0.6 : 1));
-    const tot = ws.reduce((a, b) => a + b, 0);
-    let x = x0;
-    g.textAlign = 'center';
-    cars.forEach((c, i) => {
-      const cw = (w * ws[i]) / tot - 6;
-      const here = c.note === '現在地';
-      g.strokeStyle = here ? GOLD : MINT;
-      g.lineWidth = here ? 3 : 2;
-      g.fillStyle = here ? 'rgba(243,213,140,0.18)' : 'rgba(166,243,226,0.1)';
-      g.beginPath();
-      g.roundRect(x, y, cw, 74, 10);
-      g.fill();
-      g.stroke();
-      g.fillStyle = here ? GOLD : MINT;
-      g.font = this._font(700, c.label.length > 8 ? 13 : 15);
-      g.fillText(c.label, x + cw / 2, y + 32);
-      if (c.note) {
-        g.font = this._font(500, 12);
-        g.fillStyle = AQUA;
-        g.fillText(c.note, x + cw / 2, y + 54);
-      }
-      x += cw + 6;
-    });
-    g.strokeStyle = 'rgba(166,243,226,0.5)';
-    g.setLineDash([6, 6]);
-    g.beginPath();
-    g.moveTo(x0, y + 100);
-    g.lineTo(x0 + w, y + 100);
-    g.stroke();
-    g.setLineDash([]);
-    g.font = this._font(500, 13);
+    this._title(g, s.title);
+    // 進行方向（左 = 先頭／船首）
+    g.font = this._font(500, 14);
     g.fillStyle = AQUA;
-    g.fillText('廊下（左舷側）── Room 1〜3 ── Dining & Lounge', CW / 2, y + 126);
+    g.textAlign = 'left';
+    g.fillText(s.dir?.[0] ?? '← 先頭', 34, 106);
+    g.textAlign = 'right';
+    g.fillText(s.dir?.[1] ?? '最後部 →', CW - 34, 106);
+    const P = s.plan;
+    if (!P) return;
+    // 枠：x 30〜482、y 120〜（凡例の上）
+    const bx = 30;
+    const bw = CW - 60;
+    const by = 120;
+    const bh = 162;
+    const sx = bw / P.w;
+    const sy = Math.min(sx * (P.stretchY ?? 1), bh / P.h);
+    const oy = by + (bh - P.h * sy) / 2;
+    const X = (v) => bx + v * sx;
+    const Y = (v) => oy + v * sy;
+    const pathOf = (a) => {
+      g.beginPath();
+      if (a.poly) a.poly.forEach(([px, py], i) => (i ? g.lineTo(X(px), Y(py)) : g.moveTo(X(px), Y(py))));
+      else g.rect(X(a.x), Y(a.y), a.w * sx, a.h * sy);
+      g.closePath();
+    };
+    // 下地 → 廊下・デッキ → 部屋 → 階段 の順に重ねる
+    const order = { balcony: 0, corridor: 1, deck: 2, room: 3, stair: 4 };
+    const areas = [...P.areas].sort((p, q) => (order[p.type] ?? 3) - (order[q.type] ?? 3));
+    for (const a of areas) {
+      const here = a.note === '現在地';
+      pathOf(a);
+      if (a.type === 'balcony') {
+        g.fillStyle = 'rgba(166,243,226,0.05)';
+        g.fill();
+        g.setLineDash([4, 3]);
+        g.strokeStyle = 'rgba(166,243,226,0.6)';
+        g.lineWidth = 1.2;
+        g.stroke();
+        g.setLineDash([]);
+        continue;
+      }
+      if (a.type === 'stair') {
+        g.fillStyle = 'rgba(166,243,226,0.16)';
+        g.fill();
+        g.strokeStyle = MINT;
+        g.lineWidth = 1.4;
+        g.stroke();
+        // 段の線（▤）
+        g.save();
+        g.clip();
+        g.strokeStyle = 'rgba(166,243,226,0.75)';
+        g.lineWidth = 1;
+        const n = 4;
+        for (let i = 1; i < n; i++) {
+          g.beginPath();
+          g.moveTo(X(a.x) + (a.w * sx * i) / n, Y(a.y));
+          g.lineTo(X(a.x) + (a.w * sx * i) / n, Y(a.y + a.h));
+          g.stroke();
+        }
+        g.restore();
+        continue;
+      }
+      if (a.type === 'corridor') {
+        g.fillStyle = 'rgba(143,220,255,0.08)';
+        g.fill();
+        g.strokeStyle = 'rgba(166,243,226,0.55)';
+        g.lineWidth = 1.4;
+        g.stroke();
+      } else if (a.type === 'deck') {
+        g.fillStyle = 'rgba(143,220,255,0.1)';
+        g.fill();
+        g.setLineDash([7, 4]);
+        g.strokeStyle = MINT;
+        g.lineWidth = 2;
+        g.stroke();
+        g.setLineDash([]);
+      } else {
+        g.fillStyle = here ? 'rgba(243,213,140,0.2)' : 'rgba(166,243,226,0.1)';
+        g.fill();
+        g.strokeStyle = here ? GOLD : MINT;
+        g.lineWidth = here ? 3 : 2;
+        g.stroke();
+      }
+    }
+    // 名前と注記（部屋の中央。小さい部屋は文字を小さく）
+    g.textAlign = 'center';
+    for (const a of areas) {
+      if (!a.label) continue;
+      const here = a.note === '現在地';
+      const lines = Array.isArray(a.label) ? a.label : [a.label];
+      let cx;
+      let cy;
+      let wpx;
+      if (a.labelAt) {
+        cx = X(a.labelAt[0]);
+        cy = Y(a.labelAt[1]);
+        wpx = 200;
+      } else {
+        cx = X(a.x + a.w / 2);
+        cy = Y(a.y + a.h / 2);
+        wpx = a.w * sx;
+      }
+      if (a.type === 'corridor') {
+        g.font = this._font(500, 11);
+        g.fillStyle = AQUA;
+        g.fillText(lines[0], cx, cy + 4);
+        continue;
+      }
+      let px = 15;
+      const longest = Math.max(...lines.map((t) => t.length));
+      while (px > 10 && longest * px * 0.62 > wpx - 10) px--;
+      const lh = px + 2;
+      const noteH = a.note ? 15 : 0;
+      let y = cy - ((lines.length - 1) * lh + noteH) / 2 + px * 0.36;
+      g.font = this._font(700, px);
+      g.fillStyle = here ? GOLD : MINT;
+      for (const t of lines) {
+        g.fillText(t, cx, y);
+        y += lh;
+      }
+      if (a.note) {
+        g.font = this._font(500, 11);
+        g.fillStyle = here ? GOLD : AQUA;
+        g.fillText(a.note, cx, y + 1);
+      }
+    }
+    if (s.legend) {
+      g.font = this._font(500, 11);
+      g.fillStyle = AQUA;
+      g.textAlign = 'center';
+      g.fillText(s.legend, CW / 2, by + bh + 16);
+    }
   }
 
   _slide_news(g, s) {

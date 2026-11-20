@@ -5,7 +5,7 @@
  *      → 画面中央に「FOREST SCHOOL EXPRESS に乗車しますか？ はい / いいえ」
  *      判定：列車の先頭・後尾を画面へ投影した線分からの距離（車体は画面上で約 64px に保たれる）
  *            または遠景で出る「列車」の札の矩形。ドラッグ（5px 以上）やカメラ移動中は無視。
- * 2) 「はい」→ フェードしてから車内（Room 2 から）へ（初回だけ interior/train.js を動的 import して構築）
+ * 2) 「はい」→ フェードしてから車内・船内（【v17】Dining & Lounge から）へ（初回だけ interior/train.js を動的 import して構築）
  *    「いいえ」/ Esc → ダイアログだけ閉じる（MAP はそのまま）
  * 3) Room 1 の「← MAPへ戻る」→ フェードして MAP へ
  * 【v16】船（vehicles.ship）をクリックしたときも同じ流れで「船に乗りますか？」→ 船内（interior/ship.js）へ。
@@ -157,7 +157,7 @@ export class Boarding {
     return new Promise((r) => setTimeout(r, FADE_MS));
   }
 
-  /** 「はい」：Room 1 へ */
+  /** 「はい」：車内・船内へ（【v17】出発点は Dining & Lounge。TrainInterior.spawn） */
   async board() {
     if (this.state !== 'dialog') return;
     this.state = 'entering';

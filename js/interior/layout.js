@@ -134,17 +134,20 @@ export const MENU_ZONES = ['viewroom', 'room1', 'room2', 'room3', 'corridor', 'l
 export const CREW_DOOR = { id: 'crew', label: 'CREW ONLY', note: 'この先は Lower Deck（運転室）です。乗務員以外は立ち入れません。' };
 
 /** 乗車したときの出発点（Room 2 の扉の前） */
-export const SPAWN = { x: 0.6, z: 1.75, heading: 0 };
+/** 【v17】乗車したときの出発点 = Dining & Lounge（ホログラム投影機の前。現在地メニューの lounge と同じ位置・向き） */
+export const SPAWN = { x: 10.75, z: 2.6, heading: 0, pitch: -3 };
+/** v16 までの出発点（Room 2 の中央）。現在地メニューの Room 2 の移動先として残す */
+const ROOM2_POINT = { x: 0.6, z: 1.75, heading: 0 };
 
 /**
  * 【v14】左上の現在地メニューから瞬時に移動する先（葉っぱの位置と、見る方向の点）
  *   id は ZONES の id。heading は (lookX, lookZ) を向く向きとして train.js が計算する。pitch は視線の上下 [度]（省略 = 既定の -14°）
- *   Room 2 は乗車したときの出発点（SPAWN）と同じ。
+ *   Room 2 は v16 までの乗車時の出発点（ROOM2_POINT）。【v17】乗車時の出発点（SPAWN）は lounge と同じ。
  */
 export const JUMP_POINTS = {
   viewroom: { x: -12.25, z: 2.05, lookX: -14, lookZ: 2.05, pitch: -8 }, // 【v16】ソファーの前から前面展望窓の方へ
   room1: { x: COMPARTMENTS[0].cx + 0.15, z: 1.95, lookX: COMPARTMENTS[0].cx + 1.72, lookZ: 1.3 }, // リンさんの方へ
-  room2: { x: SPAWN.x, z: SPAWN.z, heading: SPAWN.heading },
+  room2: { ...ROOM2_POINT },
   room3: { x: COMPARTMENTS[2].cx + 0.9, z: 2.25, lookX: COMPARTMENTS[2].cx - 0.9, lookZ: 1.0 }, // 扉から入ったところ。本棚の前の仔馬・窓側の猫の方へ
   corridor: { x: 0.6, z: (CORRIDOR.z0 + CORRIDOR.z1) / 2, lookX: CORRIDOR.x1, lookZ: (CORRIDOR.z0 + CORRIDOR.z1) / 2 }, // ラウンジの方へ
   lounge: { x: 10.75, z: 2.6, lookX: 10.75, lookZ: 0.6, pitch: -3 }, // ホログラム投影機の前。1.4 倍の像の上端まで入るよう視線は水平に近く

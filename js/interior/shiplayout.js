@@ -42,11 +42,12 @@ export const HULL = { z0: -1.75, z1: BEAM + 1.75, bow: -24, stern: 20.25 };
 /**
  * 船室。side：-1 = 右舷（外壁 z = 0、廊下側 z = 3.2）、+1 = 左舷（外壁 z = 8.14、廊下側 z = 4.94）
  * beds：ベッドの数。bench：リンさん用（Room 1・2 はベッド C の場所にベンチ）
+ * chair：false で窓辺の椅子を置かない（【v17】Room 3。Room 4 は roomy で置かない）
  */
 export const CABINS = [
   { id: 'room1', label: 'Room 1', x0: -5.25, side: -1, beds: 2, seed: 101 },
   { id: 'room2', label: 'Room 2', x0: 0.12, side: -1, beds: 2, seed: 202 },
-  { id: 'room3', label: 'Room 3', x0: -5.25, side: 1, beds: 3, seed: 303 },
+  { id: 'room3', label: 'Room 3', x0: -5.25, side: 1, beds: 3, seed: 303, chair: false }, // 【v17】窓辺の椅子を撤去（ベッド A・C の間の動線）
   { id: 'room4', label: 'Room 4', x0: 0.12, side: 1, beds: 3, seed: 404, roomy: true },
 ];
 
@@ -68,9 +69,13 @@ export function cabinFacing(c, du, dw) {
 
 /** 船室の中の寸法（ローカル） */
 export const CAB = {
-  bedA: { u0: 0.08, u1: 1.9, w0: 0.3, w1: 1.25 },
-  bedB: { u0: 0.08, u1: 1.9, w0: 1.65, w1: 2.6 },
-  bedC: { u0: 2.1, u1: 3.02, w0: 1.3, w1: 3.13 },
+  // 【v17】ベッド A を窓側へ 0.1 m、ベッド B を廊下側へ 0.1 m 寄せ、A・B の間に葉っぱが歩いて入れる通路を作る
+  //   （当たり判定の間 0.40 → 0.56 m。葉っぱの直径 0.30 m。v16 は 0.36 m で、角から入れず犬・猫へ近づけなかった）
+  bedA: { u0: 0.08, u1: 1.9, w0: 0.2, w1: 1.15 },
+  bedB: { u0: 0.08, u1: 1.9, w0: 1.75, w1: 2.7 },
+  // 【v17】ベッド C（Room 3・4）を船尾側へ 0.2 m・窓側の端を 0.1 m 短く。ベッド A の足元の角とベッド C の角の間
+  //   （v16 は斜めに 0.19 m で葉っぱが通れず、A・B の間に入れなかった）を 0.42 m に。扉 → 室内の通路は 0.69 m 残る
+  bedC: { u0: 2.3, u1: 3.22, w0: 1.4, w1: 3.13 },
   bench: { u0: 2.0, u1: 3.02 }, // ベンチ（背は廊下側の壁 w = 3.2）
   bath: { u0: 4.05, w0: 0.95, wSplit: 2.08 }, // シャワー室（w 0.95〜2.05）・トイレ（w 2.1〜3.2）
   wardrobe: { u0: 4.55, u1: 5.2, w0: 0.08, w1: 0.82 },
@@ -118,8 +123,8 @@ export function shipZoneAt(x, z) {
 /** 現在地メニュー（バルコニーは独立の項目にしない。各 Room から歩いて出る） */
 export const SHIP_MENU = ['viewroom', 'room1', 'room2', 'room3', 'room4', 'corridor', 'lounge', 'aft'].map((id) => SHIP_ZONES.find((z) => z.id === id));
 
-/** 乗船したときの出発点（View Room の中央。船首の方を向く） */
-export const SHIP_SPAWN = { x: -6.6, z: BEAM / 2, heading: Math.PI / 2 };
+/** 【v17】乗船したときの出発点 = Dining & Lounge（ホログラム投影機の前。現在地メニューの lounge と同じ位置・向き） */
+export const SHIP_SPAWN = { x: 10.4, z: 2.75, heading: 0, pitch: -3 };
 
 const cab = (i) => CABINS[i];
 const jp = (c, u, w, lu, lw, pitch) => {

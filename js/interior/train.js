@@ -35,6 +35,7 @@ import { buildCompartment } from './compartment.js';
 import { buildLounge, HOLOGRAM_POS } from './lounge.js';
 import { buildViewRoom } from './viewroom.js';
 import { Hologram } from './hologram.js';
+import { signageFor } from './data/signage.js';
 import { DohentaiSource } from './data/dohentai.js';
 import { H, WALL, COMP, COMPARTMENTS, CORRIDOR, DOOR, LOUNGE, LOUNGE_DOOR, CREW_DOOR, SPAWN, ZONES, JUMP_POINTS, MENU_ZONES, VIEW, STAIR, CROSS, zoneAt } from './layout.js';
 import { TouchControls } from './touch.js';
@@ -176,7 +177,7 @@ export class TrainInterior {
   _buildHologram() {
     const P = this.holoPos;
     this.holoSource = new DohentaiSource();
-    this.hologram = new Hologram({ position: P, mats: this.mats, source: this.holoSource });
+    this.hologram = new Hologram({ position: P, mats: this.mats, source: this.holoSource, signage: signageFor(this.kind) }); // 【v17】案内図は乗り物ごと
     this.scene.add(this.hologram.group);
     this.colliders.push(new Collider(P.x - 0.42, P.x + 0.42, P.z - 0.42, P.z + 0.42, 0, 1.0, { occlude: false, name: 'hologram' }));
     this.targets.push({ kind: 'holo', id: 'hologram', anchor: this.hologram.anchor, radius: 1.05, label: 'E：調べる', head: () => this.hologram.head });
@@ -766,7 +767,8 @@ export class TrainInterior {
     p.group.rotation.y = p.heading;
     this.camYaw = p.heading;
     this.yawOffset = 0;
-    this.viewPitch = CAM.pitch;
+    // 【v17】出発点（Dining & Lounge）はホログラムの像が入るよう視線を水平に近く（現在地メニューの lounge と同じ）
+    this.viewPitch = this.spawn.pitch != null ? THREE.MathUtils.degToRad(this.spawn.pitch) : CAM.pitch;
     this.camDist = CAM.dist;
     this.armLen = null;
     this.overview = false;
@@ -1055,13 +1057,22 @@ export class TrainInterior {
     const p = this.player.pos;
     let best = null;
     let bd = Infinity;
+    let char = null; // 【v17】範囲内でいちばん近い住人
+    let cd = Infinity;
     for (const t of this.targets) {
       const d = Math.hypot(t.anchor.x - p.x, t.anchor.z - p.z);
       if (d < t.radius && d < bd) {
         best = t;
         bd = d;
       }
+      if (t.kind === 'char' && d < t.radius && d < cd) {
+        char = t;
+        cd = d;
+      }
     }
+    // 【v17】住人に話しかけられる距離にいるときは、扉の前に立っていない限り「調べる」（シャワー室・トイレの札など）より会話を優先
+    //   （船の Room 3 のウサギはトイレの扉のすぐ横のベッドにいて、v16 では近づいても「E：調べる」になっていた）
+    if (char && best?.kind === 'future' && bd > 0.25) return char;
     return best;
   }
 
