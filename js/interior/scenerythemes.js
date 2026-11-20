@@ -19,6 +19,7 @@
 import * as THREE from 'three';
 import { box, PartBin, trs, rng } from './kit.js';
 import { LoopLayer, periodicNoise, canvasTex } from './scenery.js';
+import * as LF from './scenerylandforms.js'; // 【v18】3 区間（81–110・111–170・401–450）専用の地形
 
 /** 近景〜中景の種類 → 層（presence 1） */
 export const KIND_THEMES = {
@@ -34,11 +35,27 @@ export const KIND_THEMES = {
   mountain_plain: { green: 1, hillsFar: 1, ridge: 1 },
   plain_fields_residential: { green: 1, farmhouses: 1, cityFar: 1, farLights: 1, ridge: 1 },
   factory: { factory: 1, farLights: 1 },
+  // 【v18】sea_left_mountain_right（81–110 小田原〜熱海）
+  coast_town: { water: 1, coastSlope: 1, slopeTown: 1 }, // 左：海へ落ちる急斜面＋斜面の街＋近い海
+  cliff_cut: { cliffCut: 1 }, // 右：切通しの岩肌・法面＋木々＋急峻な山
+  // 【v18】fuji_right（111–170）
+  fuji_plain: { paddy: 1, canals: 1, farmhouses: 1, warehouses: 1, housesFew: 1, farLights: 1 }, // 右：田畑・用水路・倉庫・家（遠景は mt_fuji）
+  fuji_shore_plain: { paddyShore: 1, houses: 1, farmhouses: 1, farLights: 1 }, // 左：平地に家がぽつぽつ（遠景は izu_peninsula）
+  // 【v18】biwako_fields（401–450）
+  suzuka_fields: { paddy: 1, farmhouses: 1, warehousesFew: 1, suzuka: 1, farLights: 1 }, // 左：田園の向こうに鈴鹿山脈
+  biwa_plain: { paddy: 1, farmhouses: 1, housesFew: 1, farLights: 1 }, // 右：田園・平地・家（遠景は控えめな比叡山系）
 };
+
+/** 【v18】片側の地面を覆う層（両舷とも覆われたら共有の街の地面を描かない） */
+const COVER = new Set(['water', 'green', 'paddy', 'paddyShore', 'cliffCut']);
+/** 【v18】出し入れで沈める量（ここに無い名前は従来どおり） */
+const SINK_BY_NAME = { paddy: 6, paddyShore: 6, seaHorizon: 6, coastSlope: 220, slopeTown: 240, cliffCut: 900, suzuka: 700, canals: 20, warehouses: 60, warehousesFew: 60, houses: 40, housesFew: 40 };
 
 /** 遠景 → 層 */
 const BG_THEMES = {
-  mt_fuji: ['bg:mt_fuji'],
+  mt_fuji: ['bg:mt_fuji', 'bg:ashitaka', 'bg:tenshi'], // 【v18】富士山＋右に愛鷹の山並み＋左遠くの低い山並み
+  izu_peninsula: ['bg:izu', 'seaHorizon'], // 【v18】列車後方の伊豆半島の山影＋地平線のわずかな海
+  sagami_coast: ['bg:manazuru', 'bg:hatsushima'], // 【v18】相模湾の岬・初島（遠景）
   lake_biwa: ['bg:lake_biwa'],
   hiei_range: ['bg:hiei_range'],
   sea: ['farWater'],
@@ -63,6 +80,16 @@ const ISLANDS = {
   satsuma: { L: 22000, H: 420, d: 7000, peaks: 4, flat: 0.2, seed: 22 },
 };
 
+/** 【v18】遠景の山影（_island の形・色）。比叡山系は従来（H 700）の 1/4 */
+const RANGES = {
+  ashitaka: { L: 10000, H: 560, d: 6400, dx: 5600, peaks: 5, flat: 0.3, seed: 51, cTop: '#4d6688', cBot: '#7690ac' },
+  tenshi: { L: 11000, H: 300, d: 9500, dx: -9500, peaks: 4, flat: 0.35, seed: 52, cTop: '#6a80a2', cBot: '#8ea2bc' },
+  izu: { L: 15000, H: 470, d: 10400, dx: 6200, peaks: 6, flat: 0.2, seed: 53, cTop: '#5b7196', cBot: '#8299b6', island: true },
+  manazuru: { L: 5200, H: 150, d: 3600, dx: -5200, peaks: 2, flat: 0.35, seed: 54, cTop: '#53705e', cBot: '#7c958c', island: true },
+  hatsushima: { L: 1900, H: 45, d: 8200, dx: 1800, peaks: 1, flat: 0.75, seed: 55, cTop: '#6c8696', cBot: '#8ea4b2', island: true },
+  hiei_range: { L: 26000, H: 175, d: 7600, dx: 0, peaks: 6, flat: 0.3, seed: 41, cTop: '#62789a', cBot: '#869cb6' },
+};
+
 const SINK = 1; // 沈める量の倍率
 const FADE_S = 1.2; // 目標までの時間 [s]
 
@@ -76,11 +103,14 @@ export class SceneryThemes {
     // 共有のマテリアル（Lambert = 既存と同じ。時間帯の光は室内シーンのライトと applyLook の色で決まる）
     const fieldsTex = fieldsTexture();
     const waveTex = waterTexture();
-    this.tex = { fields: fieldsTex, water: waveTex };
+    const paddyTex = LF.springFieldsTexture(); // 【v18】春の田園
+    this.tex = { fields: fieldsTex, water: waveTex, paddy: paddyTex };
     this.mats = {
       water: new THREE.MeshLambertMaterial({ color: '#2d6e9c', map: waveTex }),
       emerald: new THREE.MeshLambertMaterial({ color: '#36c2b0', map: waveTex, transparent: true, opacity: 0.92, depthWrite: false }),
       green: new THREE.MeshLambertMaterial({ color: '#ffffff', map: fieldsTex }),
+      paddy: new THREE.MeshLambertMaterial({ color: '#ffffff', map: paddyTex }), // 【v18】
+      farSea: new THREE.MeshBasicMaterial({ color: '#7fa6c4', fog: false }), // 【v18】地平線のわずかな海
       hill: new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }),
       far: new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, fog: false }), // 遠景（光を受けない。かすみ・時間帯は色で）
       snow: new THREE.MeshLambertMaterial({ vertexColors: true, fog: false }),
@@ -165,7 +195,7 @@ export class SceneryThemes {
           o.visible = vis;
           o.position.y = (o.userData.baseY ?? 0) + y;
         }
-        if ((name === 'water' || name === 'green') && p >= 0.999) sideCover = 1;
+        if (COVER.has(name) && p >= 0.999) sideCover = 1;
       }
       cover += sideCover;
     }
@@ -179,6 +209,7 @@ export class SceneryThemes {
     const off = sc.offset;
     this.tex.water.offset.x = (((-off / this.tex.water.userData.tile) % 1) + 1) % 1;
     this.tex.fields.offset.x = (((-off / this.tex.fields.userData.tile) % 1) + 1) % 1;
+    this.tex.paddy.offset.x = (((-off / this.tex.paddy.userData.tile) % 1) + 1) % 1;
     // 新しく作った流れる層（LoopLayer）は WindowScenery.update が side.layers 経由で動かす
   }
 
@@ -193,6 +224,8 @@ export class SceneryThemes {
     M.water.emissive.copy(L.skyHorizon).multiplyScalar(0.06 + 0.16 * night);
     M.emerald.emissive.copy(L.skyHorizon).multiplyScalar(0.05 + 0.1 * night);
     M.green.color.copy(L.mountainTint);
+    M.paddy.color.copy(L.mountainTint);
+    M.farSea.color.set('#6f9cc0').lerp(L.haze, 0.3).multiply(L.ridgeTint);
     M.hill.color.copy(L.mountainTint);
     M.factory.color.copy(L.buildingTint);
     // 遠景は fog を使わないので、空気遠近（かすみの色へ寄せる）を色で付ける
@@ -236,10 +269,26 @@ export class SceneryThemes {
       else if (name === 'gentleHills') this._hills(z, cy, xc, seed + 3, [500, 900, 1500, 2300, 3200], 190, 0.5);
       else if (name === 'factory') this._factory(s, z, cy, xc, seed, lite, false);
       else if (name === 'pulpMill') this._factory(s, z, cy, xc, seed + 9, lite, true);
-      else if (name === 'bg:mt_fuji') it.objs.push(this._cone(z, cy, xc, { d: 8200, H: 1150, R: 3300, snow: 0.3, seed: 31 }));
+      // 【v18】3 区間専用
+      else if (name === 'paddy') it.objs.push(this._plane(side, 'paddy', -10, 9000, f < 0 ? 1.2 : 1.3));
+      else if (name === 'paddyShore') it.objs.push(this._plane(side, 'paddy', -10, 3300, f < 0 ? 1.2 : 1.3));
+      else if (name === 'seaHorizon') it.objs.push(this._plane(side, 'farSea', 3300, 11600, 1.6)); // かすみに消えないよう fog なし
+      else if (name === 'coastSlope') LF.buildCoastSlope(this, s, z, cy, xc, seed);
+      else if (name === 'slopeTown') LF.buildSlopeTown(this, s, z, cy, xc, seed, lite);
+      else if (name === 'cliffCut') LF.buildCliffCut(this, s, z, cy, xc, seed, sc.trackY, lite);
+      else if (name === 'canals') LF.buildCanals(this, s, z, cy, xc, seed, lite);
+      else if (name === 'warehouses') LF.buildWarehouses(this, s, z, cy, xc, seed, lite, { n: 40 });
+      else if (name === 'warehousesFew') LF.buildWarehouses(this, s, z, cy, xc, seed, lite, { n: 14, d0: 300, d1: 1500, seedAdd: 5, name: 'warehouses-few' });
+      else if (name === 'houses') LF.buildHouses(this, s, z, cy, xc, seed, lite, { n: 1000, d0: 50, d1: 2400 });
+      else if (name === 'housesFew') LF.buildHouses(this, s, z, cy, xc, seed + 3, lite, { n: 420, d0: 120, d1: 2200, name: 'houses-few' });
+      else if (name === 'suzuka') LF.buildSuzuka(this, s, z, cy, xc, seed);
+      else if (name === 'bg:mt_fuji') it.objs.push(LF.buildFuji(this, z, cy, xc, { d: 8600, H: 1330, R: 7600, zs: 0.4, dx: -600 }));
+      else if (name.startsWith('bg:') && RANGES[name.slice(3)]) {
+        const o = RANGES[name.slice(3)];
+        it.objs.push(this._island(z, cy, xc + o.dx, o, !!o.island));
+      }
       else if (name === 'bg:sakurajima') it.objs.push(this._cone(z, cy, xc - 1500, { d: 4200, H: 620, R: 2400, snow: 0, seed: 32, ash: true }));
-      else if (name === 'bg:hiei_range') it.objs.push(this._island(z, cy, xc, { L: 26000, H: 700, d: 6100, peaks: 5, flat: 0.05, seed: 41 }, false));
-      else if (name === 'bg:lake_biwa') it.objs.push(this._plane(side, 'water', 2600, 5600, 2.0));
+      else if (name === 'bg:lake_biwa') it.objs.push(this._plane(side, 'water', 4300, 5400, 2.0)); // 【v18】田園の向こうにわずかに光る湖面（従来 2600〜5600 の広い帯は海のように見えた）
       else if (name.startsWith('bg:')) {
         const k = name.slice(3);
         const spec = ISLANDS[k];
@@ -261,7 +310,7 @@ export class SceneryThemes {
       it.objs.push(e.layer.group);
     }
     // 沈める量：平面は少しだけ（地面の下へ）、山・遠景は高さぶん
-    it.sink = name.startsWith('bg:') ? 2600 : name.startsWith('hills') || name === 'gentleHills' ? 700 : name === 'towers' ? 260 : name.includes('ater') || name === 'green' || name.startsWith('emerald') ? 6 : 120;
+    it.sink = SINK_BY_NAME[name] ?? (name.startsWith('bg:') ? 2600 : name.startsWith('hills') || name === 'gentleHills' ? 700 : name === 'towers' ? 260 : name.includes('ater') || name === 'green' || name.startsWith('emerald') ? 6 : 120);
     for (const o of it.objs) {
       o.visible = false;
       o.userData.baseY = o.position.y; // 平面・遠景は作った高さから沈める（LoopLayer の group は 0）
@@ -485,8 +534,8 @@ export class SceneryThemes {
       return e * (o.flat + (1 - o.flat) * p);
     };
     const rows = [0, 0.12];
-    const cTop = new THREE.Color('#47604f');
-    const cBot = new THREE.Color('#6f8a84');
+    const cTop = new THREE.Color(o.cTop ?? '#47604f'); // 【v18】色を指定できるように（既定は従来どおり）
+    const cBot = new THREE.Color(o.cBot ?? '#6f8a84');
     const pos = [];
     const col = [];
     const v = [];
