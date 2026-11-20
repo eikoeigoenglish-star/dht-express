@@ -1,6 +1,7 @@
 {
  "_comment": "v10: 詳細地形パッチに合わせた橋（augment で既存の橋の経路を差し替え・しまなみ海道の橋を追加）と、追加ランドマーク（ラグーナテンボス・神戸空港・福岡空港・那覇空港）。橋は tools/terrain_detail/fit_bridges.py が書く。",
  "augment": {
+  "uminonakamichi": {"lat": 33.669, "lon": 130.356, "p": {"spit": true, "L": 0.45, "W": 7.0, "deg": 74, "pines": 50}, "_v17": "博多湾パッチ（hakata-bay）の実際の砂州（志賀島〜西戸崎〜和白）に合わせて位置と向きを修正。beach() は rect(0,0,deg,W,L) なので W が長さ方向"},
   "rainbow-bridge": {"lat": 35.6369, "lon": 139.76635, "path": [[35.6402, 139.7575, "land"], [35.6391, 139.7607, "anchor"], [35.635, 139.77, "anchor"], [35.6333, 139.7772, "land"]], "spans": [{"type": "suspension", "towers": [0.143, 0.857], "towerM": 126, "deckM": 50, "from": 1, "to": 2}], "fit": "v10 tools/terrain_detail/fit_bridges.py (patch tokyo-bay)"},
   "tokyo-gate-bridge": {"lat": 35.61621, "lon": 139.82475, "path": [[35.627, 139.8393, "land"], [35.62021, 139.83014, "anchor"], [35.61014, 139.81656, "anchor"], [35.6075, 139.813, "land"]], "spans": [{"type": "gateTruss", "deckM": 55, "topM": 88, "from": 1, "to": 2}], "fit": "v10 tools/terrain_detail/fit_bridges.py (patch tokyo-bay)"},
   "onaruto-bridge": {"lat": 34.24261, "lon": 134.65408, "path": [[34.2362, 134.637, "land"], [34.2385, 134.6425, "anchor"], [34.24324, 134.6593, "anchor"], [34.2525, 134.6775, "land"]], "spans": [{"type": "suspension", "towers": [0.18, 0.82], "towerM": 144, "deckM": 41, "from": 1, "to": 2}], "connects": ["鳴門市（大毛島・孫崎）", "淡路島（南あわじ市・門崎）"], "fit": "v10 tools/terrain_detail/fit_bridges.py (patch naruto)"},
