@@ -44,18 +44,21 @@ export const KIND_THEMES = {
   // 【v18】biwako_fields（401–450）
   suzuka_fields: { paddy: 1, farmhouses: 1, warehousesFew: 1, suzuka: 1, farLights: 1 }, // 左：田園の向こうに鈴鹿山脈
   biwa_plain: { paddy: 1, farmhouses: 1, housesFew: 1, farLights: 1 }, // 右：田園・平地・家（遠景は控えめな比叡山系）
+  // 【v19】onomichi（746–755 尾道）
+  onomichi_channel: { cityNear: 1, onoHarbor: 1, onoChannel: 1, onoIslands: 1, farLights: 1 }, // 左：見下ろす町 → 尾道水道 → 向島・重なる島
+  onomichi_hills: { onoHills: 1, onoSlopeHouses: 1, farLights: 1, ridge: 1 }, // 右：丸い低山（150 m 級）＋山腹の家
 };
 
 /** 【v18】片側の地面を覆う層（両舷とも覆われたら共有の街の地面を描かない） */
 const COVER = new Set(['water', 'green', 'paddy', 'paddyShore', 'cliffCut']);
 /** 【v18】出し入れで沈める量（ここに無い名前は従来どおり） */
-const SINK_BY_NAME = { paddy: 6, paddyShore: 6, seaHorizon: 6, coastSlope: 220, slopeTown: 240, cliffCut: 900, suzuka: 700, canals: 20, warehouses: 60, warehousesFew: 60, houses: 40, housesFew: 40 };
+const SINK_BY_NAME = { onoHarbor: 80, onoChannel: 6, onoIslands: 700, onoHills: 400, onoSlopeHouses: 400, paddy: 6, paddyShore: 6, seaHorizon: 6, coastSlope: 220, slopeTown: 240, cliffCut: 900, suzuka: 700, canals: 20, warehouses: 60, warehousesFew: 60, houses: 40, housesFew: 40 };
 
 /** 遠景 → 層 */
 const BG_THEMES = {
   mt_fuji: ['bg:mt_fuji', 'bg:ashitaka', 'bg:tenshi'], // 【v18】富士山＋右に愛鷹の山並み＋左遠くの低い山並み
   izu_peninsula: ['bg:izu', 'seaHorizon'], // 【v18】列車後方の伊豆半島の山影＋地平線のわずかな海
-  sagami_coast: ['bg:manazuru', 'bg:hatsushima'], // 【v18】相模湾の岬・初島（遠景）
+  sagami_coast: ['bg:hatsushima'], // 【v18】相模湾の初島（遠景）。【v20】左窓に山を置かないため真鶴方面の岬は外した
   lake_biwa: ['bg:lake_biwa'],
   hiei_range: ['bg:hiei_range'],
   sea: ['farWater'],
@@ -111,6 +114,7 @@ export class SceneryThemes {
       green: new THREE.MeshLambertMaterial({ color: '#ffffff', map: fieldsTex }),
       paddy: new THREE.MeshLambertMaterial({ color: '#ffffff', map: paddyTex }), // 【v18】
       farSea: new THREE.MeshBasicMaterial({ color: '#7fa6c4', fog: false }), // 【v18】地平線のわずかな海
+      inlandSea: new THREE.MeshLambertMaterial({ color: '#3f97a8', map: waveTex }), // 【v19】瀬戸内の穏やかな青緑の水面
       hill: new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }),
       far: new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, fog: false }), // 遠景（光を受けない。かすみ・時間帯は色で）
       snow: new THREE.MeshLambertMaterial({ vertexColors: true, fog: false }),
@@ -226,6 +230,8 @@ export class SceneryThemes {
     M.green.color.copy(L.mountainTint);
     M.paddy.color.copy(L.mountainTint);
     M.farSea.color.set('#6f9cc0').lerp(L.haze, 0.3).multiply(L.ridgeTint);
+    M.inlandSea.color.set('#3f97a8').lerp(L.haze, 0.12).multiply(L.mountainTint);
+    M.inlandSea.emissive.copy(L.skyHorizon).multiplyScalar(0.06 + 0.16 * night);
     M.hill.color.copy(L.mountainTint);
     M.factory.color.copy(L.buildingTint);
     // 遠景は fog を使わないので、空気遠近（かすみの色へ寄せる）を色で付ける
@@ -282,6 +288,12 @@ export class SceneryThemes {
       else if (name === 'houses') LF.buildHouses(this, s, z, cy, xc, seed, lite, { n: 1000, d0: 50, d1: 2400 });
       else if (name === 'housesFew') LF.buildHouses(this, s, z, cy, xc, seed + 3, lite, { n: 420, d0: 120, d1: 2200, name: 'houses-few' });
       else if (name === 'suzuka') LF.buildSuzuka(this, s, z, cy, xc, seed);
+      // 【v19】尾道
+      else if (name === 'onoHarbor') LF.buildOnomichiHarbor(this, s, z, cy, xc, seed, lite);
+      else if (name === 'onoChannel') it.objs.push(this._plane(side, 'inlandSea', 466, 11500, 1.5)); // 尾道水道〜瀬戸内（穏やかな青緑）
+      else if (name === 'onoIslands') LF.buildOnomichiIslands(this, s, z, cy, xc, seed);
+      else if (name === 'onoHills') LF.buildOnomichiHills(this, s, z, cy, xc, seed);
+      else if (name === 'onoSlopeHouses') LF.buildOnomichiSlopeHouses(this, s, z, cy, xc, seed, lite);
       else if (name === 'bg:mt_fuji') it.objs.push(LF.buildFuji(this, z, cy, xc, { d: 8600, H: 1330, R: 7600, zs: 0.4, dx: -600 }));
       else if (name.startsWith('bg:') && RANGES[name.slice(3)]) {
         const o = RANGES[name.slice(3)];

@@ -100,58 +100,60 @@ function wallBox(w, h, dep) {
 /* 81–110 左：海沿いの急斜面と斜面の街（小田原〜熱海）                         */
 /* ==================================================================== */
 const COAST_W = 6000;
-/** 斜面の高さ（街の地面 cy からの高さ）。線路際 ≒ 線路の高さ → 海岸線 cl(x) で崖になって海へ */
+/**
+ * 【v20】熱海の左窓：海へ向かって「ひたすら下る」1 枚の斜面（独立した山・岬の盛り上がりは作らない）。
+ *   高さは街の地面 cy から。線路際（線路より 2 m 低い）→ 海岸線 cl(x) まで単調に下がり、宅地の段丘（平らな段＋短い段差）を付ける。
+ *   単調に下がる高さ場なので、窓（線路の高さ）からは常に上面だけが見える（裏面・中空の殻が見えることはない）。
+ */
+const COAST_TOP = 42; // 線路際の高さ（線路 ≒ 44 m より少し低い）
 function coastField(seed) {
   const W = COAST_W;
-  const nCl = periodicNoise(W, seed + 11, [[4, 0.5], [9, 0.3], [21, 0.15]]);
-  const nR = periodicNoise(W, seed + 12, [[13, 0.5], [29, 0.3], [57, 0.2]]);
-  const heads = [
-    { c: 0.1, w: 0.045, h: 125 },
-    { c: 0.43, w: 0.06, h: 95 },
-    { c: 0.76, w: 0.04, h: 150 },
-  ];
-  const head = (x) => heads.reduce((m, H) => Math.max(m, bump(x, W, H.c, H.w) * H.h), 0);
-  const headK = (x) => heads.reduce((m, H) => Math.max(m, bump(x, W, H.c, H.w * 1.25)), 0);
-  /** 海岸線までの距離：入り江（街）は近く、岬は沖へ張り出す */
-  const cl = (x) => 360 + 90 * nCl(x) + 520 * headK(x);
+  const nCl = periodicNoise(W, seed + 11, [[3, 0.5], [7, 0.3], [13, 0.2]]);
+  const nR = periodicNoise(W, seed + 12, [[11, 0.5], [23, 0.3], [47, 0.2]]);
+  /** 海岸線までの距離：ゆるい入り江と出っ張り（岬の山は作らない） */
+  const cl = (x) => 400 + 70 * nCl(x);
+  const STEP = 6; // 段丘 1 段の高さ [m]
   const h = (x, d) => {
     const C = cl(x);
-    if (d > C) return -4;
-    const t = d / C;
-    // 線路際（≒ 44 m）から海へ。上の方は急、下の方は少し緩く
-    let y = 43 * Math.pow(1 - sstep(0, 1, t), 1.25) + 7 * nR(x) * (1 - t);
-    // 岬：線路の後ろから海へ下る緑の尾根（線路より高く盛り上がる）
-    const hk = head(x);
-    if (hk > 1) y = Math.max(y, hk * (1 - 0.75 * sstep(0.05, 1, t)) + 18 * (1 - t));
-    // 海岸の崖：最後の 50 m で落ちる
-    y *= 1 - sstep(C - 55, C, d) * 0.92;
-    return Math.max(-4, y);
+    if (d >= C) return -4;
+    const t = Math.max(0, d) / C;
+    // 上の方はやや急、海の手前でゆるむ（凹形）。常に d に対して単調減少
+    const base = COAST_TOP * Math.pow(1 - t, 1.25);
+    // 段丘：平らな段（宅地）と短い段差（擁壁）。上へ切り上げるので base より低くならず単調性を保つ
+    const k = base / STEP;
+    const terr = (Math.floor(k) + sstep(0.78, 1, k - Math.floor(k))) * STEP;
+    let y = 0.7 * terr + 0.3 * base + 1.2 * nR(x) * (1 - t) * t * 4;
+    // 海岸の段差（護岸）：最後の 30 m で 0 へ
+    y *= 1 - sstep(C - 30, C, d);
+    return Math.min(COAST_TOP, Math.max(-4, y));
   };
-  return { W, h, cl, headK };
+  return { W, h, cl };
 }
 
 export function buildCoastSlope(th, s, z, cy, xc, seed) {
   const F = coastField(seed);
-  const rows = [3, 15, 40, 80, 130, 190, 260, 340, 430, 530, 640, 760, 900, 1040, 1160];
-  const cGrass = new THREE.Color('#7f9f58');
-  const cGreen = new THREE.Color('#4f7d43');
-  const cDark = new THREE.Color('#355f36');
-  const cTown = new THREE.Color('#a9a79d');
+  const rows = [3, 12, 24, 38, 54, 72, 92, 114, 138, 164, 192, 222, 254, 288, 324, 362, 400, 440, 480, 540, 700, 1160];
+  const cGrass = new THREE.Color('#86a35e');
+  const cTown = new THREE.Color('#aaa89e');
+  const cTown2 = new THREE.Color('#9a988f');
+  const cGreen = new THREE.Color('#6f9a52');
   const cRock = new THREE.Color('#8b8676');
+  const nG = periodicNoise(F.W, seed + 15, [[17, 0.5], [41, 0.3], [83, 0.2]]);
   strip(th, z, xc, {
     name: 'coast-slope',
     W: F.W,
     nx: 600,
     rows,
+    shade: 0.5,
     y: (x, d) => cy + F.h(x, d),
     color: (x, d, y, j, c) => {
       const hh = y - cy;
-      const town = (1 - F.headK(x)) * (d < F.cl(x) - 60 ? 1 : 0);
-      if (j === 0) c.copy(cGrass);
-      else if (hh < 7) c.copy(cRock); // 海岸の岩・護岸
-      else c.copy(cGreen).lerp(cDark, Math.min(1, hh / 140));
-      if (j > 0 && hh >= 7) c.lerp(cTown, 0.55 * town); // 斜面の街（建物の足元は灰色がち）
-      if ((Math.floor(x / 23) + j * 3) % 7 === 0) c.multiplyScalar(0.92);
+      if (j === 0) c.copy(cGrass); // 線路際の草地
+      else if (hh < 4) c.copy(cRock); // 護岸・岩
+      else {
+        c.copy((Math.floor(x / 37) + j) % 3 ? cTown : cTown2); // 斜面の宅地（建物の足元）
+        if (nG(x) > 0.35) c.lerp(cGreen, 0.6); // ところどころ斜面の緑
+      }
     },
   });
 }
@@ -163,44 +165,49 @@ export function buildSlopeTown(th, s, z, cy, xc, seed, lite) {
   const bin = new PartBin();
   const walls = [0xf4f1e8, 0xece6d6, 0xe2dccc, 0xd5d8d6, 0xf7f4ec, 0xd9cdb8, 0xc6ccce];
   const roofs = [0x6b6b66, 0x5b6168, 0x7a5a4c, 0x8a8478];
-  const n = lite ? 900 : 1100;
+  const nG = periodicNoise(F.W, seed + 15, [[17, 0.5], [41, 0.3], [83, 0.2]]);
+  const n = lite ? 1500 : 1800;
   for (let i = 0; i < n; i++) {
     const x = r() * F.W;
     const C = F.cl(x);
-    const town = 1 - F.headK(x);
-    if (r() > 0.1 + 0.9 * town) continue; // 岬の上はまばら
-    const d = 26 + Math.pow(r(), 1.15) * Math.max(40, C - 80);
+    const d = 20 + r() * (C - 55);
+    if (nG(x) > 0.35 && r() < 0.7) continue; // 緑の斜面はまばら
     const g0 = F.h(x, d);
     if (g0 < 3) continue;
     const roll = r();
-    // 斜面の下（海寄り）ほど中高層のホテル・マンション
-    const low = d / C;
+    const low = d / C; // 海寄りほど中高層のホテル・マンション
     let floors;
-    if (roll < 0.1 + 0.25 * low) floors = 7 + Math.floor(r() * 9);
-    else if (roll < 0.45) floors = 3 + Math.floor(r() * 4);
+    if (roll < 0.08 + 0.3 * low) floors = 6 + Math.floor(r() * 7);
+    else if (roll < 0.5) floors = 3 + Math.floor(r() * 3);
     else floors = 2 + Math.floor(r() * 2);
-    if (d < 70) floors = Math.min(floors, 5); // 窓のすぐ下は低く（海を隠さない）
-    const w = floors > 6 ? 18 + r() * 22 : 9 + r() * 10;
-    const dep = floors > 6 ? 12 + r() * 10 : 8 + r() * 6;
+    if (d < 80) floors = Math.min(floors, 4); // 窓のすぐ下は低く（海を隠さない）
+    else if (d < 200) floors = Math.min(floors, 8);
+    const w = floors > 5 ? 16 + r() * 20 : 9 + r() * 9;
+    const dep = floors > 5 ? 11 + r() * 9 : 8 + r() * 5;
     const hgt = floors * 3;
-    const base = cy + g0 - 7; // 斜面に食い込ませる
-    bin.add('building', wallBox(w, hgt + 7, dep), trs(x, base + (hgt + 7) / 2, z(d), 0, (r() - 0.5) * 0.25, 0), walls[Math.floor(r() * walls.length)]);
+    const base = cy + g0 - 7; // 段丘に食い込ませる（浮かない）
+    bin.add('building', wallBox(w, hgt + 7, dep), trs(x, base + (hgt + 7) / 2, z(d), 0, (r() - 0.5) * 0.2, 0), walls[Math.floor(r() * walls.length)]);
     if (floors <= 3) bin.add('solid', box(w + 0.6, 0.8, dep + 0.6), trs(x, base + hgt + 7.4, z(d)), roofs[Math.floor(r() * roofs.length)]);
     else if (r() < 0.5) bin.add('solid', box(w * 0.3, 2.6, dep * 0.3), trs(x, base + hgt + 8.3, z(d)), 0xbab8b0);
   }
-  // 岬・斜面の木々（照葉樹のこんもりした緑）
-  const nt = lite ? 170 : 240;
-  for (let i = 0; i < nt; i++) {
+  // 段丘の擁壁（谷側の縁。窓から見える上り側の面に石積みの色）
+  for (let i = 0; i < (lite ? 120 : 160); i++) {
     const x = r() * F.W;
-    const C = F.cl(x);
-    const hk = F.headK(x);
-    if (r() > 0.25 + 0.75 * hk) continue;
-    const d = 10 + r() * (C - 40);
+    const d = 30 + r() * (F.cl(x) - 80);
     const g0 = F.h(x, d);
-    if (g0 < 4) continue;
-    const rr = 5 + r() * 7;
-    bin.add('foliage', new THREE.IcosahedronGeometry(1, 1), trs(x, cy + g0 + rr * 0.45, z(d), 0, r() * 6, 0, [rr, rr * 0.8, rr]), [0x3f6f3d, 0x4f7f45, 0x2f5f35, 0x5b8a48][i % 4]);
+    if (g0 < 6) continue;
+    bin.add('factory', box(20 + r() * 30, 3.5, 1.2), trs(x, cy + g0 - 1.4, z(d + 5)), 0xb8b4a8);
   }
+  // 斜面の庭木・街路樹（小さく。山の盛り上がりにはしない）
+  for (let i = 0; i < (lite ? 260 : 340); i++) {
+    const x = r() * F.W;
+    const d = 15 + r() * (F.cl(x) - 40);
+    const g0 = F.h(x, d);
+    if (g0 < 3) continue;
+    const rr = 2.5 + r() * 3;
+    bin.add('foliage', new THREE.IcosahedronGeometry(1, 1), trs(x, cy + g0 + rr * 0.5, z(d), 0, r() * 6, 0, [rr, rr * 0.85, rr]), [0x4f7f45, 0x5b8a48, 0x3f6f3d][i % 3]);
+  }
+  sc.mats.factory = th.mats.factory;
   sc._addLayer(bin, F.W, 'slope-town', xc);
 }
 
@@ -550,4 +557,199 @@ export function springFieldsTexture() {
     g.fillStyle = 'rgba(80, 125, 155, 0.6)'; // 水路
     for (let k = 0; k < 3; k++) g.fillRect(Math.floor(r() * S), 0, 2, S);
   }, { tile: 460 });
+}
+
+/* ==================================================================== */
+/* 【v19】746–755 尾道（sceneId onomichi）                                    */
+/*   左：見下ろす町並み（既存 cityNear）→ 港の町並み・岸壁・船 → 尾道水道 → 向島 → 重なる島々   */
+/*   右：線路に近い丸みのある低山（150 m 級）＋山腹に点在する家・擁壁                       */
+/* ==================================================================== */
+const ONO_W = 8000;
+const ONO_QUAY = 470; // 岸壁（町と水道の境）までの距離 [m]
+const ONO_ISLE = 880; // 向島の岸までの距離 [m]（水道の幅 ≒ 400 m）
+
+/** 港町（d 260〜岸壁）：低〜中層が密集。岸壁・船・向島の岸の町と造船所 */
+export function buildOnomichiHarbor(th, s, z, cy, xc, seed, lite) {
+  const sc = th.sc;
+  const W = ONO_W;
+  const r = rng(seed * 61 + 11);
+  const bin = new PartBin();
+  const walls = [0xf2efe8, 0xe8e3d8, 0xdcd8cf, 0xcfd3d4, 0xe9e0cf, 0xc4c9cb, 0xf6f3ec];
+  const roofs = [0x5b6168, 0x4f5f70, 0x6b6b66, 0x7a5a4c];
+  // 岸壁の手前の町並み（d 260〜450）
+  const n = lite ? 1100 : 1400;
+  for (let i = 0; i < n; i++) {
+    const x = r() * W;
+    const d = 255 + r() * (ONO_QUAY - 275);
+    const roll = r();
+    const floors = roll < 0.12 ? 5 + Math.floor(r() * 6) : roll < 0.4 ? 3 + Math.floor(r() * 2) : 2 + Math.floor(r() * 2);
+    const w = floors > 4 ? 14 + r() * 14 : 8 + r() * 8;
+    const dep = floors > 4 ? 10 + r() * 8 : 7 + r() * 6;
+    const h = floors * 3;
+    bin.add('building', wallBox(w, h, dep), trs(x, cy + h / 2, z(d)), walls[Math.floor(r() * walls.length)]);
+    if (floors <= 3) bin.add('solid', box(w + 0.6, 0.8, dep + 0.6), trs(x, cy + h + 0.4, z(d)), roofs[Math.floor(r() * roofs.length)]);
+  }
+  // 岸壁（コンクリート）と係留された小船
+  bin.add('factory', box(W, 3, 8), trs(W / 2, cy + 1.5, z(ONO_QUAY - 2)), 0xc9c6bc);
+  for (let i = 0; i < (lite ? 40 : 60); i++) {
+    const x = r() * W;
+    const d = ONO_QUAY + 12 + r() * 260;
+    const L = 8 + r() * 18;
+    const hull = r() < 0.75 ? 0xf4f4f0 : 0x3f6f9a;
+    bin.add('factory', box(L, 2.2, L * 0.32), trs(x, cy + 2.4, z(d)), hull);
+    bin.add('factory', box(L * 0.35, 2.4, L * 0.24), trs(x - L * 0.15, cy + 4.6, z(d)), 0xffffff);
+  }
+  // 向島の岸の町並み（低層・まばら）と造船所の建屋・クレーン
+  for (let i = 0; i < (lite ? 380 : 520); i++) {
+    const x = r() * W;
+    const d = ONO_ISLE + 10 + r() * 110;
+    const h = 3 * (1 + Math.floor(r() * 3));
+    const w = 8 + r() * 12;
+    bin.add('building', wallBox(w, h, 8 + r() * 6), trs(x, cy + h / 2 + 1, z(d)), walls[Math.floor(r() * walls.length)]);
+  }
+  bin.add('factory', box(W, 2.5, 6), trs(W / 2, cy + 1.2, z(ONO_ISLE + 3)), 0xbdbab0);
+  for (const fx of [0.18, 0.52, 0.83]) {
+    const x0 = fx * W;
+    for (let k = 0; k < 3; k++) bin.add('factory', box(70 + r() * 40, 18 + r() * 8, 40), trs(x0 + k * 95, cy + 11, z(ONO_ISLE + 45)), [0xb8c0c6, 0x9fb0bd, 0xd2d6d8][k]);
+    for (let k = 0; k < 2; k++) {
+      const cxp = x0 - 60 + k * 230;
+      bin.add('factory', box(3, 46, 3), trs(cxp, cy + 23, z(ONO_ISLE + 15)), 0xd8452f); // クレーンの柱
+      bin.add('factory', box(48, 2.5, 2.5), trs(cxp + 14, cy + 45, z(ONO_ISLE + 15)), 0xd8452f); // ジブ
+    }
+  }
+  sc.mats.factory = th.mats.factory;
+  sc._addLayer(bin, W, 'onomichi-harbor', xc);
+}
+
+/** 向島（近い島：丸い低山・緑）と、その奥に重なる島々（青く霞む） */
+export function buildOnomichiIslands(th, s, z, cy, xc, seed) {
+  const W = ONO_W;
+  const n1 = periodicNoise(W, seed + 81, [[2, 0.35], [5, 0.3], [9, 0.2], [17, 0.1]]);
+  const n2 = periodicNoise(W, seed + 82, [[3, 0.5], [5, 0.3], [8, 0.2]]);
+  const n3 = periodicNoise(W, seed + 83, [[2, 0.5], [4, 0.3], [7, 0.2]]);
+  const isleRows = [ONO_ISLE - 6, ONO_ISLE + 120, ONO_ISLE + 260, ONO_ISLE + 450, ONO_ISLE + 700, ONO_ISLE + 1000, ONO_ISLE + 1350, ONO_ISLE + 1650];
+  const isleProf = [-0.03, 0.06, 0.3, 0.68, 0.95, 0.85, 0.45, -0.03];
+  const cTown = new THREE.Color('#a8aaa2');
+  const cLow = new THREE.Color('#5b8a55');
+  const cHigh = new THREE.Color('#467a52');
+  strip(th, z, xc, {
+    name: 'onomichi-isle',
+    W,
+    nx: 400,
+    rows: isleRows,
+    y: (x, d, j) => cy + 1 + (j === 1 ? 4 : 0) + 135 * isleProf[j] * Math.max(0.35, 0.7 + 0.55 * n1(x)),
+    color: (x, d, y, j, c) => {
+      const t = Math.min(1, (y - cy) / 200);
+      c.copy(cLow).lerp(cHigh, t);
+      if (j <= 1) c.copy(cTown); // 岸の町並み
+    },
+  });
+  // 奥の島々（2 列。間に海が見え、島が重なる奥行き）
+  const cFarA = new THREE.Color('#5f8586');
+  const cFarB = new THREE.Color('#7b98a8');
+  const far = (name, d0, H, nf, col) =>
+    strip(th, z, xc, {
+      name,
+      W,
+      nx: 240,
+      rows: [d0, d0 + 300, d0 + 700, d0 + 1100, d0 + 1500],
+      y: (x, d, j) => {
+        const isl = sstep(0, 0.9, 0.3 + nf(x)); // 0 の所は海（島と島の間）。丸い肩でなめらかに
+        if (j === 0 || j === 4) return cy - 4; // 前後の縁は水面の下
+        return cy + [0, 0.5, 1, 0.75, 0][j] * H * Math.sqrt(isl) - (isl > 0.01 ? 0 : 6);
+      },
+      color: (x, d, y, j, c) => c.copy(col),
+    });
+  far('onomichi-far1', 3200, 330, n2, cFarA);
+  far('onomichi-far2', 5400, 470, n3, cFarB);
+}
+
+/** 右：線路に近い丸みのある低山（150 m 級）。高さは街の地面 cy から */
+function onoHillField(seed) {
+  const W = ONO_W;
+  const nA = periodicNoise(W, seed + 91, [[3, 0.45], [6, 0.35], [11, 0.2]]);
+  const nB = periodicNoise(W, seed + 92, [[2, 0.5], [5, 0.5]]);
+  /** 山裾までの距離（線路に近い所・離れる所） */
+  const foot = (x) => 170 + 50 * nB(x);
+  const H = (x) => 132 + 30 * nA(x); // 100〜160 m 級
+  const h = (x, d) => {
+    const f = foot(x);
+    if (d <= f) return 0;
+    const t = (d - f) / 330; // 裾 → 頂上まで約 330 m（丸い山：sin の肩）
+    const p = t < 1 ? Math.sin((t * Math.PI) / 2) ** 1.6 : 1 - 0.25 * sstep(1, 2.6, t);
+    return H(x) * p;
+  };
+  return { W, h, foot };
+}
+
+export function buildOnomichiHills(th, s, z, cy, xc, seed) {
+  const F = onoHillField(seed);
+  const rows = [30, 60, 80, 105, 135, 170, 210, 260, 320, 390, 470, 600, 800, 1100];
+  const cGreens = ['#5f9a4c', '#548f46', '#6aa356', '#4c8642'].map((h) => new THREE.Color(h));
+  const cTop = new THREE.Color('#467c40');
+  const cTownG = new THREE.Color('#9c9e94');
+  strip(th, z, xc, {
+    name: 'onomichi-hills',
+    W: F.W,
+    nx: 480,
+    shade: 0.45,
+    rows,
+    y: (x, d) => cy + F.h(x, d),
+    color: (x, d, y, j, c) => {
+      const hh = y - cy;
+      if (hh < 2) c.copy(cTownG); // 山裾の町（地面）
+      else c.copy(cGreens[(Math.floor(x / 31) + j) % cGreens.length]).lerp(cTop, Math.min(1, hh / 200) * 0.5);
+    },
+  });
+}
+
+/** 山裾の町並み＋山腹に点在する家（擁壁つき）＋木々 */
+export function buildOnomichiSlopeHouses(th, s, z, cy, xc, seed, lite) {
+  const F = onoHillField(seed);
+  const sc = th.sc;
+  const r = rng(seed * 67 + 5);
+  const bin = new PartBin();
+  const walls = [0xf2efe8, 0xe8e3d8, 0xdcd8cf, 0xe9e0cf, 0xcfd3d4];
+  const roofs = [0x5b6168, 0x4f5f70, 0xb0563f, 0x6b6b66, 0x7a5a4c]; // 赤瓦も少し
+  // 山裾の平地の町（d 15〜裾）
+  for (let i = 0; i < (lite ? 500 : 700); i++) {
+    const x = r() * F.W;
+    const d = 16 + r() * (F.foot(x) - 20);
+    const floors = r() < 0.15 ? 3 + Math.floor(r() * 2) : 1 + Math.floor(r() * 2);
+    const w = 8 + r() * 8;
+    const dep = 7 + r() * 5;
+    const hgt = floors * 3;
+    bin.add('building', wallBox(w, hgt, dep), trs(x, cy + hgt / 2, z(d)), walls[Math.floor(r() * walls.length)]);
+    bin.add('solid', box(w + 0.8, 1.0, dep + 0.8), trs(x, cy + hgt + 0.5, z(d)), roofs[Math.floor(r() * roofs.length)]);
+  }
+  // 山腹の家（下の方ほど多い・ところどころ集まる）＋擁壁
+  const zone = periodicNoise(F.W, seed + 93, [[5, 0.5], [11, 0.3], [23, 0.2]]);
+  for (let i = 0; i < (lite ? 1300 : 1800); i++) {
+    const x = r() * F.W;
+    if (r() > 0.35 + 0.6 * zone(x)) continue;
+    const f = F.foot(x);
+    const d = f + 8 + Math.pow(r(), 1.4) * 300;
+    const g0 = F.h(x, d);
+    if (g0 < 3) continue;
+    const big = r() < 0.06;
+    const floors = big ? 3 + Math.floor(r() * 3) : 1 + Math.floor(r() * 2);
+    const w = big ? 18 + r() * 12 : 8 + r() * 6;
+    const dep = big ? 12 + r() * 6 : 7 + r() * 4;
+    const hgt = floors * 3;
+    const base = cy + g0 - 7; // 斜面に深く据える（谷側が浮いて見えないように）
+    bin.add('building', wallBox(w, hgt + 7, dep), trs(x, base + (hgt + 7) / 2, z(d)), walls[Math.floor(r() * walls.length)]);
+    if (!big) bin.add('solid', box(w + 0.8, 1.0, dep + 0.8), trs(x, base + hgt + 7.5, z(d)), roofs[Math.floor(r() * roofs.length)]);
+    if (r() < 0.45) bin.add('factory', box(w + 4, 3.5, 1.2), trs(x, cy + g0 - 1.5, z(d - dep / 2 - 2)), 0xb5b2a8); // 石積み・擁壁
+  }
+  // 山の木々（こんもり）
+  for (let i = 0; i < (lite ? 600 : 800); i++) {
+    const x = r() * F.W;
+    const d = F.foot(x) + 10 + r() * 480;
+    const g0 = F.h(x, d);
+    if (g0 < 4) continue;
+    const rr = 5 + r() * 7;
+    bin.add('foliage', new THREE.IcosahedronGeometry(1, i % 2), trs(x, cy + g0 + rr * 0.35, z(d), 0, r() * 6, 0, [rr, rr * 0.8, rr]), [0x4f8a44, 0x3f7a3a, 0x5f9a4c, 0x467f3e][i % 4]);
+  }
+  sc.mats.factory = th.mats.factory;
+  sc._addLayer(bin, F.W, 'onomichi-slope-houses', xc);
 }
